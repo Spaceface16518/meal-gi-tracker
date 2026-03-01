@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PageHero } from "@/components/PageHero";
 import { Surface } from "@/components/Surface";
-import { getRecentEntries, searchEntries } from "@/lib/server/entries";
+import { deleteEntryById, getRecentEntries, searchEntries } from "@/lib/server/entries";
 import { formatTs } from "@/lib/server/time";
 import { EntryType } from "@/lib/types";
 
@@ -16,14 +17,41 @@ function parseType(value: string): EntryType | "" {
   return "";
 }
 
+function buildSearchHref(params: { q?: string; type?: EntryType | ""; deletedId?: string; deleteError?: string }) {
+  const next = new URLSearchParams();
+  if (params.q) next.set("q", params.q);
+  if (params.type) next.set("type", params.type);
+  if (params.deletedId) next.set("deleted", params.deletedId);
+  if (params.deleteError) next.set("delete_error", params.deleteError);
+  return `/search${next.toString() ? `?${next.toString()}` : ""}`;
+}
+
 export default async function SearchPage({
   searchParams
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  async function deleteAction(formData: FormData) {
+    "use server";
+
+    const id = String(formData.get("id") || "");
+    const currentQ = String(formData.get("currentQ") || "");
+    const currentType = parseType(String(formData.get("currentType") || ""));
+
+    try {
+      await deleteEntryById(id);
+      redirect(buildSearchHref({ q: currentQ, type: currentType, deletedId: id }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Delete failed";
+      redirect(buildSearchHref({ q: currentQ, type: currentType, deleteError: message }));
+    }
+  }
+
   const params = await searchParams;
   const q = readParam(params.q);
   const type = parseType(readParam(params.type));
+  const deletedId = readParam(params.deleted);
+  const deleteError = readParam(params.delete_error);
   const items = q ? await searchEntries({ q, type }) : await getRecentEntries(30, type);
 
   return (
@@ -57,6 +85,16 @@ export default async function SearchPage({
           <p className="status-ok">Showing recent history ({items.length})</p>
         </div>
       )}
+      {deletedId ? (
+        <div className="status-wrap">
+          <p className="status-ok">Deleted entry: {deletedId}</p>
+        </div>
+      ) : null}
+      {deleteError ? (
+        <div className="status-wrap">
+          <p className="status-error">{deleteError}</p>
+        </div>
+      ) : null}
 
       <div className="result-list">
         {items.map((item) => (
@@ -65,7 +103,15 @@ export default async function SearchPage({
               <strong>{item.type}</strong> | {formatTs(item.ts, item.time)}
             </p>
             <p>{item.snippet}</p>
-            <Link href={`/entry/${item._id}`}>Open Entry</Link>
+            <p>
+              <Link href={`/entry/${item._id}`}>Open Entry</Link>
+            </p>
+            <form action={deleteAction}>
+              <input type="hidden" name="id" value={item._id} />
+              <input type="hidden" name="currentQ" value={q} />
+              <input type="hidden" name="currentType" value={type} />
+              <button type="submit">Delete Entry</button>
+            </form>
           </Surface>
         ))}
       </div>

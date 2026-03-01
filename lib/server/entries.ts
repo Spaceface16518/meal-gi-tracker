@@ -305,6 +305,35 @@ export async function getEntryById(id: string): Promise<EntryDoc | null> {
   return db.collection<EntryDoc>("entries").findOne({ _id: new ObjectId(id), userId: "me" });
 }
 
+export async function deleteEntryById(id: string): Promise<void> {
+  if (!ObjectId.isValid(id)) {
+    throw new Error("Invalid entry id");
+  }
+
+  const db = await getDb();
+  const entries = db.collection<EntryDoc>("entries");
+  const _id = new ObjectId(id);
+
+  const entry = await entries.findOne({ _id, userId: "me" });
+  if (!entry) {
+    throw new Error("Entry not found");
+  }
+
+  if (entry.image?.gridFsId) {
+    const bucket = await getBucket();
+    try {
+      await bucket.delete(entry.image.gridFsId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.toLowerCase().includes("file not found")) {
+        throw error;
+      }
+    }
+  }
+
+  await entries.deleteOne({ _id, userId: "me" });
+}
+
 export async function retryMealSummary(entryId: string): Promise<{ id: string; summary: string }> {
   if (!ObjectId.isValid(entryId)) {
     throw new Error("Invalid entry id");
