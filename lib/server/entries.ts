@@ -264,6 +264,30 @@ export async function searchEntries(params: { q: string; type?: EntryType | "" }
   }));
 }
 
+export async function getRecentEntries(limit = 20, type?: EntryType | "") {
+  const db = await getDb();
+  const filter: Record<string, unknown> = { userId: "me" };
+  if (type) {
+    filter.type = type;
+  }
+
+  const docs = await db
+    .collection<EntryDoc>("entries")
+    .find(filter, {
+      projection: { ts: 1, type: 1, search: 1, input: 1 }
+    })
+    .sort({ ts: -1 })
+    .limit(Math.max(1, Math.min(200, limit)))
+    .toArray();
+
+  return docs.map((doc) => ({
+    _id: doc._id?.toString() || "",
+    ts: doc.ts,
+    type: doc.type,
+    snippet: (doc.search?.text || doc.input?.notes || "").slice(0, 180)
+  }));
+}
+
 export async function getEntryById(id: string): Promise<EntryDoc | null> {
   if (!ObjectId.isValid(id)) {
     return null;

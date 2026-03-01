@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { PageHero } from "@/components/PageHero";
 import { Surface } from "@/components/Surface";
-import { searchEntries } from "@/lib/server/entries";
+import { getRecentEntries, searchEntries } from "@/lib/server/entries";
 import { EntryType } from "@/lib/types";
 
 function readParam(value: string | string[] | undefined): string {
@@ -23,7 +23,7 @@ export default async function SearchPage({
   const params = await searchParams;
   const q = readParam(params.q);
   const type = parseType(readParam(params.type));
-  const items = q ? await searchEntries({ q, type }) : [];
+  const items = q ? await searchEntries({ q, type }) : await getRecentEntries(30, type);
 
   return (
     <>
@@ -31,8 +31,8 @@ export default async function SearchPage({
       <Surface>
         <form method="GET">
           <label>
-            Query
-            <input name="q" required defaultValue={q} placeholder="e.g. oats bloating" />
+            Query (optional)
+            <input name="q" defaultValue={q} placeholder="e.g. oats bloating" />
           </label>
           <label>
             Type (optional)
@@ -51,7 +51,11 @@ export default async function SearchPage({
         <div className="status-wrap">
           <p className="status-ok">Found {items.length} entries</p>
         </div>
-      ) : null}
+      ) : (
+        <div className="status-wrap">
+          <p className="status-ok">Showing recent history ({items.length})</p>
+        </div>
+      )}
 
       <div className="result-list">
         {items.map((item) => (
