@@ -12,7 +12,7 @@ export interface EntryDoc {
   ts: Date;
   time?: EntryTimeMeta;
   type: EntryType;
-  userId: "me";
+  userId: ObjectId;
   input: {
     notes?: string;
     fields?: Record<string, unknown>;

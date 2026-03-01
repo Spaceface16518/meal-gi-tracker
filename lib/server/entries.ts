@@ -3,11 +3,21 @@ import "server-only";
 import { createHash } from "crypto";
 import { ObjectId } from "mongodb";
 import { Readable } from "stream";
+import { getAuthenticatedUserId } from "@/lib/auth";
 import { getBucket, getDb } from "@/lib/mongo";
 import { extractMealData } from "@/lib/openaiExtract";
 import { EntryDoc, EntryTimeMeta, EntryType } from "@/lib/types";
 
 const MAX_UPLOAD_BYTES = 4_500_000;
+
+async function getEntriesForUser() {
+  const userId = await getAuthenticatedUserId();
+  const db = await getDb();
+  return {
+    userId,
+    entries: db.collection<EntryDoc>("entries")
+  };
+}
 
 function normalizeText(parts: Array<string | undefined>): string {
   return parts
@@ -24,7 +34,7 @@ function fieldsToText(fields?: Record<string, unknown>): string {
     .join(" ");
 }
 
-async function uploadToGridFs(file: File): Promise<{
+async function uploadToGridFs(file: File, userId: ObjectId): Promise<{
   gridFsId: ObjectId;
   contentType: string;
   sizeBytes: number;
@@ -40,7 +50,8 @@ async function uploadToGridFs(file: File): Promise<{
   const bucket = await getBucket();
 
   const uploadStream = bucket.openUploadStream(file.name || "meal.jpg", {
-    contentType: file.type || "image/jpeg"
+    contentType: file.type || "image/jpeg",
+    metadata: { userId: userId.toHexString() }
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -87,15 +98,13 @@ export async function createMealEntry(params: {
   debugId?: string;
   time?: EntryTimeMeta;
 }): Promise<{ id: string; aiSummary?: string }> {
+  const { userId, entries } = await getEntriesForUser();
   const notes = (params.notes || "").trim();
   console.info("[meal-ai] createMealEntry start", {
     debugId: params.debugId,
     notesLength: notes.length,
     hasImage: Boolean(params.imageFile && params.imageFile.size > 0)
   });
-  const db = await getDb();
-  const entries = db.collection<EntryDoc>("entries");
-
   let image: EntryDoc["image"];
   let ai: EntryDoc["ai"];
   let imageBase64: string | undefined;
@@ -107,7 +116,7 @@ export async function createMealEntry(params: {
       imageSize: params.imageFile.size,
       imageType: params.imageFile.type
     });
-    const uploaded = await uploadToGridFs(params.imageFile);
+    const uploaded = await uploadToGridFs(params.imageFile, userId);
     console.info("[meal-ai] image upload done", {
       debugId: params.debugId,
       gridFsId: uploaded.gridFsId.toString(),
@@ -153,7 +162,7 @@ export async function createMealEntry(params: {
     ts: new Date(),
     time: params.time,
     type: "meal",
-    userId: "me",
+    userId,
     input: {
       notes: notes || undefined
     },
@@ -181,6 +190,7 @@ export async function createGiEntry(params: {
   locations: string[];
   time?: EntryTimeMeta;
 }): Promise<string> {
+  const { userId, entries } = await getEntriesForUser();
   const notes = (params.notes || "").trim();
   const fields = {
     severity: Math.max(0, Math.min(10, params.severity)),
@@ -191,7 +201,7 @@ export async function createGiEntry(params: {
     ts: new Date(),
     time: params.time,
     type: "gi_event",
-    userId: "me",
+    userId,
     input: {
       notes: notes || undefined,
       fields
@@ -201,8 +211,7 @@ export async function createGiEntry(params: {
     }
   };
 
-  const db = await getDb();
-  const result = await db.collection<EntryDoc>("entries").insertOne(doc);
+  const result = await entries.insertOne(doc);
   return result.insertedId.toString();
 }
 
@@ -213,6 +222,7 @@ export async function createBmEntry(params: {
   urgency: boolean;
   time?: EntryTimeMeta;
 }): Promise<string> {
+  const { userId, entries } = await getEntriesForUser();
   const notes = (params.notes || "").trim();
   const fields = {
     bristol: Math.max(1, Math.min(7, params.bristol)),
@@ -224,7 +234,7 @@ export async function createBmEntry(params: {
     ts: new Date(),
     time: params.time,
     type: "bm",
-    userId: "me",
+    userId,
     input: {
       notes: notes || undefined,
       fields
@@ -234,18 +244,17 @@ export async function createBmEntry(params: {
     }
   };
 
-  const db = await getDb();
-  const result = await db.collection<EntryDoc>("entries").insertOne(doc);
+  const result = await entries.insertOne(doc);
   return result.insertedId.toString();
 }
 
 export async function searchEntries(params: { q: string; type?: EntryType | "" }) {
+  const { userId, entries } = await getEntriesForUser();
   const q = params.q.trim();
   if (!q) return [];
 
-  const db = await getDb();
   const filter: Record<string, unknown> = {
-    userId: "me",
+    userId,
     $text: { $search: q }
   };
 
@@ -253,11 +262,8 @@ export async function searchEntries(params: { q: string; type?: EntryType | "" }
     filter.type = params.type;
   }
 
-  const docs = await db
-    .collection<EntryDoc>("entries")
-    .find(filter, {
-      projection: { ts: 1, time: 1, type: 1, search: 1, input: 1 }
-    })
+  const docs = await entries
+    .find(filter, { projection: { ts: 1, time: 1, type: 1, search: 1, input: 1 } })
     .sort({ ts: -1 })
     .limit(100)
     .toArray();
@@ -272,17 +278,14 @@ export async function searchEntries(params: { q: string; type?: EntryType | "" }
 }
 
 export async function getRecentEntries(limit = 20, type?: EntryType | "") {
-  const db = await getDb();
-  const filter: Record<string, unknown> = { userId: "me" };
+  const { userId, entries } = await getEntriesForUser();
+  const filter: Record<string, unknown> = { userId };
   if (type) {
     filter.type = type;
   }
 
-  const docs = await db
-    .collection<EntryDoc>("entries")
-    .find(filter, {
-      projection: { ts: 1, time: 1, type: 1, search: 1, input: 1 }
-    })
+  const docs = await entries
+    .find(filter, { projection: { ts: 1, time: 1, type: 1, search: 1, input: 1 } })
     .sort({ ts: -1 })
     .limit(Math.max(1, Math.min(200, limit)))
     .toArray();
@@ -297,24 +300,23 @@ export async function getRecentEntries(limit = 20, type?: EntryType | "") {
 }
 
 export async function getEntryById(id: string): Promise<EntryDoc | null> {
+  const { userId, entries } = await getEntriesForUser();
   if (!ObjectId.isValid(id)) {
     return null;
   }
 
-  const db = await getDb();
-  return db.collection<EntryDoc>("entries").findOne({ _id: new ObjectId(id), userId: "me" });
+  return entries.findOne({ _id: new ObjectId(id), userId });
 }
 
 export async function deleteEntryById(id: string): Promise<void> {
+  const { userId, entries } = await getEntriesForUser();
   if (!ObjectId.isValid(id)) {
     throw new Error("Invalid entry id");
   }
 
-  const db = await getDb();
-  const entries = db.collection<EntryDoc>("entries");
   const _id = new ObjectId(id);
 
-  const entry = await entries.findOne({ _id, userId: "me" });
+  const entry = await entries.findOne({ _id, userId });
   if (!entry) {
     throw new Error("Entry not found");
   }
@@ -331,19 +333,18 @@ export async function deleteEntryById(id: string): Promise<void> {
     }
   }
 
-  await entries.deleteOne({ _id, userId: "me" });
+  await entries.deleteOne({ _id, userId });
 }
 
 export async function retryMealSummary(entryId: string): Promise<{ id: string; summary: string }> {
+  const { userId, entries } = await getEntriesForUser();
   if (!ObjectId.isValid(entryId)) {
     throw new Error("Invalid entry id");
   }
 
-  const db = await getDb();
-  const entries = db.collection<EntryDoc>("entries");
   const _id = new ObjectId(entryId);
 
-  const entry = await entries.findOne({ _id, userId: "me" });
+  const entry = await entries.findOne({ _id, userId });
   if (!entry) {
     throw new Error("Entry not found");
   }
@@ -375,7 +376,7 @@ export async function retryMealSummary(entryId: string): Promise<{ id: string; s
     normalizeText([entry.input?.notes, ai.searchText, ai.rawTextSummary]) || entry.search?.text || "meal";
 
   await entries.updateOne(
-    { _id, userId: "me" },
+    { _id, userId },
     {
       $set: {
         ai,

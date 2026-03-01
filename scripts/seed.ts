@@ -1,8 +1,10 @@
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 
 async function main() {
   const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017";
   const dbName = process.env.MONGODB_DB || "ibs_tracker";
+  const userIdRaw = process.env.SEED_USER_ID;
+  const userId = userIdRaw && ObjectId.isValid(userIdRaw) ? new ObjectId(userIdRaw) : new ObjectId();
 
   const client = new MongoClient(uri);
   await client.connect();
@@ -14,7 +16,7 @@ async function main() {
     {
       ts: now,
       type: "gi_event",
-      userId: "me",
+      userId,
       input: {
         notes: "Bloating after lunch",
         fields: {
@@ -29,7 +31,7 @@ async function main() {
     {
       ts: now,
       type: "bm",
-      userId: "me",
+      userId,
       input: {
         notes: "Morning BM",
         fields: {
@@ -44,7 +46,7 @@ async function main() {
     }
   ]);
 
-  console.log("Seed data inserted");
+  console.log("Seed data inserted for userId:", userId.toHexString());
   await client.close();
 }
 
