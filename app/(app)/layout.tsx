@@ -1,7 +1,15 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { auth, signOut } from "@/lib/auth";
 
-export default function AppGroupLayout({ children }: { children: ReactNode }) {
+export default async function AppGroupLayout({ children }: { children: ReactNode }) {
+  const session = await auth();
+
+  async function logoutAction() {
+    "use server";
+    await signOut({ redirectTo: "/login" });
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -14,7 +22,13 @@ export default function AppGroupLayout({ children }: { children: ReactNode }) {
           <Link href="/bm">BM</Link>
           <Link href="/search">Search</Link>
         </nav>
+        <form action={logoutAction}>
+          <button type="submit">Sign Out</button>
+        </form>
       </header>
+      {session?.user?.email ? (
+        <p className="muted">Signed in as {session.user.email}</p>
+      ) : null}
       {children}
     </main>
   );
