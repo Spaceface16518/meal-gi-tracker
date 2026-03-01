@@ -26,6 +26,8 @@ export function MealForm({
     startTransition(async () => {
       const formData = new FormData(formEl);
       const image = formData.get("image");
+      formData.set("clientTimezone", Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
+      formData.set("clientUtcOffsetMinutes", String(-new Date().getTimezoneOffset()));
 
       if (image instanceof File && image.size > 0) {
         try {

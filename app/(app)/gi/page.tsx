@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageHero } from "@/components/PageHero";
 import { Surface } from "@/components/Surface";
+import { TimezoneFields } from "@/components/forms/TimezoneFields";
 import { createGiEntry } from "@/lib/server/entries";
+import { parseTimeMetaFromFormData } from "@/lib/server/time";
 
 function readParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] || "" : value || "";
@@ -19,8 +21,9 @@ export default async function GiPage({
     const notes = String(formData.get("notes") || "");
     const severity = Number(formData.get("severity") || 0);
     const locations = formData.getAll("locations").map(String);
+    const time = parseTimeMetaFromFormData(formData);
 
-    const id = await createGiEntry({ notes, severity, locations });
+    const id = await createGiEntry({ notes, severity, locations, time });
     redirect(`/gi?saved=1&id=${id}`);
   }
 
@@ -33,6 +36,7 @@ export default async function GiPage({
       <PageHero title="Log GI Event" subtitle="Record GI symptoms and context." />
       <Surface>
         <form action={submitGi}>
+          <TimezoneFields />
           <label>
             Severity (0-10)
             <input name="severity" type="number" min={0} max={10} defaultValue={3} required />

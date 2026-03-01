@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageHero } from "@/components/PageHero";
 import { Surface } from "@/components/Surface";
+import { TimezoneFields } from "@/components/forms/TimezoneFields";
 import { createBmEntry } from "@/lib/server/entries";
+import { parseTimeMetaFromFormData } from "@/lib/server/time";
 
 function readParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] || "" : value || "";
@@ -20,8 +22,9 @@ export default async function BmPage({
     const bristol = Number(formData.get("bristol") || 4);
     const color = String(formData.get("color") || "brown");
     const urgency = formData.get("urgency") === "on";
+    const time = parseTimeMetaFromFormData(formData);
 
-    const id = await createBmEntry({ notes, bristol, color, urgency });
+    const id = await createBmEntry({ notes, bristol, color, urgency, time });
     redirect(`/bm?saved=1&id=${id}`);
   }
 
@@ -34,6 +37,7 @@ export default async function BmPage({
       <PageHero title="Log BM" subtitle="Record stool details with quick structured fields." />
       <Surface>
         <form action={submitBm}>
+          <TimezoneFields />
           <label>
             <a href="https://en.wikipedia.org/wiki/Bristol_stool_scale" target="_blank" rel="noopener noreferrer">
               Bristol (1-7)

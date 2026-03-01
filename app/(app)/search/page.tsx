@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PageHero } from "@/components/PageHero";
 import { Surface } from "@/components/Surface";
 import { getRecentEntries, searchEntries } from "@/lib/server/entries";
+import { formatTs } from "@/lib/server/time";
 import { EntryType } from "@/lib/types";
 
 function readParam(value: string | string[] | undefined): string {
@@ -61,7 +62,7 @@ export default async function SearchPage({
         {items.map((item) => (
           <Surface key={item._id}>
             <p>
-              <strong>{item.type}</strong> | {new Date(item.ts).toLocaleString()}
+              <strong>{item.type}</strong> | {formatTs(item.ts, item.time)}
             </p>
             <p>{item.snippet}</p>
             <Link href={`/entry/${item._id}`}>Open Entry</Link>

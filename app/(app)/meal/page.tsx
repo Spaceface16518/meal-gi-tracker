@@ -2,6 +2,7 @@ import { PageHero } from "@/components/PageHero";
 import { Surface } from "@/components/Surface";
 import { MealForm } from "@/components/forms/MealForm";
 import { createMealEntry } from "@/lib/server/entries";
+import { parseTimeMetaFromFormData } from "@/lib/server/time";
 
 export default function MealPage() {
   async function submitMeal(formData: FormData) {
@@ -13,17 +14,21 @@ export default function MealPage() {
       const notes = String(formData.get("notes") || "");
       const imageValue = formData.get("image");
       const imageFile = imageValue instanceof File ? imageValue : null;
+      const time = parseTimeMetaFromFormData(formData);
       console.info("[meal-ai] submitMeal received", {
         debugId,
         hasImage: Boolean(imageFile && imageFile.size > 0),
         imageSize: imageFile?.size || 0,
-        notesLength: notes.length
+        notesLength: notes.length,
+        timezone: time.timezone,
+        utcOffsetMinutes: time.utcOffsetMinutes
       });
 
       const result = await createMealEntry({
         notes,
         imageFile,
-        debugId
+        debugId,
+        time
       });
       console.info("[meal-ai] submitMeal success", {
         debugId,

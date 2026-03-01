@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 import { Readable } from "stream";
 import { getBucket, getDb } from "@/lib/mongo";
 import { extractMealData } from "@/lib/openaiExtract";
-import { EntryDoc, EntryType } from "@/lib/types";
+import { EntryDoc, EntryTimeMeta, EntryType } from "@/lib/types";
 
 const MAX_UPLOAD_BYTES = 4_500_000;
 
@@ -85,6 +85,7 @@ export async function createMealEntry(params: {
   notes?: string;
   imageFile?: File | null;
   debugId?: string;
+  time?: EntryTimeMeta;
 }): Promise<{ id: string; aiSummary?: string }> {
   const notes = (params.notes || "").trim();
   console.info("[meal-ai] createMealEntry start", {
@@ -150,6 +151,7 @@ export async function createMealEntry(params: {
 
   const doc: EntryDoc = {
     ts: new Date(),
+    time: params.time,
     type: "meal",
     userId: "me",
     input: {
@@ -177,6 +179,7 @@ export async function createGiEntry(params: {
   notes?: string;
   severity: number;
   locations: string[];
+  time?: EntryTimeMeta;
 }): Promise<string> {
   const notes = (params.notes || "").trim();
   const fields = {
@@ -186,6 +189,7 @@ export async function createGiEntry(params: {
 
   const doc: EntryDoc = {
     ts: new Date(),
+    time: params.time,
     type: "gi_event",
     userId: "me",
     input: {
@@ -207,6 +211,7 @@ export async function createBmEntry(params: {
   bristol: number;
   color: string;
   urgency: boolean;
+  time?: EntryTimeMeta;
 }): Promise<string> {
   const notes = (params.notes || "").trim();
   const fields = {
@@ -217,6 +222,7 @@ export async function createBmEntry(params: {
 
   const doc: EntryDoc = {
     ts: new Date(),
+    time: params.time,
     type: "bm",
     userId: "me",
     input: {
@@ -250,7 +256,7 @@ export async function searchEntries(params: { q: string; type?: EntryType | "" }
   const docs = await db
     .collection<EntryDoc>("entries")
     .find(filter, {
-      projection: { ts: 1, type: 1, search: 1, input: 1 }
+      projection: { ts: 1, time: 1, type: 1, search: 1, input: 1 }
     })
     .sort({ ts: -1 })
     .limit(100)
@@ -259,6 +265,7 @@ export async function searchEntries(params: { q: string; type?: EntryType | "" }
   return docs.map((doc) => ({
     _id: doc._id?.toString() || "",
     ts: doc.ts,
+    time: doc.time,
     type: doc.type,
     snippet: (doc.search?.text || doc.input?.notes || "").slice(0, 180)
   }));
@@ -274,7 +281,7 @@ export async function getRecentEntries(limit = 20, type?: EntryType | "") {
   const docs = await db
     .collection<EntryDoc>("entries")
     .find(filter, {
-      projection: { ts: 1, type: 1, search: 1, input: 1 }
+      projection: { ts: 1, time: 1, type: 1, search: 1, input: 1 }
     })
     .sort({ ts: -1 })
     .limit(Math.max(1, Math.min(200, limit)))
@@ -283,6 +290,7 @@ export async function getRecentEntries(limit = 20, type?: EntryType | "") {
   return docs.map((doc) => ({
     _id: doc._id?.toString() || "",
     ts: doc.ts,
+    time: doc.time,
     type: doc.type,
     snippet: (doc.search?.text || doc.input?.notes || "").slice(0, 180)
   }));

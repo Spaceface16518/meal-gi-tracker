@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { PageHero } from "@/components/PageHero";
 import { Surface } from "@/components/Surface";
 import { getEntryById, retryMealSummary } from "@/lib/server/entries";
+import { formatTs } from "@/lib/server/time";
 
 function readParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] || "" : value || "";
@@ -57,7 +58,8 @@ export default async function EntryPage({
           <strong>Type:</strong> {entry.type}
         </p>
         <p>
-          <strong>Time:</strong> {new Date(entry.ts).toLocaleString()}
+          <strong>Time:</strong> {formatTs(entry.ts, entry.time)}
+          {entry.time?.timezone ? ` (${entry.time.timezone})` : ""}
         </p>
 
         {entry.image?.gridFsId ? (

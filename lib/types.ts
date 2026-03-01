@@ -2,9 +2,15 @@ import { ObjectId } from "mongodb";
 
 export type EntryType = "meal" | "gi_event" | "bm";
 
+export interface EntryTimeMeta {
+  timezone?: string;
+  utcOffsetMinutes?: number;
+}
+
 export interface EntryDoc {
   _id?: ObjectId;
   ts: Date;
+  time?: EntryTimeMeta;
   type: EntryType;
   userId: "me";
   input: {
