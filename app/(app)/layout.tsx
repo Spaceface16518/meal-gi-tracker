@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { auth, signOut } from "@/lib/auth";
 
@@ -7,7 +8,8 @@ export default async function AppGroupLayout({ children }: { children: ReactNode
 
   async function logoutAction() {
     "use server";
-    await signOut({ redirectTo: "/login" });
+    await signOut({ redirect: false });
+    redirect("/login?logged_out=1");
   }
 
   return (

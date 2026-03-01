@@ -21,10 +21,6 @@ export default auth((req: any) => {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 
-  if (isAuthenticated && isPublicPath) {
-    return NextResponse.redirect(new URL("/", req.nextUrl));
-  }
-
   return NextResponse.next();
 });
 
