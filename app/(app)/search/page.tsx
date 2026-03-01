@@ -38,13 +38,17 @@ export default async function SearchPage({
     const currentQ = String(formData.get("currentQ") || "");
     const currentType = parseType(String(formData.get("currentType") || ""));
 
+    let deleteError: string | null = null;
     try {
       await deleteEntryById(id);
-      redirect(buildSearchHref({ q: currentQ, type: currentType, deletedId: id }));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Delete failed";
-      redirect(buildSearchHref({ q: currentQ, type: currentType, deleteError: message }));
+      deleteError = error instanceof Error ? error.message : "Delete failed";
     }
+
+    if (deleteError) {
+      redirect(buildSearchHref({ q: currentQ, type: currentType, deleteError }));
+    }
+    redirect(buildSearchHref({ q: currentQ, type: currentType, deletedId: id }));
   }
 
   const params = await searchParams;
