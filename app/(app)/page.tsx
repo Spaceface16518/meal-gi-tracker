@@ -4,6 +4,8 @@ import { PageHero } from "@/components/PageHero";
 import { Surface } from "@/components/Surface";
 import { getRecentEntries } from "@/lib/server/entries";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const recent = await getRecentEntries(8);
 
