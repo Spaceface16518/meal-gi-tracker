@@ -6,12 +6,14 @@ Minimal single-user tracker built with Next.js App Router + TypeScript, MongoDB 
 
 - Traditional HTTP Basic auth challenge (`401` + `WWW-Authenticate`) using `APP_PASSCODE`
 - Entry type chooser home screen, then separate pages for Meal / GI Event / BM
-- Log Meal with required photo + notes
+- Log Meal with optional photo + notes
 - Log GI Event
 - Log BM
 - Full-text search on entries
 - Meal image storage in GridFS (`GridFSBucket`)
 - Meal-only AI extraction with Structured Outputs (`strict: true`)
+- Retry AI summary from entry detail (meal entries with an image)
+- Server-first architecture: entry create/search/read uses server actions + server utilities
 
 ## Local setup
 
@@ -60,13 +62,8 @@ db.entries.createIndex({ "search.text": "text", "input.notes": "text" });
 
 ## API endpoints
 
-All endpoints are auth-protected via HTTP Basic auth.
+All app flows use server components/actions directly. Only file streaming uses an API route:
 
-- `POST /api/entries`
-  - `multipart/form-data` for `type=meal` (`type`, `notes`, required `image`)
-  - JSON body for `gi_event`/`bm`
-- `GET /api/entries/search?q=...&type=...`
-- `GET /api/entries/[id]`
 - `GET /api/files/[gridFsId]`
 
 ## Vercel deployment notes

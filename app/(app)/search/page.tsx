@@ -1,66 +1,42 @@
-"use client";
-
 import Link from "next/link";
-import { FormEvent, useState } from "react";
 import { PageHero } from "@/components/PageHero";
-import { StatusMessage } from "@/components/StatusMessage";
 import { Surface } from "@/components/Surface";
+import { searchEntries } from "@/lib/server/entries";
 import { EntryType } from "@/lib/types";
 
-type SearchItem = {
-  _id: string;
-  ts: string;
-  type: EntryType;
-  snippet: string;
-};
+function readParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? value[0] || "" : value || "";
+}
 
-export default function SearchPage() {
-  const [items, setItems] = useState<SearchItem[]>([]);
-  const [status, setStatus] = useState("");
-  const [error, setError] = useState("");
-
-  async function onSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setStatus("Searching...");
-    setError("");
-
-    try {
-      const fd = new FormData(event.currentTarget);
-      const q = String(fd.get("q") || "").trim();
-      const type = String(fd.get("type") || "");
-
-      const params = new URLSearchParams({ q });
-      if (type) {
-        params.set("type", type);
-      }
-
-      const res = await fetch(`/api/entries/search?${params.toString()}`);
-      const json = await res.json();
-
-      if (!res.ok) {
-        throw new Error(json?.error || "Search failed");
-      }
-
-      setItems(json.items || []);
-      setStatus(`Found ${json.items?.length || 0} entries`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      setStatus("");
-    }
+function parseType(value: string): EntryType | "" {
+  if (value === "meal" || value === "gi_event" || value === "bm") {
+    return value;
   }
+  return "";
+}
+
+export default async function SearchPage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const q = readParam(params.q);
+  const type = parseType(readParam(params.type));
+  const items = q ? await searchEntries({ q, type }) : [];
 
   return (
     <>
       <PageHero title="Search Entries" subtitle="Find logs using full text and type filters." />
       <Surface>
-        <form onSubmit={onSearch}>
+        <form method="GET">
           <label>
             Query
-            <input name="q" required placeholder="e.g. oats bloating" />
+            <input name="q" required defaultValue={q} placeholder="e.g. oats bloating" />
           </label>
           <label>
             Type (optional)
-            <select name="type" defaultValue="">
+            <select name="type" defaultValue={type}>
               <option value="">All</option>
               <option value="meal">Meal</option>
               <option value="gi_event">GI Event</option>
@@ -71,7 +47,11 @@ export default function SearchPage() {
         </form>
       </Surface>
 
-      <StatusMessage status={status} error={error} />
+      {q ? (
+        <div className="status-wrap">
+          <p className="status-ok">Found {items.length} entries</p>
+        </div>
+      ) : null}
 
       <div className="result-list">
         {items.map((item) => (

@@ -1,7 +1,8 @@
 import OpenAI from "openai";
 import { MealExtraction } from "./types";
 
-const model = process.env.OPENAI_MODEL || "gpt-5-mini";
+const configuredModel = process.env.OPENAI_MODEL?.trim();
+const fallbackVisionModel = "gpt-4.1-mini";
 
 const extractionSchema = {
   name: "meal_extraction",
@@ -9,27 +10,41 @@ const extractionSchema = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["rawTextSummary", "searchText", "extracted", "uncertaintyNotes"],
+    required: ["rawTextSummary", "searchText", "extracted", "uncertaintyNotes", "confidence"],
     properties: {
       rawTextSummary: { type: "string" },
       searchText: { type: "string" },
       extracted: {
         type: "object",
-        additionalProperties: true,
+        additionalProperties: false,
+        required: ["estimatedMacros", "fiberRichness", "facts"],
         properties: {
           estimatedMacros: {
-            type: "object",
-            additionalProperties: true,
+            type: ["object", "null"],
+            additionalProperties: false,
+            required: ["caloriesRange", "proteinGramsRange", "carbsGramsRange", "fatGramsRange"],
             properties: {
-              caloriesRange: { type: "string" },
-              proteinGramsRange: { type: "string" },
-              carbsGramsRange: { type: "string" },
-              fatGramsRange: { type: "string" }
+              caloriesRange: { type: ["string", "null"] },
+              proteinGramsRange: { type: ["string", "null"] },
+              carbsGramsRange: { type: ["string", "null"] },
+              fatGramsRange: { type: ["string", "null"] }
             }
           },
           fiberRichness: {
             type: "string",
             enum: ["low", "medium", "high", "unknown"]
+          },
+          facts: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["key", "value"],
+              properties: {
+                key: { type: "string" },
+                value: { type: "string" }
+              }
+            }
           }
         }
       },
@@ -38,8 +53,13 @@ const extractionSchema = {
         items: { type: "string" }
       },
       confidence: {
-        type: "object",
-        additionalProperties: true
+        type: ["object", "null"],
+        additionalProperties: false,
+        required: ["overall", "rationale"],
+        properties: {
+          overall: { type: ["string", "null"] },
+          rationale: { type: ["string", "null"] }
+        }
       }
     }
   }
@@ -60,9 +80,10 @@ function extractJsonFromResponse(response: any): MealExtraction {
 }
 
 export async function extractMealData(params: {
-  imageBase64: string;
-  mimeType: string;
+  imageBase64?: string;
+  mimeType?: string;
   notes?: string;
+  debugId?: string;
 }): Promise<{ data: MealExtraction; model: string; promptVersion: string }> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -71,45 +92,92 @@ export async function extractMealData(params: {
 
   const client = new OpenAI({ apiKey });
   const promptVersion = "v1";
+  const primaryModel = configuredModel || fallbackVisionModel;
+  const candidateModels = [primaryModel];
+  if (primaryModel !== fallbackVisionModel) {
+    candidateModels.push(fallbackVisionModel);
+  }
+  const hasImage = Boolean(params.imageBase64 && params.mimeType);
 
-  const response = await client.responses.create({
-    model,
-    input: [
-      {
-        role: "system",
-        content: [
+  console.info("[meal-ai] extraction start", {
+    debugId: params.debugId,
+    hasImage,
+    notesLength: (params.notes || "").length,
+    candidateModels
+  });
+
+  let lastError: unknown;
+
+  for (const model of candidateModels) {
+    try {
+      const userContent: Array<{ type: string; text?: string; image_url?: string }> = [
+        {
+          type: "input_text",
+          text: `User notes: ${params.notes || "(none)"}`
+        }
+      ];
+      if (hasImage) {
+        userContent.push({
+          type: "input_image",
+          image_url: `data:${params.mimeType};base64,${params.imageBase64}`
+        });
+      }
+
+      console.info("[meal-ai] model attempt", {
+        debugId: params.debugId,
+        model,
+        hasImage
+      });
+
+      const response = await client.responses.create({
+        model,
+        input: [
           {
-            type: "input_text",
-            text:
-              `You are a meal logging extractor for GI tracking. Return JSON
-              only. Be honest about uncertainty. Use ranges for macro estimates
-              when uncertain. Do not provide diagnosis or medical advice; only
-              log and potential trigger observations.`
-          }
-        ]
-      },
-      {
-        role: "user",
-        content: [
-          {
-            type: "input_text",
-            text: `User notes: ${params.notes || "(none)"}`
+            role: "system",
+            content: [
+              {
+                type: "input_text",
+                text:
+                  `You are a meal logging extractor for GI tracking. Return JSON
+                  only. Be honest about uncertainty. Use ranges for macro estimates
+                  when uncertain. Do not provide diagnosis or medical advice; only
+                  log and potential trigger observations.`
+              }
+            ]
           },
           {
-            type: "input_image",
-            image_url: `data:${params.mimeType};base64,${params.imageBase64}`
+            role: "user",
+            content: userContent
           }
-        ]
-      }
-    ],
-    text: {
-      format: {
-        type: "json_schema",
-        ...extractionSchema
-      }
-    }
-  } as any);
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            ...extractionSchema
+          }
+        }
+      } as any);
 
-  const data = extractJsonFromResponse(response);
-  return { data, model, promptVersion };
+      const data = extractJsonFromResponse(response);
+      console.info("[meal-ai] extraction success", {
+        debugId: params.debugId,
+        model,
+        hasImage
+      });
+      return { data, model, promptVersion };
+    } catch (error) {
+      console.error("[meal-ai] model attempt failed", {
+        debugId: params.debugId,
+        model,
+        hasImage,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      lastError = error;
+    }
+  }
+
+  const message = lastError instanceof Error ? lastError.message : "OpenAI request failed";
+  throw new Error(
+    `Meal extraction failed for model(s): ${candidateModels.join(", ")}. ${message}`
+  );
 }

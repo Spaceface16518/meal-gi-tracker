@@ -1,53 +1,50 @@
-"use client";
-
-import { FormEvent, useState } from "react";
 import { PageHero } from "@/components/PageHero";
-import { StatusMessage } from "@/components/StatusMessage";
 import { Surface } from "@/components/Surface";
-import { compressImage } from "@/lib/compressImage";
+import { MealForm } from "@/components/forms/MealForm";
+import { createMealEntry } from "@/lib/server/entries";
 
 export default function MealPage() {
-  const [status, setStatus] = useState("");
-  const [error, setError] = useState("");
-  const [aiSummary, setAiSummary] = useState("");
+  async function submitMeal(formData: FormData) {
+    "use server";
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setStatus("Saving meal...");
-    setError("");
-    setAiSummary("");
+    const debugId = `meal-${Date.now()}`;
 
     try {
-      const formEl = event.currentTarget;
-      const formData = new FormData(formEl);
       const notes = String(formData.get("notes") || "");
-      const file = formData.get("image");
-
-      if (!(file instanceof File) || file.size === 0) {
-        throw new Error("Photo is required.");
-      }
-
-      const compressed = await compressImage(file);
-      const outgoing = new FormData();
-      outgoing.set("type", "meal");
-      outgoing.set("notes", notes);
-      outgoing.set("image", compressed, compressed.name);
-
-      const res = await fetch("/api/entries", {
-        method: "POST",
-        body: outgoing
+      const imageValue = formData.get("image");
+      const imageFile = imageValue instanceof File ? imageValue : null;
+      console.info("[meal-ai] submitMeal received", {
+        debugId,
+        hasImage: Boolean(imageFile && imageFile.size > 0),
+        imageSize: imageFile?.size || 0,
+        notesLength: notes.length
       });
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json?.error || "Failed to save meal");
-      }
 
-      setStatus(`Saved meal: ${json.id}`);
-      setAiSummary(json?.ai?.rawTextSummary || "No summary returned.");
-      formEl.reset();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      setStatus("");
+      const result = await createMealEntry({
+        notes,
+        imageFile,
+        debugId
+      });
+      console.info("[meal-ai] submitMeal success", {
+        debugId,
+        entryId: result.id,
+        hasSummary: Boolean(result.aiSummary)
+      });
+
+      return {
+        ok: true,
+        id: result.id,
+        aiSummary: result.aiSummary
+      };
+    } catch (error) {
+      console.error("[meal-ai] submitMeal failed", {
+        debugId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : "Failed to save meal"
+      };
     }
   }
 
@@ -55,30 +52,11 @@ export default function MealPage() {
     <>
       <PageHero
         title="Log Meal"
-        subtitle="Capture meal photo + notes. AI extraction runs on meal entries."
+        subtitle="Capture meal notes and optional photo. AI extraction runs before completion."
       />
       <Surface>
-        <form onSubmit={onSubmit}>
-          <label>
-            Photo
-            <input name="image" type="file" accept="image/*" capture="environment" required />
-          </label>
-          <label>
-            Notes
-            <textarea name="notes" placeholder="What did you eat?" />
-          </label>
-          <button type="submit">Save Meal</button>
-        </form>
+        <MealForm action={submitMeal} />
       </Surface>
-
-      <StatusMessage status={status} error={error} />
-
-      {aiSummary ? (
-        <Surface>
-          <h2>AI Summary</h2>
-          <p>{aiSummary}</p>
-        </Surface>
-      ) : null}
     </>
   );
 }

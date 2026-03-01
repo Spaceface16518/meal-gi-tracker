@@ -1,56 +1,39 @@
-"use client";
-
-import { FormEvent, useState } from "react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PageHero } from "@/components/PageHero";
-import { StatusMessage } from "@/components/StatusMessage";
 import { Surface } from "@/components/Surface";
+import { createBmEntry } from "@/lib/server/entries";
 
-export default function BmPage() {
-  const [status, setStatus] = useState("");
-  const [error, setError] = useState("");
+function readParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? value[0] || "" : value || "";
+}
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setStatus("Saving BM...");
-    setError("");
+export default async function BmPage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  async function submitBm(formData: FormData) {
+    "use server";
 
-    try {
-      const formEl = event.currentTarget;
-      const fd = new FormData(formEl);
+    const notes = String(formData.get("notes") || "");
+    const bristol = Number(formData.get("bristol") || 4);
+    const color = String(formData.get("color") || "brown");
+    const urgency = formData.get("urgency") === "on";
 
-      const payload = {
-        type: "bm",
-        notes: String(fd.get("notes") || ""),
-        fields: {
-          bristol: Number(fd.get("bristol") || 4),
-          color: String(fd.get("color") || "brown"),
-          urgency: fd.get("urgency") === "on"
-        }
-      };
-
-      const res = await fetch("/api/entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json?.error || "Failed to save BM entry");
-      }
-
-      setStatus(`Saved BM entry: ${json.id}`);
-      formEl.reset();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      setStatus("");
-    }
+    const id = await createBmEntry({ notes, bristol, color, urgency });
+    redirect(`/bm?saved=1&id=${id}`);
   }
+
+  const params = await searchParams;
+  const saved = readParam(params.saved) === "1";
+  const id = readParam(params.id);
 
   return (
     <>
       <PageHero title="Log BM" subtitle="Record stool details with quick structured fields." />
       <Surface>
-        <form onSubmit={onSubmit}>
+        <form action={submitBm}>
           <label>
             <a href="https://en.wikipedia.org/wiki/Bristol_stool_scale" target="_blank" rel="noopener noreferrer">
               Bristol (1-7)
@@ -80,7 +63,14 @@ export default function BmPage() {
         </form>
       </Surface>
 
-      <StatusMessage status={status} error={error} />
+      {saved && id ? (
+        <div className="status-wrap">
+          <p className="status-ok">Saved BM entry: {id}</p>
+          <p>
+            <Link href={`/entry/${id}`}>View entry</Link> | <Link href="/search">View history</Link>
+          </p>
+        </div>
+      ) : null}
     </>
   );
 }
