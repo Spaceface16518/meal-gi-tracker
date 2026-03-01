@@ -216,6 +216,11 @@ fieldset {
   color: var(--error);
 }
 
+.muted {
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
 .result-list {
   margin-top: 8px;
 }

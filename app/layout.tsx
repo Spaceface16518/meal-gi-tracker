@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "Meal + GI Tracker",
-  description: "Single-user meal and GI tracking"
+  description: "Multi-user meal and GI tracking"
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

@@ -53,7 +53,7 @@ export function MealForm({
 
   return (
     <>
-      <form onSubmit={onSubmit}>
+      <form onSubmit={onSubmit} method="post" encType="multipart/form-data">
         <label>
           Photo (optional)
           <input name="image" type="file" accept="image/*" capture="environment" />

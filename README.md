@@ -1,10 +1,12 @@
 # Meal + GI Tracker
 
-Minimal single-user tracker built with Next.js App Router + TypeScript, MongoDB Atlas (official `mongodb` driver), GridFS image storage, and OpenAI Responses API structured extraction.
+Minimal multi-user tracker built with Next.js App Router + TypeScript, MongoDB Atlas (official `mongodb` driver), GridFS image storage, and OpenAI Responses API structured extraction.
 
 ## Features
 
-- Traditional HTTP Basic auth challenge (`401` + `WWW-Authenticate`) using `APP_PASSCODE`
+- Auth.js (`next-auth`) Credentials auth with MongoDB-backed users
+- Email/password registration + login
+- Session-based auth (JWT cookie), route protection via middleware
 - Entry type chooser home screen, then separate pages for Meal / GI Event / BM
 - Log Meal with optional photo + notes
 - Log GI Event
@@ -33,7 +35,7 @@ cp .env.example .env.local
 
 - `MONGODB_URI` (optional, defaults to `mongodb://127.0.0.1:27017`)
 - `MONGODB_DB` (optional, defaults to `ibs_tracker`)
-- `APP_PASSCODE`
+- `AUTH_SECRET` (required, random long string for signing session cookies)
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL` (optional, defaults to `gpt-4.1-mini`)
 
@@ -43,7 +45,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-5. Open app in browser and authenticate in the native Basic auth prompt.
+5. Open app in browser, register an account at `/register`, then sign in at `/login`.
 
 ## MongoDB Atlas setup
 
@@ -79,4 +81,4 @@ All app flows use server components/actions directly. Only file streaming uses a
 npm run seed
 ```
 
-This inserts one GI event and one BM entry.
+This inserts one GI event and one BM entry for `SEED_USER_ID` (ObjectId hex; if omitted, a new id is generated).
