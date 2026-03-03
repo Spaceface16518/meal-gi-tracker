@@ -177,6 +177,25 @@ button:hover,
   color: white;
 }
 
+
+.timestamp-card {
+  margin: 6px 0 14px;
+  padding: 12px;
+  border: 1px solid #d7dfeb;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f4f8ff 100%);
+}
+
+.timestamp-card label {
+  margin-top: 0;
+}
+
+.timestamp-help {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
 fieldset {
   border: 1px solid #d7dfeb;
   border-radius: 12px;

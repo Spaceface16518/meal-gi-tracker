@@ -27,3 +27,16 @@ export function formatTs(ts: Date | string, time?: EntryTimeMeta): string {
     return date.toLocaleString();
   }
 }
+
+
+export function parseEntryTimestampFromFormData(formData: FormData): Date | undefined {
+  const raw = String(formData.get("entryTimestampIso") || "").trim();
+  if (!raw) return undefined;
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return undefined;
+  }
+
+  return parsed;
+}

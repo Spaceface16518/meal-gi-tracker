@@ -97,6 +97,7 @@ export async function createMealEntry(params: {
   imageFile?: File | null;
   debugId?: string;
   time?: EntryTimeMeta;
+  ts?: Date;
 }): Promise<{ id: string; aiSummary?: string }> {
   const { userId, entries } = await getEntriesForUser();
   const notes = (params.notes || "").trim();
@@ -159,7 +160,7 @@ export async function createMealEntry(params: {
   });
 
   const doc: EntryDoc = {
-    ts: new Date(),
+    ts: params.ts || new Date(),
     time: params.time,
     type: "meal",
     userId,
@@ -189,6 +190,7 @@ export async function createGiEntry(params: {
   severity: number;
   locations: string[];
   time?: EntryTimeMeta;
+  ts?: Date;
 }): Promise<string> {
   const { userId, entries } = await getEntriesForUser();
   const notes = (params.notes || "").trim();
@@ -198,7 +200,7 @@ export async function createGiEntry(params: {
   };
 
   const doc: EntryDoc = {
-    ts: new Date(),
+    ts: params.ts || new Date(),
     time: params.time,
     type: "gi_event",
     userId,
@@ -221,6 +223,7 @@ export async function createBmEntry(params: {
   color: string;
   urgency: boolean;
   time?: EntryTimeMeta;
+  ts?: Date;
 }): Promise<string> {
   const { userId, entries } = await getEntriesForUser();
   const notes = (params.notes || "").trim();
@@ -231,7 +234,7 @@ export async function createBmEntry(params: {
   };
 
   const doc: EntryDoc = {
-    ts: new Date(),
+    ts: params.ts || new Date(),
     time: params.time,
     type: "bm",
     userId,

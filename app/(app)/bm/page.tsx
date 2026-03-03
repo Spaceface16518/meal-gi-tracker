@@ -4,7 +4,7 @@ import { PageHero } from "@/components/PageHero";
 import { Surface } from "@/components/Surface";
 import { TimezoneFields } from "@/components/forms/TimezoneFields";
 import { createBmEntry } from "@/lib/server/entries";
-import { parseTimeMetaFromFormData } from "@/lib/server/time";
+import { parseEntryTimestampFromFormData, parseTimeMetaFromFormData } from "@/lib/server/time";
 
 function readParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] || "" : value || "";
@@ -23,8 +23,9 @@ export default async function BmPage({
     const color = String(formData.get("color") || "brown");
     const urgency = formData.get("urgency") === "on";
     const time = parseTimeMetaFromFormData(formData);
+    const ts = parseEntryTimestampFromFormData(formData);
 
-    const id = await createBmEntry({ notes, bristol, color, urgency, time });
+    const id = await createBmEntry({ notes, bristol, color, urgency, time, ts });
     redirect(`/bm?saved=1&id=${id}`);
   }
 

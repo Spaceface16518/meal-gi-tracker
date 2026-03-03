@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useState, useTransition } from "react";
 import { compressImage } from "@/lib/compressImage";
+import { TimezoneFields } from "@/components/forms/TimezoneFields";
 
 type MealActionResult = {
   ok: boolean;
@@ -26,8 +27,6 @@ export function MealForm({
     startTransition(async () => {
       const formData = new FormData(formEl);
       const image = formData.get("image");
-      formData.set("clientTimezone", Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
-      formData.set("clientUtcOffsetMinutes", String(-new Date().getTimezoneOffset()));
 
       if (image instanceof File && image.size > 0) {
         try {
@@ -54,6 +53,7 @@ export function MealForm({
   return (
     <>
       <form onSubmit={onSubmit} method="post" encType="multipart/form-data">
+        <TimezoneFields />
         <label>
           Photo (optional)
           <input name="image" type="file" accept="image/*" capture="environment" />
