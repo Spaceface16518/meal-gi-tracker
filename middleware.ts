@@ -8,9 +8,10 @@ export default auth((req: any) => {
   const { pathname } = req.nextUrl;
   const isPublicPath = PUBLIC_PATHS.includes(pathname);
   const isAuthApi = pathname.startsWith("/api/auth");
+  const isOpenAIWebhook = pathname === "/api/openai/webhook";
   const isAuthenticated = Boolean(req.auth);
 
-  if (isAuthApi) {
+  if (isAuthApi || isOpenAIWebhook) {
     return NextResponse.next();
   }
 
