@@ -3,6 +3,7 @@ import { MealExtraction } from "./types";
 
 const configuredModel = process.env.OPENAI_MODEL?.trim();
 const fallbackVisionModel = "gpt-4.1-mini";
+export const MEAL_PROMPT_VERSION = "v1";
 
 const extractionSchema = {
   name: "meal_extraction",
@@ -65,7 +66,7 @@ const extractionSchema = {
   }
 } as const;
 
-function extractJsonFromResponse(response: any): MealExtraction {
+export function extractJsonFromResponse(response: any): MealExtraction {
   const text = response.output_text;
   if (text) {
     return JSON.parse(text) as MealExtraction;
@@ -91,7 +92,7 @@ export async function extractMealData(params: {
   }
 
   const client = new OpenAI({ apiKey });
-  const promptVersion = "v1";
+  const promptVersion = MEAL_PROMPT_VERSION;
   const primaryModel = configuredModel || fallbackVisionModel;
   const candidateModels = [primaryModel];
   if (primaryModel !== fallbackVisionModel) {
@@ -180,4 +181,79 @@ export async function extractMealData(params: {
   throw new Error(
     `Meal extraction failed for model(s): ${candidateModels.join(", ")}. ${message}`
   );
+}
+
+export async function enqueueMealExtraction(params: {
+  imageBase64?: string;
+  mimeType?: string;
+  notes?: string;
+  debugId?: string;
+  metadata?: Record<string, string>;
+}): Promise<{ responseId: string; model: string; promptVersion: string }> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not set");
+  }
+
+  const client = new OpenAI({ apiKey });
+  const model = configuredModel || fallbackVisionModel;
+  const hasImage = Boolean(params.imageBase64 && params.mimeType);
+
+  const userContent: Array<{ type: string; text?: string; image_url?: string }> = [
+    {
+      type: "input_text",
+      text: `User notes: ${params.notes || "(none)"}`
+    }
+  ];
+
+  if (hasImage) {
+    userContent.push({
+      type: "input_image",
+      image_url: `data:${params.mimeType};base64,${params.imageBase64}`
+    });
+  }
+
+  const response = await client.responses.create({
+    model,
+    background: true,
+    metadata: params.metadata,
+    input: [
+      {
+        role: "system",
+        content: [
+          {
+            type: "input_text",
+            text:
+              `You are a meal logging extractor for GI tracking. Return JSON
+              only. Be honest about uncertainty. Use ranges for macro estimates
+              when uncertain. Do not provide diagnosis or medical advice; only
+              log and potential trigger observations.`
+          }
+        ]
+      },
+      {
+        role: "user",
+        content: userContent
+      }
+    ],
+    text: {
+      format: {
+        type: "json_schema",
+        ...extractionSchema
+      }
+    }
+  } as any);
+
+  console.info("[meal-ai] extraction enqueued", {
+    debugId: params.debugId,
+    model,
+    hasImage,
+    responseId: response.id
+  });
+
+  return {
+    responseId: response.id,
+    model,
+    promptVersion: MEAL_PROMPT_VERSION
+  };
 }

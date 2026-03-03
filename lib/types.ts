@@ -32,6 +32,15 @@ export interface EntryDoc {
     confidence?: Record<string, unknown>;
     uncertaintyNotes?: string[];
   };
+  aiJob?: {
+    status: "queued" | "completed" | "failed";
+    responseId?: string;
+    model?: string;
+    promptVersion: string;
+    requestedAt: Date;
+    completedAt?: Date;
+    error?: string;
+  };
   search: {
     text: string;
     tags?: string[];

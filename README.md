@@ -38,6 +38,8 @@ cp .env.example .env.local
 - `AUTH_SECRET` (required, random long string for signing session cookies)
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL` (optional, defaults to `gpt-4.1-mini`)
+- `OPENAI_WEBHOOK_SECRET` (required for verifying OpenAI webhook signatures)
+- `APP_BASE_URL` (required for documenting your public webhook URL, e.g. `https://your-app.vercel.app`)
 
 4. Run dev server:
 
@@ -62,11 +64,26 @@ Run in Atlas shell / mongosh:
 db.entries.createIndex({ "search.text": "text", "input.notes": "text" });
 ```
 
+## OpenAI webhook setup (background meal extraction)
+
+Meal extraction is queued with `background: true` and completed asynchronously through OpenAI webhooks. Configure this once per OpenAI project:
+
+1. Deploy your app so OpenAI can reach it over HTTPS.
+2. In the OpenAI dashboard, open your project webhook settings and create a webhook endpoint:
+   - URL: `https://<your-domain>/api/openai/webhook`
+   - Subscribe to events: `response.completed` and `response.failed`
+3. Copy the webhook signing secret from OpenAI and set it as `OPENAI_WEBHOOK_SECRET` in your deployment environment.
+4. Ensure `OPENAI_API_KEY` is set for the same project where the webhook is configured.
+5. Create a meal entry. The entry saves immediately, and the AI fields are populated later when OpenAI posts back to your webhook.
+
+If the webhook is misconfigured or unreachable, entries still save, but `aiJob.status` is marked `failed`.
+
 ## API endpoints
 
 All app flows use server components/actions directly. Only file streaming uses an API route:
 
 - `GET /api/files/[gridFsId]`
+- `POST /api/openai/webhook` (OpenAI background response callbacks)
 
 ## Vercel deployment notes
 

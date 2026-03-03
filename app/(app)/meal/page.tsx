@@ -57,7 +57,7 @@ export default function MealPage() {
     <>
       <PageHero
         title="Log Meal"
-        subtitle="Capture meal notes and optional photo. AI extraction runs before completion."
+        subtitle="Capture meal notes and optional photo. AI extraction runs in the background after save."
       />
       <Surface>
         <MealForm action={submitMeal} />

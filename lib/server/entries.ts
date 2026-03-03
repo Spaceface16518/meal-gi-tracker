@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 import { Readable } from "stream";
 import { getAuthenticatedUserId } from "@/lib/auth";
 import { getBucket, getDb } from "@/lib/mongo";
-import { extractMealData } from "@/lib/openaiExtract";
+import { MEAL_PROMPT_VERSION, enqueueMealExtraction, extractMealData } from "@/lib/openaiExtract";
 import { EntryDoc, EntryTimeMeta, EntryType } from "@/lib/types";
 
 const MAX_UPLOAD_BYTES = 4_500_000;
@@ -106,7 +106,7 @@ export async function createMealEntry(params: {
     hasImage: Boolean(params.imageFile && params.imageFile.size > 0)
   });
   let image: EntryDoc["image"];
-  let ai: EntryDoc["ai"];
+  let aiJob: EntryDoc["aiJob"];
   let imageBase64: string | undefined;
   let mimeType: string | undefined;
 
@@ -132,31 +132,15 @@ export async function createMealEntry(params: {
     imageBase64 = uploaded.buffer.toString("base64");
     mimeType = uploaded.contentType;
   } else {
-    console.info("[meal-ai] no image provided; running notes-only extraction", {
+    console.info("[meal-ai] no image provided; scheduling notes-only extraction", {
       debugId: params.debugId
     });
   }
-
-  const extracted = await extractMealData({
-    imageBase64,
-    mimeType,
-    notes,
-    debugId: params.debugId
-  });
-
-  ai = {
-    model: extracted.model,
-    promptVersion: extracted.promptVersion,
-    rawTextSummary: extracted.data.rawTextSummary,
-    extracted: extracted.data.extracted,
-    searchText: extracted.data.searchText,
-    confidence: extracted.data.confidence,
-    uncertaintyNotes: extracted.data.uncertaintyNotes
+  aiJob = {
+    status: "queued",
+    promptVersion: MEAL_PROMPT_VERSION,
+    requestedAt: new Date()
   };
-  console.info("[meal-ai] extraction persisted in entry payload", {
-    debugId: params.debugId,
-    model: ai.model
-  });
 
   const doc: EntryDoc = {
     ts: new Date(),
@@ -167,20 +151,69 @@ export async function createMealEntry(params: {
       notes: notes || undefined
     },
     image,
-    ai,
+    aiJob,
     search: {
-      text: normalizeText([notes, ai?.searchText, ai?.rawTextSummary]) || notes || "meal"
+      text: normalizeText([notes]) || "meal"
     }
   };
 
   const result = await entries.insertOne(doc);
+
+  try {
+    const queued = await enqueueMealExtraction({
+      imageBase64,
+      mimeType,
+      notes,
+      debugId: params.debugId,
+      metadata: {
+        entryId: result.insertedId.toString(),
+        userId: userId.toString(),
+        promptVersion: MEAL_PROMPT_VERSION
+      }
+    });
+
+    await entries.updateOne(
+      { _id: result.insertedId, userId },
+      {
+        $set: {
+          aiJob: {
+            ...aiJob,
+            status: "queued",
+            responseId: queued.responseId,
+            model: queued.model,
+            promptVersion: queued.promptVersion
+          }
+        }
+      }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[meal-ai] enqueue failed", {
+      debugId: params.debugId,
+      entryId: result.insertedId.toString(),
+      error: message
+    });
+    await entries.updateOne(
+      { _id: result.insertedId, userId },
+      {
+        $set: {
+          aiJob: {
+            ...aiJob,
+            status: "failed",
+            error: message,
+            completedAt: new Date()
+          }
+        }
+      }
+    );
+  }
+
   console.info("[meal-ai] createMealEntry done", {
     debugId: params.debugId,
     entryId: result.insertedId.toString()
   });
   return {
-    id: result.insertedId.toString(),
-    aiSummary: ai?.rawTextSummary
+    id: result.insertedId.toString()
   };
 }
 
@@ -380,6 +413,13 @@ export async function retryMealSummary(entryId: string): Promise<{ id: string; s
     {
       $set: {
         ai,
+        aiJob: {
+          status: "completed",
+          model: ai.model,
+          promptVersion: ai.promptVersion,
+          requestedAt: entry.aiJob?.requestedAt || new Date(),
+          completedAt: new Date()
+        },
         search: {
           ...(entry.search || {}),
           text: searchText
