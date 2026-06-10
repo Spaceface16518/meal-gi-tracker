@@ -1,0 +1,195 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: Firebase Auth uid
+    // Fields:
+    //   - uid: string (required, immutable) - owner uid
+    //   - email: string|null (optional) - auth email
+    //   - displayName: string|null (optional) - auth display name
+    //   - createdAt: timestamp (required) - profile creation time
+    //   - updatedAt: timestamp (required) - profile update time
+    //
+    // Collection: users/{uid}/meals
+    // Fields:
+    //   - uid: string (required, immutable) - owner uid
+    //   - inputMode: string (required) - text, voice, or image
+    //   - rawInput: string (required) - submitted text or media marker
+    //   - interpretedText: string (required) - generated meal description
+    //   - eatenAt: timestamp (required) - when meal was eaten
+    //   - notes: string (optional) - user notes
+    //   - status: string (required) - analyzed, needs_review, or failed
+    //   - analysis: map (required) - generated structured meal analysis
+    //   - createdAt: timestamp (required) - creation time
+    //   - updatedAt: timestamp (required) - update time
+    //
+    // Collection: users/{uid}/events
+    // Fields:
+    //   - uid: string (required, immutable) - owner uid
+    //   - occurredAt: timestamp (required) - event time
+    //   - severity: number (required, 1-10) - symptom severity
+    //   - symptoms: list (required) - symptom tags
+    //   - notes: string (optional) - user notes
+    //   - stoolType: number (optional, 1-7) - Bristol stool type
+    //   - durationMinutes: number (optional, 1-1440) - event duration
+    //   - createdAt: timestamp (required) - creation time
+    //
+    // Collection: users/{uid}/analyses
+    // Document IDs: current or generated run IDs
+    // Writes are performed by Cloud Functions using Admin SDK.
+    //
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isOptionalString(field, maxLength) {
+      return !(field in request.resource.data) ||
+        request.resource.data[field] == null ||
+        (request.resource.data[field] is string && request.resource.data[field].size() <= maxLength);
+    }
+
+    function isValidTimestamp(field) {
+      return request.resource.data[field] is timestamp;
+    }
+
+    function isValidUserProfile(userId) {
+      return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'createdAt', 'updatedAt']) &&
+        hasRequiredFields(['uid', 'createdAt', 'updatedAt']) &&
+        request.resource.data.uid == userId &&
+        isOptionalString('email', 320) &&
+        isOptionalString('displayName', 120) &&
+        isValidTimestamp('createdAt') &&
+        isValidTimestamp('updatedAt');
+    }
+
+    function isValidMeal(userId) {
+      return hasOnlyAllowedFields([
+        'uid',
+        'inputMode',
+        'rawInput',
+        'interpretedText',
+        'eatenAt',
+        'notes',
+        'status',
+        'analysis',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+        hasRequiredFields([
+          'uid',
+          'inputMode',
+          'rawInput',
+          'interpretedText',
+          'eatenAt',
+          'status',
+          'analysis',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        request.resource.data.uid == userId &&
+        request.resource.data.inputMode in ['text', 'voice', 'image'] &&
+        request.resource.data.rawInput is string &&
+        request.resource.data.rawInput.size() <= 8000 &&
+        request.resource.data.interpretedText is string &&
+        request.resource.data.interpretedText.size() <= 8000 &&
+        request.resource.data.status in ['analyzed', 'needs_review', 'failed'] &&
+        request.resource.data.analysis is map &&
+        isOptionalString('notes', 1000) &&
+        isValidTimestamp('eatenAt') &&
+        isValidTimestamp('createdAt') &&
+        isValidTimestamp('updatedAt');
+    }
+
+    function isValidGiEvent(userId) {
+      return hasOnlyAllowedFields([
+        'uid',
+        'occurredAt',
+        'severity',
+        'symptoms',
+        'notes',
+        'stoolType',
+        'durationMinutes',
+        'createdAt'
+      ]) &&
+        hasRequiredFields(['uid', 'occurredAt', 'severity', 'symptoms', 'createdAt']) &&
+        request.resource.data.uid == userId &&
+        request.resource.data.severity is number &&
+        request.resource.data.severity >= 1 &&
+        request.resource.data.severity <= 10 &&
+        request.resource.data.symptoms is list &&
+        request.resource.data.symptoms.size() > 0 &&
+        request.resource.data.symptoms.size() <= 12 &&
+        isOptionalString('notes', 1000) &&
+        (!('stoolType' in request.resource.data) ||
+          (request.resource.data.stoolType is number &&
+            request.resource.data.stoolType >= 1 &&
+            request.resource.data.stoolType <= 7)) &&
+        (!('durationMinutes' in request.resource.data) ||
+          (request.resource.data.durationMinutes is number &&
+            request.resource.data.durationMinutes >= 1 &&
+            request.resource.data.durationMinutes <= 1440)) &&
+        isValidTimestamp('occurredAt') &&
+        isValidTimestamp('createdAt');
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserProfile(userId);
+      allow update: if isOwner(userId) &&
+        resource.data.uid == userId &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        isValidUserProfile(userId);
+      allow delete: if false;
+
+      match /meals/{mealId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidMeal(userId);
+        allow update: if isOwner(userId) &&
+          resource.data.uid == userId &&
+          request.resource.data.uid == resource.data.uid &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          isValidMeal(userId);
+        allow delete: if isOwner(userId);
+      }
+
+      match /events/{eventId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidGiEvent(userId);
+        allow update: if isOwner(userId) &&
+          resource.data.uid == userId &&
+          request.resource.data.uid == resource.data.uid &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          isValidGiEvent(userId);
+        allow delete: if isOwner(userId);
+      }
+
+      match /analyses/{analysisId} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

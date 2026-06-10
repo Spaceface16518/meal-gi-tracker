@@ -1,0 +1,38 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs22",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log"
+      ]
+    }
+  ],
+  "apphosting": {
+    "backendId": "meal-signal",
+    "rootDir": "/",
+    "ignore": [
+      "node_modules",
+      ".next",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "functions/node_modules",
+      "functions/lib"
+    ]
+  },
+  "auth": {
+    "providers": {
+      "emailPassword": true
+    },
+    "authorizedDomains": ["localhost"]
+  }
+}
