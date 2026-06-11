@@ -17,8 +17,10 @@ import {
 } from "lucide-react";
 import {
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   type User,
 } from "firebase/auth";
@@ -30,7 +32,7 @@ import {
   subscribeGiEvents,
   subscribeMeals,
 } from "@/lib/firestore";
-import { analyzeCorrelations, createGiEvent, createMeal } from "@/lib/callables";
+import { analyzeCorrelations, createGiEvent, createMeal, reanalyzeMeal } from "@/lib/callables";
 import { formatRelativeTime, toDatetimeLocalValue } from "@/lib/date";
 import type { CorrelationAnalysis, GiEvent, InputMode, Meal } from "@/lib/types";
 
@@ -190,6 +192,21 @@ function AuthScreen() {
     }
   }
 
+  async function signInWithGoogle() {
+    setBusy(true);
+    setError("");
+
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="grid min-h-screen place-items-center bg-[#f7f8f3] px-4 text-stone-950">
       <section className="w-full max-w-md rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
@@ -247,6 +264,22 @@ function AuthScreen() {
             <ChevronRight size={17} aria-hidden />
           </button>
         </form>
+
+        <div className="my-4 flex items-center gap-3 text-xs font-medium uppercase text-stone-400">
+          <span className="h-px flex-1 bg-stone-200" />
+          Or
+          <span className="h-px flex-1 bg-stone-200" />
+        </div>
+
+        <button
+          type="button"
+          onClick={signInWithGoogle}
+          disabled={busy}
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-800 transition hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Continue with Google
+          <ChevronRight size={17} aria-hidden />
+        </button>
 
         <button
           type="button"
@@ -698,6 +731,8 @@ function StatsStrip({
 }
 
 function RecentEntries({ meals, events }: { meals: Meal[]; events: GiEvent[] }) {
+  const [reanalyzingMealId, setReanalyzingMealId] = useState("");
+  const [message, setMessage] = useState("");
   const combined = [
     ...meals.map((meal) => ({ kind: "meal" as const, date: meal.eatenAt, meal })),
     ...events.map((event) => ({ kind: "event" as const, date: event.occurredAt, event })),
@@ -705,12 +740,27 @@ function RecentEntries({ meals, events }: { meals: Meal[]; events: GiEvent[] }) 
     .sort((a, b) => b.date.getTime() - a.date.getTime())
     .slice(0, 12);
 
+  async function redoMealAnalysis(mealId: string) {
+    setReanalyzingMealId(mealId);
+    setMessage("");
+
+    try {
+      await reanalyzeMeal(mealId);
+      setMessage("Meal analysis refreshed.");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Meal analysis could not be refreshed.");
+    } finally {
+      setReanalyzingMealId("");
+    }
+  }
+
   return (
     <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
         <CalendarClock size={18} className="text-emerald-950" aria-hidden />
         <h2 className="font-semibold">Recent</h2>
       </div>
+      {message ? <p className="mb-3 rounded-md bg-stone-100 px-3 py-2 text-sm text-stone-700">{message}</p> : null}
       {combined.length ? (
         <div className="grid gap-3">
           {combined.map((item) =>
@@ -718,7 +768,23 @@ function RecentEntries({ meals, events }: { meals: Meal[]; events: GiEvent[] }) 
               <article key={`meal-${item.meal.id}`} className="rounded-lg bg-stone-50 p-3">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="text-sm font-semibold">{item.meal.analysis.mealName}</h3>
-                  <span className="shrink-0 text-xs text-stone-500">{formatRelativeTime(item.date)}</span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => redoMealAnalysis(item.meal.id)}
+                      disabled={reanalyzingMealId === item.meal.id}
+                      className="grid size-7 place-items-center rounded-md border border-stone-300 bg-white text-stone-600 transition hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-label="Redo meal analysis"
+                      title="Redo meal analysis"
+                    >
+                      <RefreshCcw
+                        size={14}
+                        className={reanalyzingMealId === item.meal.id ? "animate-spin" : ""}
+                        aria-hidden
+                      />
+                    </button>
+                    <span className="text-xs text-stone-500">{formatRelativeTime(item.date)}</span>
+                  </div>
                 </div>
                 <p className="mt-1 line-clamp-2 text-sm text-stone-600">{item.meal.interpretedText}</p>
                 <div className="mt-2 flex flex-wrap gap-1">

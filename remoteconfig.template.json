@@ -1,0 +1,47 @@
+{
+  "conditions": [],
+  "parameters": {
+    "gemini_model_name": {
+      "defaultValue": {
+        "value": "gemini-2.5-flash-lite"
+      },
+      "description": "Gemini model used by Firebase Functions for batch meal and correlation analysis."
+    },
+    "media_meal_audio_instruction": {
+      "defaultValue": {
+        "value": "Transcribe this audio meal note, then analyze the meal."
+      },
+      "description": "Instruction inserted into the meal prompt for voice meal inputs."
+    },
+    "media_meal_image_instruction": {
+      "defaultValue": {
+        "value": "Interpret this meal photo, then analyze the visible meal."
+      },
+      "description": "Instruction inserted into the meal prompt for image meal inputs."
+    },
+    "meal_analysis_prompt_template": {
+      "defaultValue": {
+        "value": "Analyze this meal input for possible GI irritants.\n\nReturn only JSON with this exact shape:\n{\n  \"mealName\": \"short name\",\n  \"foods\": [\"food item\"],\n  \"irritants\": [\n    {\n      \"name\": \"lactose\",\n      \"category\": \"dairy\" | \"gluten\" | \"fodmap\" | \"fat\" | \"spice\" | \"caffeine\" | \"alcohol\" | \"additive\" | \"fiber\" | \"other\",\n      \"confidence\": 0.0,\n      \"evidence\": \"brief reason\"\n    }\n  ],\n  \"summary\": \"plain language meal description\"\n}\n\nUse conservative confidence scores. Include likely irritants only, but include multiple irritants when a common food implies more than one plausible trigger. Prefer specific irritant names over broad categories.\n\nCommon irritant mapping inspiration:\n- Beer: alcohol, barley/gluten, wheat if wheat beer or unspecified beer style, carbonation, and fructans/FODMAP from barley or wheat.\n- Bread, pasta, pizza, crackers, cereal, flour tortillas, pastries, baked goods: wheat/gluten and wheat fructans/FODMAP.\n- Barley, rye, malt, malt vinegar, malted drinks: gluten grain and fructans/FODMAP.\n- Milk, cream, soft cheese, yogurt, ice cream, whey: lactose/dairy.\n- Onion, garlic, leeks, shallots, inulin, chicory root: fructans/FODMAP.\n- Beans, lentils, chickpeas, peas, cashews, pistachios: GOS/FODMAP.\n- Apple, pear, mango, watermelon, honey, high-fructose corn syrup: excess fructose/FODMAP.\n- Stone fruits, avocado, mushrooms, cauliflower, sugar-free gum, xylitol, sorbitol, mannitol, maltitol, isomalt: polyols/FODMAP.\n- Fried foods, fast food, bacon, sausage, heavy cream, rich sauces: high fat.\n- Coffee, espresso, energy drinks, cola, black or green tea: caffeine.\n- Hot sauce, chili, jalapeno, curry, pepper-heavy foods: spice/capsaicin.\n- Wine, liquor, cocktails, hard seltzer: alcohol; cocktails may also include carbonation, fructose, or artificial sweeteners if indicated.\n- Carbonated drinks, soda, sparkling water, beer, hard seltzer: carbonation.\n- Processed meats, cured meats, packaged snacks, emulsifiers, sugar alcohols, artificial sweeteners: additives/other when specifically indicated.\n\nInput:\n{{input}}"
+      },
+      "description": "Meal analysis prompt. Keep {{input}} where the meal text or media instruction should be inserted."
+    },
+    "correlation_analysis_prompt_template": {
+      "defaultValue": {
+        "value": "Analyze meal irritant correlation with GI events.\n\nReturn only JSON with this shape:\n{\n  \"status\": \"ready\" | \"insufficient_data\",\n  \"summary\": \"brief useful summary\",\n  \"findings\": [\n    {\n      \"irritant\": \"string\",\n      \"confidence\": 0.0,\n      \"direction\": \"possible_trigger\" | \"unlikely_trigger\" | \"insufficient_data\",\n      \"windowHours\": 24,\n      \"evidence\": \"string\",\n      \"suggestedAction\": \"string\"\n    }\n  ],\n  \"dataQualityNotes\": [\"string\"]\n}\n\nUse conservative language. Do not make medical claims. Look for repeated GI events within 2, 6, 12, 24, and 48 hour windows after meals.\n\nMeals:\n{{mealsJson}}\n\nGI events:\n{{eventsJson}}"
+      },
+      "description": "Correlation prompt. Keep {{mealsJson}} and {{eventsJson}} placeholders."
+    }
+  },
+  "parameterGroups": {
+    "ai_prompts": {
+      "description": "Editable prompt templates consumed by Firebase Functions.",
+      "parameters": {
+        "gemini_model_name": {},
+        "media_meal_audio_instruction": {},
+        "media_meal_image_instruction": {},
+        "meal_analysis_prompt_template": {},
+        "correlation_analysis_prompt_template": {}
+      }
+    }
+  }
+}

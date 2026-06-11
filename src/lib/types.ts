@@ -38,6 +38,7 @@ export type Meal = {
   analysis: MealAnalysis;
   createdAt: Date;
   updatedAt: Date;
+  reanalyzedAt?: Date;
 };
 
 export type GiEvent = {
@@ -89,4 +90,8 @@ export type CreateGiEventPayload = {
   notes?: string;
   stoolType?: number;
   durationMinutes?: number;
+};
+
+export type ReanalyzeMealPayload = {
+  mealId: string;
 };

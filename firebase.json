@@ -29,10 +29,25 @@
       "functions/lib"
     ]
   },
+  "remoteconfig": {
+    "template": "remoteconfig.template.json"
+  },
   "auth": {
     "providers": {
-      "emailPassword": true
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Meal Signal",
+        "supportEmail": "amrit.rathie@gmail.com",
+        "authorizedRedirectUris": [
+          "http://localhost",
+          "https://meal-signal--meal-tracker-46346.us-central1.hosted.app"
+        ]
+      }
     },
-    "authorizedDomains": ["localhost"]
+    "authorizedDomains": [
+      "localhost",
+      "meal-tracker-46346.firebaseapp.com",
+      "meal-signal--meal-tracker-46346.us-central1.hosted.app"
+    ]
   }
 }

@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { getRemoteConfig } from "firebase-admin/remote-config";
 import { logger, setGlobalOptions } from "firebase-functions";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
@@ -11,7 +12,7 @@ setGlobalOptions({ region: "us-central1", maxInstances: 10 });
 
 const db = getFirestore();
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
-const modelName = "gemini-2.5-flash-lite";
+const defaultModelName = "gemini-2.5-flash-lite";
 
 type InputMode = "text" | "voice" | "image";
 
@@ -77,6 +78,18 @@ type CreateEventData = {
   durationMinutes?: number;
 };
 
+type ReanalyzeMealData = {
+  mealId?: string;
+};
+
+type PromptConfig = {
+  modelName: string;
+  mealAnalysisPromptTemplate: string;
+  correlationAnalysisPromptTemplate: string;
+  audioMealInstruction: string;
+  imageMealInstruction: string;
+};
+
 type MealDocument = {
   uid: string;
   inputMode: InputMode;
@@ -88,6 +101,7 @@ type MealDocument = {
   analysis: MealAnalysis;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  reanalyzedAt?: Timestamp;
 };
 
 type EventDocument = {
@@ -184,6 +198,49 @@ export const createGiEvent = onCall(async (request) => {
   return { event: { id: docRef.id, ...serializeTimestamps(eventDoc) } };
 });
 
+export const reanalyzeMeal = onCall(
+  { secrets: [geminiApiKey], timeoutSeconds: 120, memory: "512MiB" },
+  async (request) => {
+    const uid = requireUid(request.auth?.uid);
+    const data = request.data as ReanalyzeMealData;
+    const mealId = requiredString(data.mealId, "mealId", 160);
+
+    if (!/^[A-Za-z0-9_-]+$/.test(mealId)) {
+      throw new HttpsError("invalid-argument", "mealId has an invalid format.");
+    }
+
+    const mealRef = db.collection("users").doc(uid).collection("meals").doc(mealId);
+    const snapshot = await mealRef.get();
+    if (!snapshot.exists) throw new HttpsError("not-found", "Meal was not found.");
+
+    const meal = snapshot.data() as MealDocument;
+    const sourceText = meal.inputMode === "text"
+      ? meal.rawInput || meal.interpretedText
+      : meal.interpretedText || meal.rawInput;
+    const analysis = await analyzeMealText(sourceText);
+    const now = Timestamp.now();
+    const update = {
+      analysis,
+      interpretedText: sourceText,
+      status: "analyzed" as const,
+      updatedAt: now,
+      reanalyzedAt: now,
+    };
+
+    await mealRef.update(update);
+
+    return {
+      meal: {
+        id: mealId,
+        ...serializeTimestamps({
+          ...meal,
+          ...update,
+        }),
+      },
+    };
+  },
+);
+
 export const analyzeCorrelations = onCall(
   { secrets: [geminiApiKey], timeoutSeconds: 180, memory: "512MiB" },
   async (request) => {
@@ -226,15 +283,15 @@ async function interpretMediaMeal(mode: InputMode, mediaBase64: string, mimeType
     };
   }
 
-  const prompt =
-    mode === "voice"
-      ? mealAnalysisPrompt("Transcribe this audio meal note, then analyze the meal.")
-      : mealAnalysisPrompt("Interpret this meal photo, then analyze the visible meal.");
+  const promptConfig = await getPromptConfig();
+  const instruction =
+    mode === "voice" ? promptConfig.audioMealInstruction : promptConfig.imageMealInstruction;
+  const prompt = renderTemplate(promptConfig.mealAnalysisPromptTemplate, { input: instruction });
 
   const text = await generateJson(ai, [
     { text: prompt },
     { inlineData: { mimeType, data: mediaBase64 } },
-  ]);
+  ], promptConfig.modelName);
   const parsed = parseMealAnalysis(text);
 
   return {
@@ -248,7 +305,9 @@ async function analyzeMealText(text: string) {
   if (!ai) return heuristicMealAnalysis(text);
 
   try {
-    const json = await generateJson(ai, [{ text: mealAnalysisPrompt(text) }]);
+    const promptConfig = await getPromptConfig();
+    const prompt = renderTemplate(promptConfig.mealAnalysisPromptTemplate, { input: text });
+    const json = await generateJson(ai, [{ text: prompt }], promptConfig.modelName);
     return parseMealAnalysis(json);
   } catch (error) {
     logger.warn("Gemini meal analysis failed; using heuristic fallback", { error });
@@ -314,36 +373,16 @@ async function analyzeCorrelationsWithGemini(
       durationMinutes: event.durationMinutes,
     }));
 
+    const promptConfig = await getPromptConfig();
+    const prompt = renderTemplate(promptConfig.correlationAnalysisPromptTemplate, {
+      mealsJson: JSON.stringify(mealPayload),
+      eventsJson: JSON.stringify(eventPayload),
+    });
     const json = await generateJson(ai, [
       {
-        text: `Analyze meal irritant correlation with GI events.
-
-Return only JSON with this shape:
-{
-  "status": "ready" | "insufficient_data",
-  "summary": "brief useful summary",
-  "findings": [
-    {
-      "irritant": "string",
-      "confidence": 0.0,
-      "direction": "possible_trigger" | "unlikely_trigger" | "insufficient_data",
-      "windowHours": 24,
-      "evidence": "string",
-      "suggestedAction": "string"
-    }
-  ],
-  "dataQualityNotes": ["string"]
-}
-
-Use conservative language. Do not make medical claims. Look for repeated GI events within 2, 6, 12, 24, and 48 hour windows after meals.
-
-Meals:
-${JSON.stringify(mealPayload)}
-
-GI events:
-${JSON.stringify(eventPayload)}`,
+        text: prompt,
       },
-    ]);
+    ], promptConfig.modelName);
 
     const parsed = parseJsonObject(json);
     return normalizeCorrelationAnalysis(uid, meals.length, events.length, parsed);
@@ -359,9 +398,9 @@ async function saveAnalysis(uid: string, analysis: CorrelationAnalysis) {
   await Promise.all([currentRef.set(analysis), runRef.set(analysis)]);
 }
 
-async function generateJson(ai: GoogleGenAI, parts: unknown[]) {
+async function generateJson(ai: GoogleGenAI, parts: unknown[], modelName: string) {
   const response = await ai.models.generateContent({
-    model: modelName,
+    model: modelName || defaultModelName,
     contents: parts as never,
     config: {
       responseMimeType: "application/json",
@@ -372,8 +411,7 @@ async function generateJson(ai: GoogleGenAI, parts: unknown[]) {
   return response.text ?? "";
 }
 
-function mealAnalysisPrompt(input: string) {
-  return `Analyze this meal input for possible GI irritants.
+const defaultMealAnalysisPromptTemplate = `Analyze this meal input for possible GI irritants.
 
 Return only JSON with this exact shape:
 {
@@ -416,7 +454,87 @@ Common irritant mapping inspiration:
   artificial sweeteners: additives/other when specifically indicated.
 
 Input:
-${input}`;
+{{input}}`;
+
+const defaultCorrelationAnalysisPromptTemplate = `Analyze meal irritant correlation with GI events.
+
+Return only JSON with this shape:
+{
+  "status": "ready" | "insufficient_data",
+  "summary": "brief useful summary",
+  "findings": [
+    {
+      "irritant": "string",
+      "confidence": 0.0,
+      "direction": "possible_trigger" | "unlikely_trigger" | "insufficient_data",
+      "windowHours": 24,
+      "evidence": "string",
+      "suggestedAction": "string"
+    }
+  ],
+  "dataQualityNotes": ["string"]
+}
+
+Use conservative language. Do not make medical claims. Look for repeated GI events within 2, 6, 12, 24, and 48 hour windows after meals.
+
+Meals:
+{{mealsJson}}
+
+GI events:
+{{eventsJson}}`;
+
+let promptConfigCache: { expiresAt: number; values: PromptConfig } | null = null;
+
+async function getPromptConfig(): Promise<PromptConfig> {
+  const fallback: PromptConfig = {
+    modelName: defaultModelName,
+    mealAnalysisPromptTemplate: defaultMealAnalysisPromptTemplate,
+    correlationAnalysisPromptTemplate: defaultCorrelationAnalysisPromptTemplate,
+    audioMealInstruction: "Transcribe this audio meal note, then analyze the meal.",
+    imageMealInstruction: "Interpret this meal photo, then analyze the visible meal.",
+  };
+
+  if (promptConfigCache && promptConfigCache.expiresAt > Date.now()) {
+    return promptConfigCache.values;
+  }
+
+  try {
+    const template = await getRemoteConfig().getTemplate();
+    const values: PromptConfig = {
+      modelName: getRemoteConfigValue(template.parameters.gemini_model_name) || fallback.modelName,
+      mealAnalysisPromptTemplate:
+        getRemoteConfigValue(template.parameters.meal_analysis_prompt_template) ||
+        fallback.mealAnalysisPromptTemplate,
+      correlationAnalysisPromptTemplate:
+        getRemoteConfigValue(template.parameters.correlation_analysis_prompt_template) ||
+        fallback.correlationAnalysisPromptTemplate,
+      audioMealInstruction:
+        getRemoteConfigValue(template.parameters.media_meal_audio_instruction) ||
+        fallback.audioMealInstruction,
+      imageMealInstruction:
+        getRemoteConfigValue(template.parameters.media_meal_image_instruction) ||
+        fallback.imageMealInstruction,
+    };
+    promptConfigCache = { expiresAt: Date.now() + 5 * 60 * 1000, values };
+    return values;
+  } catch (error) {
+    logger.warn("Remote Config prompt fetch failed; using checked-in prompt templates", { error });
+    promptConfigCache = { expiresAt: Date.now() + 60 * 1000, values: fallback };
+    return fallback;
+  }
+}
+
+function getRemoteConfigValue(parameter: unknown) {
+  if (!parameter || typeof parameter !== "object") return "";
+  const value = (parameter as { defaultValue?: { value?: unknown } }).defaultValue?.value;
+  return typeof value === "string" ? value : "";
+}
+
+function renderTemplate(template: string, values: Record<string, string>) {
+  return Object.entries(values).reduce(
+    (current, [key, value]) => current.replaceAll(`{{${key}}}`, value),
+    template,
+  );
 }
 
 function parseMealAnalysis(text: string): MealAnalysis {

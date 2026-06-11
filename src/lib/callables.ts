@@ -8,6 +8,7 @@ import type {
   CreateMealPayload,
   GiEvent,
   Meal,
+  ReanalyzeMealPayload,
 } from "@/lib/types";
 
 const createMealFn = httpsCallable<CreateMealPayload, { meal: Meal }>(
@@ -25,6 +26,11 @@ const analyzeCorrelationsFn = httpsCallable<void, { analysis: CorrelationAnalysi
   "analyzeCorrelations",
 );
 
+const reanalyzeMealFn = httpsCallable<ReanalyzeMealPayload, { meal: Meal }>(
+  functions,
+  "reanalyzeMeal",
+);
+
 export async function createMeal(payload: CreateMealPayload) {
   const result = await createMealFn(payload);
   return result.data.meal;
@@ -38,4 +44,9 @@ export async function createGiEvent(payload: CreateGiEventPayload) {
 export async function analyzeCorrelations() {
   const result = await analyzeCorrelationsFn();
   return result.data.analysis;
+}
+
+export async function reanalyzeMeal(mealId: string) {
+  const result = await reanalyzeMealFn({ mealId });
+  return result.data.meal;
 }
