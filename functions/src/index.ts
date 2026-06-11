@@ -390,7 +390,30 @@ Return only JSON with this exact shape:
   "summary": "plain language meal description"
 }
 
-Use conservative confidence scores. Include likely irritants only.
+Use conservative confidence scores. Include likely irritants only, but include
+multiple irritants when a common food implies more than one plausible trigger.
+Prefer specific irritant names over broad categories.
+
+Common irritant mapping inspiration:
+- Beer: alcohol, barley/gluten, wheat if wheat beer or unspecified beer style,
+  carbonation, and fructans/FODMAP from barley or wheat.
+- Bread, pasta, pizza, crackers, cereal, flour tortillas, pastries, baked goods:
+  wheat/gluten and wheat fructans/FODMAP.
+- Barley, rye, malt, malt vinegar, malted drinks: gluten grain and fructans/FODMAP.
+- Milk, cream, soft cheese, yogurt, ice cream, whey: lactose/dairy.
+- Onion, garlic, leeks, shallots, inulin, chicory root: fructans/FODMAP.
+- Beans, lentils, chickpeas, peas, cashews, pistachios: GOS/FODMAP.
+- Apple, pear, mango, watermelon, honey, high-fructose corn syrup: excess fructose/FODMAP.
+- Stone fruits, avocado, mushrooms, cauliflower, sugar-free gum, xylitol, sorbitol,
+  mannitol, maltitol, isomalt: polyols/FODMAP.
+- Fried foods, fast food, bacon, sausage, heavy cream, rich sauces: high fat.
+- Coffee, espresso, energy drinks, cola, black or green tea: caffeine.
+- Hot sauce, chili, jalapeno, curry, pepper-heavy foods: spice/capsaicin.
+- Wine, liquor, cocktails, hard seltzer: alcohol; cocktails may also include carbonation,
+  fructose, or artificial sweeteners if indicated.
+- Carbonated drinks, soda, sparkling water, beer, hard seltzer: carbonation.
+- Processed meats, cured meats, packaged snacks, emulsifiers, sugar alcohols,
+  artificial sweeteners: additives/other when specifically indicated.
 
 Input:
 ${input}`;
@@ -454,18 +477,79 @@ function normalizeCorrelationAnalysis(
 
 function heuristicMealAnalysis(text: string): MealAnalysis {
   const lower = text.toLowerCase();
-  const rules: Array<[string, IrritantSignal]> = [
-    ["milk|cheese|cream|yogurt|ice cream|latte", signal("dairy", "dairy", "Dairy terms were present.")],
-    ["bread|pasta|wheat|pizza|bun|sandwich", signal("gluten", "gluten", "Wheat or bread terms were present.")],
-    ["onion|garlic|beans|lentils|apple|pear", signal("high FODMAP", "fodmap", "Common FODMAP foods were present.")],
-    ["fried|fries|burger|bacon|sausage", signal("high fat", "fat", "High fat foods were present.")],
-    ["spicy|hot sauce|jalapeno|chili", signal("spice", "spice", "Spicy ingredients were present.")],
-    ["coffee|espresso|coke|energy drink|tea", signal("caffeine", "caffeine", "Caffeine terms were present.")],
-    ["beer|wine|cocktail|liquor", signal("alcohol", "alcohol", "Alcohol terms were present.")],
+  const rules: Array<[string, IrritantSignal[]]> = [
+    [
+      "\\bbeer\\b|\\bipa\\b|\\blager\\b|\\bale\\b|\\bstout\\b|\\bporter\\b|\\bmalt\\b",
+      [
+        signal("alcohol", "alcohol", "Beer or malt beverage terms were present."),
+        signal("barley/gluten", "gluten", "Most beer is brewed with barley or other gluten grains unless labeled gluten-free."),
+        signal("barley fructans", "fodmap", "Barley and wheat can contribute fructans/FODMAPs."),
+        signal("carbonation", "other", "Beer is typically carbonated."),
+      ],
+    ],
+    [
+      "milk|cream|yogurt|ice cream|latte|whey|cottage cheese|ricotta|soft cheese",
+      [signal("lactose/dairy", "dairy", "Lactose-containing dairy terms were present.")],
+    ],
+    [
+      "bread|pasta|wheat|pizza|bun|sandwich|cracker|cereal|flour tortilla|pastry|bagel|muffin",
+      [
+        signal("wheat/gluten", "gluten", "Wheat or bread terms were present."),
+        signal("wheat fructans", "fodmap", "Wheat-based foods can contribute fructans/FODMAPs."),
+      ],
+    ],
+    [
+      "barley|rye|malt|malted|malt vinegar",
+      [
+        signal("gluten grain", "gluten", "Barley, rye, or malt terms were present."),
+        signal("grain fructans", "fodmap", "Barley and rye can contribute fructans/FODMAPs."),
+      ],
+    ],
+    [
+      "onion|garlic|leek|shallot|inulin|chicory",
+      [signal("fructans", "fodmap", "Onion, garlic, or related fructan-rich terms were present.")],
+    ],
+    [
+      "beans|lentils|chickpeas|peas|cashews|pistachios",
+      [signal("GOS/FODMAP", "fodmap", "Legume or high-FODMAP nut terms were present.")],
+    ],
+    [
+      "apple|pear|mango|watermelon|honey|high-fructose corn syrup|hfcs",
+      [signal("excess fructose", "fodmap", "High-fructose food terms were present.")],
+    ],
+    [
+      "sorbitol|xylitol|mannitol|maltitol|isomalt|sugar-free gum|mushroom|cauliflower|avocado|plum|prune|peach|cherry",
+      [signal("polyols", "fodmap", "Polyol-containing food or sweetener terms were present.")],
+    ],
+    [
+      "fried|fries|burger|bacon|sausage|pepperoni|heavy cream|rich sauce|fast food",
+      [signal("high fat", "fat", "High-fat food terms were present.")],
+    ],
+    [
+      "spicy|hot sauce|jalapeno|chili|chile|curry|pepper-heavy",
+      [signal("spice/capsaicin", "spice", "Spicy ingredient terms were present.")],
+    ],
+    [
+      "coffee|espresso|coke|cola|energy drink|black tea|green tea|matcha",
+      [signal("caffeine", "caffeine", "Caffeine terms were present.")],
+    ],
+    [
+      "wine|cocktail|liquor|vodka|whiskey|whisky|rum|tequila|hard seltzer",
+      [signal("alcohol", "alcohol", "Alcohol terms were present.")],
+    ],
+    [
+      "soda|sparkling water|carbonated|seltzer|tonic",
+      [signal("carbonation", "other", "Carbonated beverage terms were present.")],
+    ],
+    [
+      "processed meat|cured meat|deli meat|emulsifier|artificial sweetener|sucralose|aspartame",
+      [signal("additives", "additive", "Processed food or additive terms were present.")],
+    ],
   ];
   const irritants = rules
     .filter(([pattern]) => new RegExp(pattern).test(lower))
-    .map(([, item]) => item);
+    .flatMap(([, items]) => items);
+  const uniqueIrritants = [...new Map(irritants.map((item) => [item.name, item])).values()];
   const foods = text
     .split(/[,;\n]/)
     .map((item) => item.trim())
@@ -475,7 +559,7 @@ function heuristicMealAnalysis(text: string): MealAnalysis {
   return {
     mealName: foods[0] || "Meal",
     foods: foods.length ? foods : [text.slice(0, 80)],
-    irritants,
+    irritants: uniqueIrritants,
     summary: text.slice(0, 500),
   };
 }
