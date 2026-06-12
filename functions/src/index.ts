@@ -140,8 +140,15 @@ export const createMeal = onCall(
       analysis = await analyzeMealText(rawInput);
     } else {
       const mediaBase64 = requiredString(data.mediaBase64, "mediaBase64", 8_000_000);
-      const mimeType = requiredString(data.mimeType, "mimeType", 120);
+      const originalMimeType = requiredString(data.mimeType, "mimeType", 120);
+      const mimeType = normalizeMediaMimeType(originalMimeType);
       rawInput = `[${mode}:${mimeType}]`;
+      logger.info("createMeal media input received", {
+        mode,
+        originalMimeType,
+        mimeType,
+        approxBytes: approximateBase64Bytes(mediaBase64),
+      });
       const interpreted = await interpretMediaMeal(mode, mediaBase64, mimeType);
       interpretedText = interpreted.interpretedText;
       analysis = interpreted.analysis;
@@ -288,16 +295,37 @@ async function interpretMediaMeal(mode: InputMode, mediaBase64: string, mimeType
     mode === "voice" ? promptConfig.audioMealInstruction : promptConfig.imageMealInstruction;
   const prompt = renderTemplate(promptConfig.mealAnalysisPromptTemplate, { input: instruction });
 
-  const text = await generateJson(ai, [
-    { text: prompt },
-    { inlineData: { mimeType, data: mediaBase64 } },
-  ], promptConfig.modelName);
-  const parsed = parseMealAnalysis(text);
+  try {
+    const text = await generateJson(ai, [
+      { text: prompt },
+      { inlineData: { mimeType, data: mediaBase64 } },
+    ], promptConfig.modelName);
+    const parsed = parseMealAnalysis(text);
 
-  return {
-    interpretedText: parsed.summary || parsed.foods.join(", ") || parsed.mealName,
-    analysis: parsed,
-  };
+    logger.info("Gemini media meal analysis succeeded", {
+      mode,
+      mimeType,
+      approxBytes: approximateBase64Bytes(mediaBase64),
+    });
+
+    return {
+      interpretedText: parsed.summary || parsed.foods.join(", ") || parsed.mealName,
+      analysis: parsed,
+    };
+  } catch (error) {
+    logger.error("Gemini media meal analysis failed", {
+      mode,
+      mimeType,
+      approxBytes: approximateBase64Bytes(mediaBase64),
+      error: formatLogError(error),
+    });
+    throw new HttpsError(
+      "internal",
+      mode === "voice"
+        ? "Voice meal analysis failed. Try a shorter recording or enter the meal as text."
+        : "Image meal analysis failed. Try a smaller image or enter the meal as text.",
+    );
+  }
 }
 
 async function analyzeMealText(text: string) {
@@ -801,6 +829,31 @@ function optionalString(value: unknown, maxLength: number) {
     throw new HttpsError("invalid-argument", "Invalid text value.");
   }
   return value.trim();
+}
+
+function normalizeMediaMimeType(value: string) {
+  const baseMimeType = value.split(";")[0]?.trim().toLowerCase();
+  if (!baseMimeType) throw new HttpsError("invalid-argument", "mimeType is invalid.");
+  if (!/^(audio|image)\//.test(baseMimeType)) {
+    throw new HttpsError("invalid-argument", "Only audio and image media are supported.");
+  }
+  return baseMimeType;
+}
+
+function approximateBase64Bytes(value: string) {
+  const padding = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((value.length * 3) / 4) - padding);
+}
+
+function formatLogError(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack?.split("\n").slice(0, 5).join("\n"),
+    };
+  }
+  return { message: String(error) };
 }
 
 function parseDate(value: unknown, field: string) {
