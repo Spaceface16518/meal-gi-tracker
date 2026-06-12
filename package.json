@@ -9,7 +9,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "assets:favicon": "node scripts/generate-favicon.mjs"
   },
   "dependencies": {
     "firebase": "^12.14.0",
