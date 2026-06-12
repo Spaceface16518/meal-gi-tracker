@@ -29,6 +29,17 @@ const nextConfig: NextConfig = {
       },
     ];
 
+    const serviceWorkerHeaders = [
+      {
+        key: "Cache-Control",
+        value: "public, max-age=0, must-revalidate",
+      },
+      {
+        key: "Service-Worker-Allowed",
+        value: "/",
+      },
+    ];
+
     return [
       {
         source: "/:path*",
@@ -39,8 +50,20 @@ const nextConfig: NextConfig = {
         headers: staticAssetHeaders,
       },
       {
+        source: "/:asset(icon-192|icon-512|icon-maskable-512).png",
+        headers: staticAssetHeaders,
+      },
+      {
         source: "/:asset(next|vercel|file|globe|window).svg",
         headers: staticAssetHeaders,
+      },
+      {
+        source: "/sw.js",
+        headers: serviceWorkerHeaders,
+      },
+      {
+        source: "/offline.html",
+        headers: generatedMetadataHeaders,
       },
       {
         source: "/icon",

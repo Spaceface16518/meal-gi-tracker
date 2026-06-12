@@ -10,7 +10,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "assets:favicon": "node scripts/generate-favicon.mjs"
+    "assets:pwa": "node scripts/generate-pwa-assets.mjs",
+    "assets:favicon": "npm run assets:pwa"
   },
   "dependencies": {
     "firebase": "^12.14.0",

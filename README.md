@@ -33,6 +33,8 @@ domain is `https://meal.amritr.xyz`.
 
 - `src/app/` contains App Router pages, metadata routes, manifest, icons, and
   route-level error UI.
+- `public/sw.js` and `public/offline.html` provide PWA installability and an
+  offline fallback without caching private meal data.
 - `src/components/tracker/` contains the authenticated tracker feature split by
   auth, meal logging, GI event logging, analysis, sidebar, and shared UI.
 - `src/lib/` contains Firebase initialization, callable wrappers, Firestore
