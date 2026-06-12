@@ -37,7 +37,7 @@ env:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_SITE_URL
-    value: "https://meal-signal--meal-tracker-46346.us-central1.hosted.app"
+    value: "https://meal.amritr.xyz"
     availability:
       - BUILD
       - RUNTIME

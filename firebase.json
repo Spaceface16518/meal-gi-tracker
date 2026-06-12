@@ -40,14 +40,16 @@
         "supportEmail": "amrit.rathie@gmail.com",
         "authorizedRedirectUris": [
           "http://localhost",
-          "https://meal-signal--meal-tracker-46346.us-central1.hosted.app"
+          "https://meal-signal--meal-tracker-46346.us-central1.hosted.app",
+          "https://meal.amritr.xyz"
         ]
       }
     },
     "authorizedDomains": [
       "localhost",
       "meal-tracker-46346.firebaseapp.com",
-      "meal-signal--meal-tracker-46346.us-central1.hosted.app"
+      "meal-signal--meal-tracker-46346.us-central1.hosted.app",
+      "meal.amritr.xyz"
     ]
   }
 }

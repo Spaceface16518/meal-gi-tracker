@@ -26,8 +26,8 @@ docker run --rm -it \
 Create `.env.local` from `.env.local.example` after the Firebase Web App is
 registered.
 
-The `NEXT_PUBLIC_SITE_URL` value is used for production metadata. Leave it set
-to the hosted app URL unless deploying a different hostname.
+The `NEXT_PUBLIC_SITE_URL` value is used for production metadata. The production
+domain is `https://meal.amritr.xyz`.
 
 ## Project Layout
 
