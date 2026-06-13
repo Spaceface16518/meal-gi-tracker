@@ -13,7 +13,7 @@ type MessageTone = "info" | "error" | "success";
 export function GiEventForm() {
   const [occurredAt, setOccurredAt] = useState(toDatetimeLocalValue(new Date()));
   const [severity, setSeverity] = useState(4);
-  const [symptoms, setSymptoms] = useState<string[]>(["bloating"]);
+  const [symptoms, setSymptoms] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [stoolType, setStoolType] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("");
@@ -43,6 +43,13 @@ export function GiEventForm() {
       return;
     }
 
+    if (symptoms.length === 0 && !stoolType) {
+      setMessageTone("error");
+      setMessage("Choose a symptom or stool type.");
+      setBusy(false);
+      return;
+    }
+
     try {
       await createGiEvent({
         occurredAt: occurredAtDate.toISOString(),
@@ -54,7 +61,7 @@ export function GiEventForm() {
       });
       setOccurredAt(toDatetimeLocalValue(new Date()));
       setSeverity(4);
-      setSymptoms(["bloating"]);
+      setSymptoms([]);
       setNotes("");
       setStoolType("");
       setDurationMinutes("");
@@ -159,7 +166,7 @@ export function GiEventForm() {
 
         <SubmitRow
           busy={busy}
-          disabled={symptoms.length === 0 || busy}
+          disabled={(symptoms.length === 0 && !stoolType) || busy}
           message={message}
           tone={messageTone}
           label="Save event"

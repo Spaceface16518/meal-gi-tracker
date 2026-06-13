@@ -8,6 +8,12 @@ import { getErrorMessage } from "@/lib/errors";
 import type { CorrelationAnalysis, GiEvent, Meal } from "@/lib/types";
 import { EmptyState, Stat, StatusMessage } from "@/components/tracker/ui";
 
+function describeEvent(event: GiEvent) {
+  const details = [...event.symptoms];
+  if (event.stoolType) details.push(`stool type ${event.stoolType}`);
+  return details.length ? details.join(", ") : "No details recorded";
+}
+
 export function StatsStrip({
   meals,
   events,
@@ -118,7 +124,7 @@ export function RecentEntries({ meals, events }: { meals: Meal[]; events: GiEven
                   <h3 className="text-sm font-semibold">Severity {item.event.severity}</h3>
                   <span className="shrink-0 text-xs text-stone-500">{formatRelativeTime(item.date)}</span>
                 </div>
-                <p className="mt-1 text-sm text-stone-600">{item.event.symptoms.join(", ")}</p>
+                <p className="mt-1 text-sm text-stone-600">{describeEvent(item.event)}</p>
               </article>
             ),
           )}

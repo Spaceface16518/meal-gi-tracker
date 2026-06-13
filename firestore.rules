@@ -32,7 +32,7 @@ service cloud.firestore {
     //   - uid: string (required, immutable) - owner uid
     //   - occurredAt: timestamp (required) - event time
     //   - severity: number (required, 1-10) - symptom severity
-    //   - symptoms: list (required) - symptom tags
+    //   - symptoms: list (required, can be empty when stoolType is present) - symptom tags
     //   - notes: string (optional) - user notes
     //   - stoolType: number (optional, 1-7) - Bristol stool type
     //   - durationMinutes: number (optional, 1-1440) - event duration
@@ -135,8 +135,8 @@ service cloud.firestore {
         request.resource.data.severity >= 1 &&
         request.resource.data.severity <= 10 &&
         request.resource.data.symptoms is list &&
-        request.resource.data.symptoms.size() > 0 &&
         request.resource.data.symptoms.size() <= 12 &&
+        (request.resource.data.symptoms.size() > 0 || 'stoolType' in request.resource.data) &&
         isOptionalString('notes', 1000) &&
         (!('stoolType' in request.resource.data) ||
           (request.resource.data.stoolType is number &&

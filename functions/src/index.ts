@@ -179,14 +179,18 @@ export const createGiEvent = onCall(async (request) => {
   const data = request.data as CreateEventData;
   const occurredAt = parseDate(data.occurredAt, "occurredAt");
   const severity = validateNumber(data.severity, "severity", 1, 10);
-  const symptoms = validateStringList(data.symptoms, "symptoms", 1, 12, 40);
-  const notes = optionalString(data.notes, 1000);
   const stoolType =
     data.stoolType == null ? undefined : validateNumber(data.stoolType, "stoolType", 1, 7);
+  const symptoms = validateStringList(data.symptoms, "symptoms", 0, 12, 40);
+  const notes = optionalString(data.notes, 1000);
   const durationMinutes =
     data.durationMinutes == null
       ? undefined
       : validateNumber(data.durationMinutes, "durationMinutes", 1, 1440);
+
+  if (symptoms.length === 0 && stoolType == null) {
+    throw new HttpsError("invalid-argument", "Choose a symptom or stool type.");
+  }
 
   const eventDoc: EventDocument = {
     uid,
