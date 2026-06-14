@@ -97,9 +97,9 @@ export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal
   }
 
   return (
-    <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
+    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
-        <CalendarClock size={18} className="text-emerald-950" aria-hidden />
+        <CalendarClock size={18} className="text-brand" aria-hidden />
         <h2 className="font-semibold">Recent</h2>
       </div>
       {message ? (
@@ -111,7 +111,7 @@ export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal
         <div className="grid gap-3">
           {combined.map((item) =>
             item.kind === "meal" ? (
-              <article key={`meal-${item.meal.id}`} className="rounded-lg bg-stone-50 p-3">
+              <article key={`meal-${item.meal.id}`} className="rounded-lg bg-surface-muted p-3">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="text-sm font-semibold">{item.meal.analysis.mealName}</h3>
                   <div className="flex shrink-0 items-center gap-2">
@@ -119,7 +119,7 @@ export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal
                       type="button"
                       onClick={() => redoMealAnalysis(item.meal.id)}
                       disabled={reanalyzingMealId === item.meal.id}
-                      className="grid size-7 place-items-center rounded-md border border-stone-300 bg-white text-stone-600 transition hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Redo meal analysis"
                       title="Redo meal analysis"
                     >
@@ -133,21 +133,21 @@ export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal
                       type="button"
                       onClick={() => removeEntry({ kind: "meal", id: item.meal.id })}
                       disabled={deletingEntryId === `meal-${item.meal.id}`}
-                      className="grid size-7 place-items-center rounded-md border border-stone-300 bg-white text-stone-600 transition hover:border-red-300 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Delete meal"
                       title="Delete meal"
                     >
                       <Trash2 size={14} aria-hidden />
                     </button>
-                    <span className="text-xs text-stone-500">{formatRelativeTime(item.date)}</span>
+                    <span className="text-xs text-muted">{formatRelativeTime(item.date)}</span>
                   </div>
                 </div>
-                <p className="mt-1 line-clamp-2 text-sm text-stone-600">{item.meal.interpretedText}</p>
+                <p className="mt-1 line-clamp-2 text-sm text-muted-strong">{item.meal.interpretedText}</p>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {item.meal.analysis.irritants.slice(0, 3).map((irritant) => (
                     <span
                       key={`${item.meal.id}-${irritant.name}`}
-                      className="rounded bg-white px-2 py-1 text-xs font-medium text-stone-600"
+                      className="rounded bg-surface px-2 py-1 text-xs font-medium text-muted-strong"
                     >
                       {irritant.name}
                     </span>
@@ -155,7 +155,7 @@ export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal
                 </div>
               </article>
             ) : (
-              <article key={`event-${item.event.id}`} className="rounded-lg bg-stone-50 p-3">
+              <article key={`event-${item.event.id}`} className="rounded-lg bg-surface-muted p-3">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="text-sm font-semibold">Severity {item.event.severity}</h3>
                   <div className="flex shrink-0 items-center gap-2">
@@ -163,16 +163,16 @@ export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal
                       type="button"
                       onClick={() => removeEntry({ kind: "event", id: item.event.id })}
                       disabled={deletingEntryId === `event-${item.event.id}`}
-                      className="grid size-7 place-items-center rounded-md border border-stone-300 bg-white text-stone-600 transition hover:border-red-300 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Delete event"
                       title="Delete event"
                     >
                       <Trash2 size={14} aria-hidden />
                     </button>
-                    <span className="text-xs text-stone-500">{formatRelativeTime(item.date)}</span>
+                    <span className="text-xs text-muted">{formatRelativeTime(item.date)}</span>
                   </div>
                 </div>
-                <p className="mt-1 text-sm text-stone-600">{describeEvent(item.event)}</p>
+                <p className="mt-1 text-sm text-muted-strong">{describeEvent(item.event)}</p>
               </article>
             ),
           )}

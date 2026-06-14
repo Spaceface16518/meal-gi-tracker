@@ -52,29 +52,29 @@ export function AuthScreen() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#f7f8f3] px-4 text-stone-950">
-      <section className="w-full max-w-md rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+    <main className="grid min-h-screen place-items-center bg-background px-4 text-foreground">
+      <section className="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="grid size-11 place-items-center rounded-lg bg-emerald-950 text-white">
+          <div className="grid size-11 place-items-center rounded-lg bg-brand text-background">
             <Utensils size={20} aria-hidden />
           </div>
           <div>
             <h1 className="text-xl font-semibold">Meal Signal</h1>
-            <p className="text-sm text-stone-500">Private meal and symptom tracking</p>
+            <p className="text-sm text-muted">Private meal and symptom tracking</p>
           </div>
         </div>
 
         <form className="grid gap-4" onSubmit={submit}>
-          <label className="grid gap-1 text-sm font-medium text-stone-700">
+          <label className="grid gap-1 text-sm font-medium text-muted-strong">
             Email
             <span className="relative">
               <Mail
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
                 size={17}
                 aria-hidden
               />
               <input
-                className="h-11 w-full rounded-lg border border-stone-300 bg-white pl-10 pr-3 text-base outline-none transition focus:border-emerald-800 focus:ring-2 focus:ring-emerald-900/15"
+                className="h-11 w-full rounded-lg border border-border-strong bg-surface pl-10 pr-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
                 type="email"
                 autoComplete="email"
                 value={email}
@@ -84,10 +84,10 @@ export function AuthScreen() {
             </span>
           </label>
 
-          <label className="grid gap-1 text-sm font-medium text-stone-700">
+          <label className="grid gap-1 text-sm font-medium text-muted-strong">
             Password
             <input
-              className="h-11 rounded-lg border border-stone-300 bg-white px-3 text-base outline-none transition focus:border-emerald-800 focus:ring-2 focus:ring-emerald-900/15"
+              className="h-11 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
               type="password"
               autoComplete={mode === "signin" ? "current-password" : "new-password"}
               value={password}
@@ -98,7 +98,7 @@ export function AuthScreen() {
           </label>
 
           {error ? (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" aria-live="polite">
+            <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger" aria-live="polite">
               {error}
             </p>
           ) : null}
@@ -106,24 +106,24 @@ export function AuthScreen() {
           <button
             type="submit"
             disabled={busy}
-            className="flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-950 px-4 text-sm font-semibold text-white transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex h-11 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-background transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {busy ? "Working..." : mode === "signin" ? "Sign in" : "Create account"}
             <ChevronRight size={17} aria-hidden />
           </button>
         </form>
 
-        <div className="my-4 flex items-center gap-3 text-xs font-medium uppercase text-stone-400">
-          <span className="h-px flex-1 bg-stone-200" />
+        <div className="my-4 flex items-center gap-3 text-xs font-medium uppercase text-muted">
+          <span className="h-px flex-1 bg-border" />
           Or
-          <span className="h-px flex-1 bg-stone-200" />
+          <span className="h-px flex-1 bg-border" />
         </div>
 
         <button
           type="button"
           onClick={signInWithGoogle}
           disabled={busy}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-800 transition hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface px-4 text-sm font-semibold text-muted-strong transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
         >
           Continue with Google
           <ChevronRight size={17} aria-hidden />
@@ -132,7 +132,7 @@ export function AuthScreen() {
         <button
           type="button"
           onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-          className="mt-4 w-full text-center text-sm font-medium text-emerald-950"
+          className="mt-4 w-full text-center text-sm font-medium text-brand"
         >
           {mode === "signin" ? "Create a new account" : "Sign in instead"}
         </button>

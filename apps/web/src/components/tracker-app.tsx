@@ -80,22 +80,22 @@ export function TrackerApp() {
   if (!user) return <AuthScreen />;
 
   return (
-    <main className="min-h-screen bg-[#f7f8f3] text-stone-950">
-      <header className="sticky top-0 z-20 border-b border-stone-200 bg-[#f7f8f3]/95 backdrop-blur">
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-emerald-950 text-white">
+            <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-brand text-background">
               <Utensils size={19} aria-hidden />
             </div>
             <div className="min-w-0">
               <h1 className="truncate text-base font-semibold">Meal Signal</h1>
-              <p className="truncate text-sm text-stone-500">{user.email}</p>
+              <p className="truncate text-sm text-muted">{user.email}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={handleSignOut}
-            className="grid size-10 place-items-center rounded-lg border border-stone-300 bg-white text-stone-700 shadow-sm transition hover:border-stone-400"
+            className="grid size-10 place-items-center rounded-lg border border-border-strong bg-surface text-muted-strong shadow-sm transition hover:border-muted"
             aria-label="Sign out"
             title="Sign out"
           >
@@ -112,7 +112,7 @@ export function TrackerApp() {
             </div>
           ) : null}
 
-          <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-stone-200 bg-white p-1 shadow-sm">
+          <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-border bg-surface p-1 shadow-sm">
             <TabButton active={view === "log"} onClick={() => setView("log")} icon={<Plus size={17} />}>
               Log
             </TabButton>

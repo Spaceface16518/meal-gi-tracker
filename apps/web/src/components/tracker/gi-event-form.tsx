@@ -167,21 +167,21 @@ export function GiEventForm() {
   }
 
   return (
-    <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">GI event</h2>
-          <p className="text-sm text-stone-500">Record timing, severity, and symptoms.</p>
+          <p className="text-sm text-muted">Record timing, severity, and symptoms.</p>
         </div>
-        <Activity className="mt-1 text-emerald-950" size={20} aria-hidden />
+        <Activity className="mt-1 text-brand" size={20} aria-hidden />
       </div>
 
       <form className="grid gap-4" onSubmit={submit}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-1 text-sm font-medium text-stone-700">
+          <label className="grid gap-1 text-sm font-medium text-muted-strong">
             Occurred at
             <input
-              className="h-11 rounded-lg border border-stone-300 bg-white px-3 text-base outline-none transition focus:border-emerald-800 focus:ring-2 focus:ring-emerald-900/15"
+              className="h-11 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
               type="datetime-local"
               value={occurredAt}
               onChange={(event) => setOccurredAt(event.target.value)}
@@ -189,10 +189,10 @@ export function GiEventForm() {
             />
           </label>
 
-          <label className="grid gap-1 text-sm font-medium text-stone-700">
+          <label className="grid gap-1 text-sm font-medium text-muted-strong">
             Severity: {severity}
             <input
-              className="h-11 accent-emerald-950"
+              className="h-11 accent-brand"
               type="range"
               min="1"
               max="10"
@@ -203,7 +203,7 @@ export function GiEventForm() {
         </div>
 
         <div className="grid gap-2">
-          <span className="text-sm font-medium text-stone-700">Symptoms</span>
+          <span className="text-sm font-medium text-muted-strong">Symptoms</span>
           <div className="flex flex-wrap gap-2">
             {symptomOptions.map((symptom) => (
               <button
@@ -212,8 +212,8 @@ export function GiEventForm() {
                 onClick={() => toggleSymptom(symptom)}
                 className={`h-9 rounded-md border px-3 text-sm font-medium transition ${
                   symptoms.includes(symptom)
-                    ? "border-emerald-950 bg-emerald-950 text-white"
-                    : "border-stone-300 bg-white text-stone-700 hover:border-stone-400"
+                    ? "border-brand bg-brand text-background"
+                    : "border-border-strong bg-surface text-muted-strong hover:border-muted"
                 }`}
               >
                 {symptom}
@@ -223,40 +223,40 @@ export function GiEventForm() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="grid gap-2 text-sm font-medium text-stone-700 sm:col-span-1">
+          <div className="grid gap-2 text-sm font-medium text-muted-strong sm:col-span-1">
             <a
-              className="w-fit underline decoration-stone-300 underline-offset-4 transition hover:text-emerald-900 hover:decoration-emerald-900"
+              className="w-fit underline decoration-border-strong underline-offset-4 transition hover:text-brand hover:decoration-brand"
               href={bristolScaleUrl}
               target="_blank"
               rel="noreferrer"
             >
               Stool type
             </a>
-            <div className="rounded-lg border border-stone-300 bg-white p-3">
+            <div className="rounded-lg border border-border-strong bg-surface p-3">
               <div className="mb-3 flex min-h-14 items-center gap-3">
                 <StoolTypeIcon type={selectedStoolType?.value ?? null} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-base font-semibold text-stone-900">
+                    <p className="text-base font-semibold text-foreground">
                       {selectedStoolType ? `Type ${selectedStoolType.value}` : "Not set"}
                     </p>
                     {selectedStoolType ? (
                       <button
                         type="button"
                         onClick={() => setStoolType("")}
-                        className="rounded px-1.5 py-0.5 text-xs font-semibold text-stone-500 transition hover:bg-stone-100 hover:text-stone-700"
+                        className="rounded px-1.5 py-0.5 text-xs font-semibold text-muted transition hover:bg-surface-muted hover:text-muted-strong"
                       >
                         Clear
                       </button>
                     ) : null}
                   </div>
-                  <p className="line-clamp-2 text-xs font-medium text-stone-500">
+                  <p className="line-clamp-2 text-xs font-medium text-muted">
                     {selectedStoolType?.label ?? "Move slider to set"}
                   </p>
                 </div>
               </div>
               <input
-                className="h-6 w-full accent-emerald-950"
+                className="h-6 w-full accent-brand"
                 type="range"
                 min="1"
                 max="7"
@@ -274,16 +274,16 @@ export function GiEventForm() {
                 }}
                 aria-label="Bristol stool type"
               />
-              <div className="mt-1 flex justify-between text-[11px] font-medium text-stone-400">
+              <div className="mt-1 flex justify-between text-[11px] font-medium text-muted">
                 <span>1</span>
                 <span>7</span>
               </div>
             </div>
           </div>
-          <label className="grid gap-1 text-sm font-medium text-stone-700 sm:col-span-1">
+          <label className="grid gap-1 text-sm font-medium text-muted-strong sm:col-span-1">
             Minutes
             <input
-              className="h-11 rounded-lg border border-stone-300 bg-white px-3 text-base outline-none transition focus:border-emerald-800 focus:ring-2 focus:ring-emerald-900/15"
+              className="h-11 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
               type="number"
               min="1"
               max="1440"
@@ -291,10 +291,10 @@ export function GiEventForm() {
               onChange={(event) => setDurationMinutes(event.target.value)}
             />
           </label>
-          <label className="grid gap-1 text-sm font-medium text-stone-700 sm:col-span-1">
+          <label className="grid gap-1 text-sm font-medium text-muted-strong sm:col-span-1">
             Notes
             <input
-              className="h-11 rounded-lg border border-stone-300 bg-white px-3 text-base outline-none transition focus:border-emerald-800 focus:ring-2 focus:ring-emerald-900/15"
+              className="h-11 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
             />

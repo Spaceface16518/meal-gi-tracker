@@ -161,13 +161,13 @@ export function MealComposer() {
     mode === "text" ? text.trim().length > 2 : mediaBase64.length > 0 && mimeType.length > 0;
 
   return (
-    <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">Meal</h2>
-          <p className="text-sm text-stone-500">Capture what you ate and when.</p>
+          <p className="text-sm text-muted">Capture what you ate and when.</p>
         </div>
-        <Utensils className="mt-1 text-emerald-950" size={20} aria-hidden />
+        <Utensils className="mt-1 text-brand" size={20} aria-hidden />
       </div>
 
       <form className="grid gap-4" onSubmit={submit}>
@@ -184,24 +184,24 @@ export function MealComposer() {
         </div>
 
         {mode === "text" ? (
-          <label className="grid gap-1 text-sm font-medium text-stone-700">
+          <label className="grid gap-1 text-sm font-medium text-muted-strong">
             Meal text
             <textarea
-              className="min-h-28 rounded-lg border border-stone-300 bg-white px-3 py-2 text-base outline-none transition focus:border-emerald-800 focus:ring-2 focus:ring-emerald-900/15"
+              className="min-h-28 rounded-lg border border-border-strong bg-surface px-3 py-2 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
               value={text}
               onChange={(event) => setText(event.target.value)}
               placeholder="Turkey sandwich, chips, iced coffee"
             />
           </label>
         ) : mode === "voice" ? (
-          <div className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
+          <div className="grid gap-3 rounded-lg border border-border bg-surface-muted p-3">
             <button
               type="button"
               onClick={toggleRecording}
               className={`flex h-12 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition ${
                 recording
-                  ? "bg-red-700 text-white hover:bg-red-800"
-                  : "bg-emerald-950 text-white hover:bg-emerald-900"
+                  ? "bg-danger text-background hover:bg-danger-strong"
+                  : "bg-brand text-background hover:bg-brand-hover"
               }`}
             >
               <Mic size={18} aria-hidden />
@@ -210,13 +210,13 @@ export function MealComposer() {
             <MediaReady ready={Boolean(mediaBase64)} label="Audio ready" />
           </div>
         ) : (
-          <label className="grid gap-3 rounded-lg border border-dashed border-stone-300 bg-stone-50 p-4 text-sm font-medium text-stone-700">
+          <label className="grid gap-3 rounded-lg border border-dashed border-border-strong bg-surface-muted p-4 text-sm font-medium text-muted-strong">
             <span className="flex items-center gap-2">
               <Camera size={18} aria-hidden />
               Meal photo
             </span>
             <input
-              className="block w-full text-sm text-stone-600 file:mr-3 file:rounded-md file:border-0 file:bg-emerald-950 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+              className="block w-full text-sm text-muted-strong file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-semibold file:text-background"
               type="file"
               accept="image/*"
               capture="environment"
@@ -227,20 +227,20 @@ export function MealComposer() {
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-1 text-sm font-medium text-stone-700">
+          <label className="grid gap-1 text-sm font-medium text-muted-strong">
             Eaten at
             <input
-              className="h-11 rounded-lg border border-stone-300 bg-white px-3 text-base outline-none transition focus:border-emerald-800 focus:ring-2 focus:ring-emerald-900/15"
+              className="h-11 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
               type="datetime-local"
               value={eatenAt}
               onChange={(event) => setEatenAt(event.target.value)}
               required
             />
           </label>
-          <label className="grid gap-1 text-sm font-medium text-stone-700">
+          <label className="grid gap-1 text-sm font-medium text-muted-strong">
             Notes
             <input
-              className="h-11 rounded-lg border border-stone-300 bg-white px-3 text-base outline-none transition focus:border-emerald-800 focus:ring-2 focus:ring-emerald-900/15"
+              className="h-11 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="Portion, stress, meds"
