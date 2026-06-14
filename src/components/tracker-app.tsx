@@ -137,7 +137,7 @@ export function TrackerApp() {
 
         <aside className="grid content-start gap-5">
           <StatsStrip meals={meals} events={events} analysis={analysis} />
-          <RecentEntries meals={meals} events={events} />
+          <RecentEntries uid={user.uid} meals={meals} events={events} />
         </aside>
       </div>
     </main>

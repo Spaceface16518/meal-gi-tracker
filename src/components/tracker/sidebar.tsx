@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Activity, BarChart3, CalendarClock, RefreshCcw, Utensils } from "lucide-react";
+import { Activity, BarChart3, CalendarClock, RefreshCcw, Trash2, Utensils } from "lucide-react";
 import { reanalyzeMeal } from "@/lib/callables";
 import { formatRelativeTime } from "@/lib/date";
 import { getErrorMessage } from "@/lib/errors";
+import { deleteGiEvent, deleteMeal } from "@/lib/firestore";
 import type { CorrelationAnalysis, GiEvent, Meal } from "@/lib/types";
 import { EmptyState, Stat, StatusMessage } from "@/components/tracker/ui";
 
@@ -43,8 +44,9 @@ export function StatsStrip({
   );
 }
 
-export function RecentEntries({ meals, events }: { meals: Meal[]; events: GiEvent[] }) {
+export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal[]; events: GiEvent[] }) {
   const [reanalyzingMealId, setReanalyzingMealId] = useState("");
+  const [deletingEntryId, setDeletingEntryId] = useState("");
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
   const combined = [
@@ -67,6 +69,30 @@ export function RecentEntries({ meals, events }: { meals: Meal[]; events: GiEven
       setMessage(getErrorMessage(err, "Meal analysis could not be refreshed."));
     } finally {
       setReanalyzingMealId("");
+    }
+  }
+
+  async function removeEntry(entry: { kind: "meal"; id: string } | { kind: "event"; id: string }) {
+    const label = entry.kind === "meal" ? "meal" : "event";
+    const confirmed = window.confirm(`Delete this ${label}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    setDeletingEntryId(`${entry.kind}-${entry.id}`);
+    setMessage("");
+    setIsError(false);
+
+    try {
+      if (entry.kind === "meal") {
+        await deleteMeal(uid, entry.id);
+      } else {
+        await deleteGiEvent(uid, entry.id);
+      }
+      setMessage(`${label === "meal" ? "Meal" : "Event"} deleted.`);
+    } catch (err) {
+      setIsError(true);
+      setMessage(getErrorMessage(err, `The ${label} could not be deleted.`));
+    } finally {
+      setDeletingEntryId("");
     }
   }
 
@@ -103,6 +129,16 @@ export function RecentEntries({ meals, events }: { meals: Meal[]; events: GiEven
                         aria-hidden
                       />
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => removeEntry({ kind: "meal", id: item.meal.id })}
+                      disabled={deletingEntryId === `meal-${item.meal.id}`}
+                      className="grid size-7 place-items-center rounded-md border border-stone-300 bg-white text-stone-600 transition hover:border-red-300 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-label="Delete meal"
+                      title="Delete meal"
+                    >
+                      <Trash2 size={14} aria-hidden />
+                    </button>
                     <span className="text-xs text-stone-500">{formatRelativeTime(item.date)}</span>
                   </div>
                 </div>
@@ -122,7 +158,19 @@ export function RecentEntries({ meals, events }: { meals: Meal[]; events: GiEven
               <article key={`event-${item.event.id}`} className="rounded-lg bg-stone-50 p-3">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="text-sm font-semibold">Severity {item.event.severity}</h3>
-                  <span className="shrink-0 text-xs text-stone-500">{formatRelativeTime(item.date)}</span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => removeEntry({ kind: "event", id: item.event.id })}
+                      disabled={deletingEntryId === `event-${item.event.id}`}
+                      className="grid size-7 place-items-center rounded-md border border-stone-300 bg-white text-stone-600 transition hover:border-red-300 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-label="Delete event"
+                      title="Delete event"
+                    >
+                      <Trash2 size={14} aria-hidden />
+                    </button>
+                    <span className="text-xs text-stone-500">{formatRelativeTime(item.date)}</span>
+                  </div>
                 </div>
                 <p className="mt-1 text-sm text-stone-600">{describeEvent(item.event)}</p>
               </article>

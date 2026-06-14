@@ -2,6 +2,7 @@
 
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   limit,
@@ -109,6 +110,14 @@ export async function ensureUserProfile(user: User) {
     updatedAt: serverTimestamp(),
     createdAt: serverTimestamp(),
   });
+}
+
+export async function deleteMeal(uid: string, mealId: string) {
+  await deleteDoc(doc(db, "users", uid, "meals", mealId));
+}
+
+export async function deleteGiEvent(uid: string, eventId: string) {
+  await deleteDoc(doc(db, "users", uid, "events", eventId));
 }
 
 export function subscribeMeals(
