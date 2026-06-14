@@ -18,27 +18,27 @@ Use Docker or OrbStack for development commands.
 ```bash
 docker run --rm -it \
   -v "$PWD:/app" \
-  -w /app \
+  -w /app/apps/web \
   -p 3000:3000 \
   node:22-bookworm npm run dev -- --hostname 0.0.0.0
 ```
 
-Create `.env.local` from `.env.local.example` after the Firebase Web App is
-registered.
+Create `apps/web/.env.local` from `apps/web/.env.local.example` after the
+Firebase Web App is registered.
 
 The `NEXT_PUBLIC_SITE_URL` value is used for production metadata. The production
 domain is `https://meal.amritr.xyz`.
 
 ## Project Layout
 
-- `src/app/` contains App Router pages, metadata routes, manifest, icons, and
+- `apps/web/src/app/` contains App Router pages, metadata routes, manifest, icons, and
   route-level error UI.
-- `public/sw.js` and `public/offline.html` provide PWA installability and an
-  offline fallback without caching private meal data.
-- `src/components/tracker/` contains the authenticated tracker feature split by
-  auth, meal logging, GI event logging, analysis, sidebar, and shared UI.
-- `src/lib/` contains Firebase initialization, callable wrappers, Firestore
-  subscriptions, date formatting, shared types, and error message mapping.
+- `apps/web/public/sw.js` and `apps/web/public/offline.html` provide PWA
+  installability and an offline fallback without caching private meal data.
+- `apps/web/src/components/tracker/` contains the authenticated tracker feature
+  split by auth, meal logging, GI event logging, analysis, sidebar, and shared UI.
+- `apps/web/src/lib/` contains Firebase initialization, callable wrappers,
+  Firestore subscriptions, date formatting, shared types, and error message mapping.
 - `functions/src/` contains Firebase Functions for write paths and AI analysis.
 
 ## Firebase Setup
@@ -46,8 +46,8 @@ domain is `https://meal.amritr.xyz`.
 Project ID: `meal-tracker-46346`
 Project number: `134287587849`
 
-Register the Web App and write the returned config into `.env.local` and
-`apphosting.yaml`:
+Register the Web App and write the returned config into `apps/web/.env.local`
+and `apps/web/apphosting.yaml`:
 
 ```bash
 firebase apps:create WEB "Meal Signal" --project meal-tracker-46346
@@ -78,20 +78,20 @@ mkdir -p /private/tmp/meal-tracker-node-modules
 
 docker run --rm \
   -v "$PWD:/app" \
-  -v /private/tmp/meal-tracker-node-modules:/app/node_modules \
-  -w /app \
+  -v /private/tmp/meal-tracker-node-modules:/app/apps/web/node_modules \
+  -w /app/apps/web \
   node:22-bookworm npm ci
 
 docker run --rm \
   -v "$PWD:/app" \
-  -v /private/tmp/meal-tracker-node-modules:/app/node_modules \
-  -w /app \
+  -v /private/tmp/meal-tracker-node-modules:/app/apps/web/node_modules \
+  -w /app/apps/web \
   node:22-bookworm npm run lint
 
 docker run --rm \
   -v "$PWD:/app" \
-  -v /private/tmp/meal-tracker-node-modules:/app/node_modules \
-  -w /app \
+  -v /private/tmp/meal-tracker-node-modules:/app/apps/web/node_modules \
+  -w /app/apps/web \
   node:22-bookworm npm run build
 
 docker run --rm -v "$PWD:/app" -w /app/functions node:22-bookworm npm run lint

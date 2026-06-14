@@ -18,15 +18,15 @@
   ],
   "apphosting": {
     "backendId": "meal-signal",
-    "rootDir": "/",
+    "rootDir": "apps/web",
     "ignore": [
       "node_modules",
       ".next",
       ".git",
       "firebase-debug.log",
       "firebase-debug.*.log",
-      "functions/node_modules",
-      "functions/lib"
+      "../../functions/node_modules",
+      "../../functions/lib"
     ]
   },
   "remoteconfig": {

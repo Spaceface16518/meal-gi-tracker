@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+apps/web/node_modules
 functions/node_modules
 functions/lib
 /.pnp
@@ -17,10 +18,13 @@ functions/lib
 
 # next.js
 /.next/
+apps/web/.next/
 /out/
+apps/web/out/
 
 # production
 /build
+apps/web/build
 
 # misc
 .DS_Store
@@ -35,6 +39,7 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.local.example
+!apps/web/.env.local.example
 
 # vercel
 .vercel
