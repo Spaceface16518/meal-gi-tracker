@@ -131,7 +131,12 @@ export function TrackerApp() {
               <GiEventForm />
             </div>
           ) : (
-            <AnalysisPanel analysis={analysis} mealCount={meals.length} eventCount={events.length} />
+            <AnalysisPanel
+              uid={user.uid}
+              analysis={analysis}
+              mealCount={meals.length}
+              eventCount={events.length}
+            />
           )}
         </section>
 

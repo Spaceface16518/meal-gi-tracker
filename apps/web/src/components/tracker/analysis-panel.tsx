@@ -1,22 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, CircleAlert, RefreshCcw } from "lucide-react";
+import { BarChart3, CircleAlert, FileJson, FileText, RefreshCcw } from "lucide-react";
 import { analyzeCorrelations } from "@/lib/callables";
+import { exportAnalysisHtml, exportAnalysisJson, exportMealsJson } from "@/lib/export-data";
 import { getErrorMessage } from "@/lib/errors";
+import { getAllGiEvents, getAllMeals } from "@/lib/firestore";
 import type { CorrelationAnalysis } from "@/lib/types";
 import { EmptyState, StatusMessage } from "@/components/tracker/ui";
 
 export function AnalysisPanel({
+  uid,
   analysis,
   mealCount,
   eventCount,
 }: {
+  uid: string;
   analysis: CorrelationAnalysis | null;
   mealCount: number;
   eventCount: number;
 }) {
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState("");
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
 
@@ -35,6 +40,36 @@ export function AnalysisPanel({
     }
   }
 
+  async function loadExportData() {
+    const [meals, events] = await Promise.all([getAllMeals(uid), getAllGiEvents(uid)]);
+    return { meals, events };
+  }
+
+  async function exportData(kind: "analysis-html" | "analysis-json" | "meals-json") {
+    setExporting(kind);
+    setMessage("");
+    setIsError(false);
+
+    try {
+      const { meals, events } = await loadExportData();
+      if (kind === "analysis-html") {
+        exportAnalysisHtml({ analysis, meals, events });
+        setMessage("Analysis HTML exported.");
+      } else if (kind === "analysis-json") {
+        exportAnalysisJson({ analysis, meals, events });
+        setMessage("Analysis JSON exported.");
+      } else {
+        exportMealsJson(meals);
+        setMessage("Meals JSON exported.");
+      }
+    } catch (err) {
+      setIsError(true);
+      setMessage(getErrorMessage(err, "Export could not be prepared."));
+    } finally {
+      setExporting("");
+    }
+  }
+
   return (
     <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
       <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -46,15 +81,48 @@ export function AnalysisPanel({
               : `${mealCount} meals and ${eventCount} GI events available`}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={runAnalysis}
-          disabled={busy}
-          className="flex h-10 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-background transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <RefreshCcw size={16} className={busy ? "animate-spin" : ""} aria-hidden />
-          {busy ? "Starting" : "Run"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => exportData("analysis-html")}
+            disabled={Boolean(exporting)}
+            className="grid size-10 place-items-center rounded-lg border border-border-strong bg-surface text-muted-strong shadow-sm transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Export analysis HTML"
+            title="Export analysis HTML"
+          >
+            <FileText size={17} aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => exportData("analysis-json")}
+            disabled={Boolean(exporting)}
+            className="grid size-10 place-items-center rounded-lg border border-border-strong bg-surface text-muted-strong shadow-sm transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Export analysis JSON"
+            title="Export analysis JSON"
+          >
+            <FileJson size={17} aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => exportData("meals-json")}
+            disabled={Boolean(exporting)}
+            className="flex h-10 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface px-3 text-sm font-semibold text-muted-strong shadow-sm transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Export all meals JSON"
+            title="Export all meals JSON"
+          >
+            <FileJson size={16} aria-hidden />
+            Meals
+          </button>
+          <button
+            type="button"
+            onClick={runAnalysis}
+            disabled={busy}
+            className="flex h-10 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-background transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <RefreshCcw size={16} className={busy ? "animate-spin" : ""} aria-hidden />
+            {busy ? "Starting" : "Run"}
+          </button>
+        </div>
       </div>
 
       {message ? (

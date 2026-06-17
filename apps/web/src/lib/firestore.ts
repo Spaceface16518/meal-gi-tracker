@@ -5,6 +5,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
@@ -118,6 +119,18 @@ export async function deleteMeal(uid: string, mealId: string) {
 
 export async function deleteGiEvent(uid: string, eventId: string) {
   await deleteDoc(doc(db, "users", uid, "events", eventId));
+}
+
+export async function getAllMeals(uid: string) {
+  const mealsQuery = query(collection(db, "users", uid, "meals"), orderBy("eatenAt", "desc"));
+  const snapshot = await getDocs(mealsQuery);
+  return snapshot.docs.map(mealFromDoc);
+}
+
+export async function getAllGiEvents(uid: string) {
+  const eventsQuery = query(collection(db, "users", uid, "events"), orderBy("occurredAt", "desc"));
+  const snapshot = await getDocs(eventsQuery);
+  return snapshot.docs.map(eventFromDoc);
 }
 
 export function subscribeMeals(

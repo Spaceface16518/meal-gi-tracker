@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Activity, BarChart3, CalendarClock, RefreshCcw, Trash2, Utensils } from "lucide-react";
+import { Activity, BarChart3, CalendarClock, FileJson, RefreshCcw, Trash2, Utensils } from "lucide-react";
 import { reanalyzeMeal } from "@/lib/callables";
 import { formatRelativeTime } from "@/lib/date";
+import { exportMealJson } from "@/lib/export-data";
 import { getErrorMessage } from "@/lib/errors";
 import { deleteGiEvent, deleteMeal } from "@/lib/firestore";
 import type { CorrelationAnalysis, GiEvent, Meal } from "@/lib/types";
@@ -128,6 +129,15 @@ export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal
                         className={reanalyzingMealId === item.meal.id ? "animate-spin" : ""}
                         aria-hidden
                       />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => exportMealJson(item.meal)}
+                      className="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-label="Export meal JSON"
+                      title="Export meal JSON"
+                    >
+                      <FileJson size={14} aria-hidden />
                     </button>
                     <button
                       type="button"
