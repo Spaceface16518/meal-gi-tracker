@@ -6,13 +6,15 @@ import { logger, setGlobalOptions } from "firebase-functions";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { computeIrritantSensitivity, type SensitivityScore } from "./sensitivity.js";
 
 initializeApp();
 setGlobalOptions({ region: "us-central1", maxInstances: 10 });
 
 const db = getFirestore();
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
-const defaultModelName = "gemini-2.5-flash-lite";
+const defaultMealModelName = "gemini-2.5-flash-lite";
+const defaultCorrelationModelName = "gemini-3.1-pro-preview";
 
 type InputMode = "text" | "voice" | "image";
 
@@ -83,7 +85,8 @@ type ReanalyzeMealData = {
 };
 
 type PromptConfig = {
-  modelName: string;
+  mealModelName: string;
+  correlationModelName: string;
   mealAnalysisPromptTemplate: string;
   correlationAnalysisPromptTemplate: string;
   audioMealInstruction: string;
@@ -113,6 +116,15 @@ type EventDocument = {
   stoolType?: number;
   durationMinutes?: number;
   createdAt: Timestamp;
+};
+
+type SensitivityContext = {
+  explanation: string;
+  overall: SensitivityScore[];
+  bySymptom: Array<{
+    symptom: string;
+    scores: SensitivityScore[];
+  }>;
 };
 
 export const createMeal = onCall(
@@ -303,7 +315,7 @@ async function interpretMediaMeal(mode: InputMode, mediaBase64: string, mimeType
     const text = await generateJson(ai, [
       { text: prompt },
       { inlineData: { mimeType, data: mediaBase64 } },
-    ], promptConfig.modelName);
+    ], promptConfig.mealModelName);
     const parsed = parseMealAnalysis(text);
 
     logger.info("Gemini media meal analysis succeeded", {
@@ -339,7 +351,7 @@ async function analyzeMealText(text: string) {
   try {
     const promptConfig = await getPromptConfig();
     const prompt = renderTemplate(promptConfig.mealAnalysisPromptTemplate, { input: text });
-    const json = await generateJson(ai, [{ text: prompt }], promptConfig.modelName);
+    const json = await generateJson(ai, [{ text: prompt }], promptConfig.mealModelName);
     return parseMealAnalysis(json);
   } catch (error) {
     logger.warn("Gemini meal analysis failed; using heuristic fallback", { error });
@@ -370,11 +382,12 @@ async function runCorrelationForUser(uid: string) {
 
   const meals = mealsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   const events = eventsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  const sensitivityContext = buildSensitivityContext(meals, events);
   const ai = getGeminiClient();
 
   const analysis = ai
-    ? await analyzeCorrelationsWithGemini(uid, meals, events, ai)
-    : heuristicCorrelationAnalysis(uid, meals, events);
+    ? await analyzeCorrelationsWithGemini(uid, meals, events, sensitivityContext, ai)
+    : heuristicCorrelationAnalysis(uid, meals, events, sensitivityContext);
 
   await saveAnalysis(uid, analysis);
   return analysis;
@@ -384,6 +397,7 @@ async function analyzeCorrelationsWithGemini(
   uid: string,
   meals: FirebaseFirestore.DocumentData[],
   events: FirebaseFirestore.DocumentData[],
+  sensitivityContext: SensitivityContext,
   ai: GoogleGenAI,
 ) {
   try {
@@ -406,21 +420,25 @@ async function analyzeCorrelationsWithGemini(
     }));
 
     const promptConfig = await getPromptConfig();
-    const prompt = renderTemplate(promptConfig.correlationAnalysisPromptTemplate, {
-      mealsJson: JSON.stringify(mealPayload),
-      eventsJson: JSON.stringify(eventPayload),
-    });
+    const prompt =
+      renderTemplate(promptConfig.correlationAnalysisPromptTemplate, {
+        mealsJson: JSON.stringify(mealPayload),
+        eventsJson: JSON.stringify(eventPayload),
+        sensitivityExplanation: sensitivityContext.explanation,
+        sensitivityJson: JSON.stringify(sensitivityContext),
+      }) +
+      renderSensitivityPromptBlock(sensitivityContext);
     const json = await generateJson(ai, [
       {
         text: prompt,
       },
-    ], promptConfig.modelName);
+    ], promptConfig.correlationModelName);
 
     const parsed = parseJsonObject(json);
     return normalizeCorrelationAnalysis(uid, meals.length, events.length, parsed);
   } catch (error) {
     logger.warn("Gemini correlation analysis failed; using heuristic fallback", { error });
-    return heuristicCorrelationAnalysis(uid, meals, events);
+    return heuristicCorrelationAnalysis(uid, meals, events, sensitivityContext);
   }
 }
 
@@ -432,7 +450,7 @@ async function saveAnalysis(uid: string, analysis: CorrelationAnalysis) {
 
 async function generateJson(ai: GoogleGenAI, parts: unknown[], modelName: string) {
   const response = await ai.models.generateContent({
-    model: modelName || defaultModelName,
+    model: modelName || defaultMealModelName,
     contents: parts as never,
     config: {
       responseMimeType: "application/json",
@@ -507,7 +525,7 @@ Return only JSON with this shape:
   "dataQualityNotes": ["string"]
 }
 
-Use conservative language. Do not make medical claims. Look for repeated GI events within 2, 6, 12, 24, and 48 hour windows after meals.
+Use conservative language. Do not make medical claims. Look for repeated GI events within 2, 6, 12, 24, 48, and 120 hour windows after meals.
 
 Meals:
 {{mealsJson}}
@@ -519,7 +537,8 @@ let promptConfigCache: { expiresAt: number; values: PromptConfig } | null = null
 
 async function getPromptConfig(): Promise<PromptConfig> {
   const fallback: PromptConfig = {
-    modelName: defaultModelName,
+    mealModelName: defaultMealModelName,
+    correlationModelName: defaultCorrelationModelName,
     mealAnalysisPromptTemplate: defaultMealAnalysisPromptTemplate,
     correlationAnalysisPromptTemplate: defaultCorrelationAnalysisPromptTemplate,
     audioMealInstruction: "Transcribe this audio meal note, then analyze the meal.",
@@ -533,7 +552,11 @@ async function getPromptConfig(): Promise<PromptConfig> {
   try {
     const template = await getRemoteConfig().getTemplate();
     const values: PromptConfig = {
-      modelName: getRemoteConfigValue(template.parameters.gemini_model_name) || fallback.modelName,
+      mealModelName:
+        getRemoteConfigValue(template.parameters.gemini_model_name) || fallback.mealModelName,
+      correlationModelName:
+        getRemoteConfigValue(template.parameters.correlation_analysis_model_name) ||
+        fallback.correlationModelName,
       mealAnalysisPromptTemplate:
         getRemoteConfigValue(template.parameters.meal_analysis_prompt_template) ||
         fallback.mealAnalysisPromptTemplate,
@@ -598,11 +621,12 @@ function normalizeCorrelationAnalysis(
   const findings = Array.isArray(parsed.findings)
     ? parsed.findings.slice(0, 12).map((item) => {
         const row = item as Record<string, unknown>;
+        const irritant = cleanGeneratedString(row.irritant, "Unknown", 100);
         return {
-          irritant: cleanGeneratedString(row.irritant, "Unknown", 100),
+          irritant,
           confidence: clampNumber(Number(row.confidence ?? 0.3), 0, 1),
           direction: normalizeDirection(row.direction),
-          windowHours: clampNumber(Number(row.windowHours ?? 24), 1, 72),
+          windowHours: clampNumber(Number(row.windowHours ?? 24), 1, 120),
           evidence: cleanGeneratedString(row.evidence, "Limited evidence.", 500),
           suggestedAction: cleanGeneratedString(
             row.suggestedAction,
@@ -623,6 +647,51 @@ function normalizeCorrelationAnalysis(
     findings,
     dataQualityNotes: validateGeneratedStringList(parsed.dataQualityNotes, 8, 240),
   };
+}
+
+function buildSensitivityContext(
+  meals: FirebaseFirestore.DocumentData[],
+  events: FirebaseFirestore.DocumentData[],
+): SensitivityContext {
+  const symptoms = [...new Set(
+    events.flatMap((event) => (
+      Array.isArray(event.symptoms)
+        ? event.symptoms.filter((symptom): symptom is string => typeof symptom === "string")
+        : []
+    )),
+  )]
+    .map((symptom) => symptom.trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 8);
+
+  return {
+    explanation:
+      "Deterministic irritant sensitivity is weighted symptom burden after analyzed meals. " +
+      "Events closer to a meal count more using a 24 hour half-life, events after 120 hours " +
+      "are ignored, and scores are normalized per exposure. These are exploratory associations, " +
+      "not evidence that an irritant causes symptoms.",
+    overall: computeIrritantSensitivity(meals, events).slice(0, 12),
+    bySymptom: symptoms.map((symptom) => ({
+      symptom,
+      scores: computeIrritantSensitivity(meals, events, { symptomFilter: symptom }).slice(0, 8),
+    })),
+  };
+}
+
+function renderSensitivityPromptBlock(sensitivityContext: SensitivityContext) {
+  return `
+
+Deterministic sensitivity context:
+${sensitivityContext.explanation}
+
+Use these hard statistical rankings to inform the findings. Prefer irritants with higher
+normalizedSensitivity and enough exposureCount, but keep cautious language such as
+"associated with symptoms" or "possible sensitivity". Do not say an irritant causes symptoms.
+Do not expose raw score values, weighted scores, formulas, or calculation output in the response.
+
+Sensitivity rankings JSON:
+${JSON.stringify(sensitivityContext)}
+`;
 }
 
 function heuristicMealAnalysis(text: string): MealAnalysis {
@@ -718,41 +787,22 @@ function heuristicCorrelationAnalysis(
   uid: string,
   meals: FirebaseFirestore.DocumentData[],
   events: FirebaseFirestore.DocumentData[],
+  sensitivityContext?: SensitivityContext,
 ): CorrelationAnalysis {
-  const counts = new Map<string, { exposures: number; linkedEvents: number }>();
+  const sensitivityScores = sensitivityContext?.overall ?? computeIrritantSensitivity(meals, events);
 
-  for (const meal of meals) {
-    const eatenAt = meal.eatenAt?.toDate?.();
-    if (!eatenAt) continue;
-
-    const irritants = meal.analysis?.irritants ?? [];
-    for (const irritant of irritants) {
-      const name = String(irritant.name ?? "unknown");
-      const current = counts.get(name) ?? { exposures: 0, linkedEvents: 0 };
-      current.exposures += 1;
-      current.linkedEvents += events.some((event) => {
-        const occurredAt = event.occurredAt?.toDate?.();
-        if (!occurredAt) return false;
-        const hours = (occurredAt.getTime() - eatenAt.getTime()) / 3_600_000;
-        return hours >= 0 && hours <= 24;
-      })
-        ? 1
-        : 0;
-      counts.set(name, current);
-    }
-  }
-
-  const findings = [...counts.entries()]
-    .sort((a, b) => b[1].linkedEvents - a[1].linkedEvents)
+  const findings = sensitivityScores
     .slice(0, 8)
-    .map(([irritant, count]) => {
-      const confidence = count.exposures ? count.linkedEvents / count.exposures : 0;
+    .map((score) => {
+      const confidence = clampNumber(score.normalizedSensitivity / 10, 0.1, 0.8);
       return {
-        irritant,
+        irritant: score.irritant,
         confidence: clampNumber(confidence, 0.1, 0.8),
-        direction: confidence > 0.45 ? "possible_trigger" : "insufficient_data",
-        windowHours: 24,
-        evidence: `${count.linkedEvents} of ${count.exposures} logged exposures had a GI event within 24 hours.`,
+        direction: score.normalizedSensitivity > 0 ? "possible_trigger" : "insufficient_data",
+        windowHours: 120,
+        evidence:
+          "This irritant ranked higher in the time-weighted symptom association pass. " +
+          "That means it is associated with symptoms in the log, not that it causes symptoms.",
         suggestedAction: "Keep logging consistently before making diet changes.",
       } satisfies CorrelationFinding;
     });
@@ -764,7 +814,7 @@ function heuristicCorrelationAnalysis(
     mealCount: meals.length,
     eventCount: events.length,
     summary: findings.length
-      ? "A preliminary correlation pass is ready. Treat it as a tracking signal, not a diagnosis."
+      ? "A preliminary possible sensitivity ranking is ready. Treat it as a tracking signal, not a diagnosis."
       : "No repeated irritant patterns are visible yet.",
     findings,
     dataQualityNotes: [

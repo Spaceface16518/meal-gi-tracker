@@ -5,7 +5,13 @@
       "defaultValue": {
         "value": "gemini-2.5-flash-lite"
       },
-      "description": "Gemini model used by Firebase Functions for batch meal and correlation analysis."
+      "description": "Gemini model used by Firebase Functions for meal analysis."
+    },
+    "correlation_analysis_model_name": {
+      "defaultValue": {
+        "value": "gemini-3.1-pro-preview"
+      },
+      "description": "Higher-power Gemini model used by occasional correlation analysis runs."
     },
     "media_meal_audio_instruction": {
       "defaultValue": {
@@ -27,7 +33,7 @@
     },
     "correlation_analysis_prompt_template": {
       "defaultValue": {
-        "value": "Analyze meal irritant correlation with GI events.\n\nReturn only JSON with this shape:\n{\n  \"status\": \"ready\" | \"insufficient_data\",\n  \"summary\": \"brief useful summary\",\n  \"findings\": [\n    {\n      \"irritant\": \"string\",\n      \"confidence\": 0.0,\n      \"direction\": \"possible_trigger\" | \"unlikely_trigger\" | \"insufficient_data\",\n      \"windowHours\": 24,\n      \"evidence\": \"string\",\n      \"suggestedAction\": \"string\"\n    }\n  ],\n  \"dataQualityNotes\": [\"string\"]\n}\n\nUse conservative language. Do not make medical claims. Look for repeated GI events within 2, 6, 12, 24, and 48 hour windows after meals.\n\nMeals:\n{{mealsJson}}\n\nGI events:\n{{eventsJson}}"
+        "value": "Analyze meal irritant correlation with GI events.\n\nReturn only JSON with this shape:\n{\n  \"status\": \"ready\" | \"insufficient_data\",\n  \"summary\": \"brief useful summary\",\n  \"findings\": [\n    {\n      \"irritant\": \"string\",\n      \"confidence\": 0.0,\n      \"direction\": \"possible_trigger\" | \"unlikely_trigger\" | \"insufficient_data\",\n      \"windowHours\": 24,\n      \"evidence\": \"string\",\n      \"suggestedAction\": \"string\"\n    }\n  ],\n  \"dataQualityNotes\": [\"string\"]\n}\n\nUse conservative language. Do not make medical claims. Look for repeated GI events within 2, 6, 12, 24, 48, and 120 hour windows after meals. Use the statistical sensitivity rankings to inform your qualitative analysis, but do not expose raw score values, weighted scores, formulas, or calculation output in the response.\n\nMeals:\n{{mealsJson}}\n\nGI events:\n{{eventsJson}}\n\nStatistical sensitivity explanation:\n{{sensitivityExplanation}}\n\nSensitivity rankings:\n{{sensitivityJson}}"
       },
       "description": "Correlation prompt. Keep {{mealsJson}} and {{eventsJson}} placeholders."
     }
@@ -37,6 +43,7 @@
       "description": "Editable prompt templates consumed by Firebase Functions.",
       "parameters": {
         "gemini_model_name": {},
+        "correlation_analysis_model_name": {},
         "media_meal_audio_instruction": {},
         "media_meal_image_instruction": {},
         "meal_analysis_prompt_template": {},

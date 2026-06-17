@@ -82,7 +82,10 @@ export function AnalysisPanel({
                   <div>
                     <h3 className="font-semibold">{finding.irritant}</h3>
                     <p className="text-sm text-muted">
-                      {finding.direction.replaceAll("_", " ")} within {finding.windowHours}h
+                      {finding.direction === "possible_trigger"
+                        ? "possible sensitivity"
+                        : finding.direction.replaceAll("_", " ")}{" "}
+                      within {finding.windowHours}h
                     </p>
                   </div>
                   <span className="rounded-md bg-surface-muted px-2 py-1 text-xs font-semibold text-muted-strong">
