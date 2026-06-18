@@ -30,6 +30,10 @@ apps/web/build
 .DS_Store
 *.pem
 
+# xcode
+*.xcuserstate
+**/xcuserdata/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
