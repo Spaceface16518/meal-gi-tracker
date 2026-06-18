@@ -4,6 +4,8 @@
 <dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Meal Signal uses the microphone to record voice meal entries.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Meal Signal uses on-device speech recognition to transcribe voice meal entries.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Meal Signal uses the camera to capture meal photos.</string>
 	<key>UIBackgroundModes</key>

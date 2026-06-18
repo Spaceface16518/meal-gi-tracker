@@ -38,7 +38,7 @@ final class AudioRecorder {
         isRecording = true
     }
 
-    func stop() throws -> Media {
+    func stop() throws -> RecordedMedia {
         guard let recorder, let recordingURL else {
             throw MediaError.recordingUnavailable
         }
@@ -49,8 +49,7 @@ final class AudioRecorder {
         self.recordingURL = nil
 
         let data = try Data(contentsOf: recordingURL)
-        try? FileManager.default.removeItem(at: recordingURL)
-        return Media(data: data, mimeType: "audio/mp4")
+        return RecordedMedia(media: Media(data: data, mimeType: "audio/mp4"), fileURL: recordingURL)
     }
 
     private func requestRecordPermission() async -> Bool {

@@ -9,6 +9,7 @@ struct MealEntryForm: View {
     @State private var isCameraPresented = false
     @State private var mediaMessage: AppMessage?
     @State private var audioRecorder = AudioRecorder()
+    private let interpreter: LocalMealInterpreter = AppleLocalMealInterpreter()
 
     var body: some View {
         Form {
@@ -33,14 +34,22 @@ struct MealEntryForm: View {
                     VoiceInput(
                         isRecording: audioRecorder.isRecording,
                         hasAudio: draft.hasMedia,
+                        hasTranscript: draft.hasLocalText,
                         toggleRecording: toggleRecording
                     )
+                    if draft.hasLocalText {
+                        LocalInterpretationEditor(title: "Transcript", text: $draft.text)
+                    }
                 case .image:
                     ImageInput(
                         selectedImage: $selectedImage,
                         hasImage: draft.hasMedia,
+                        hasDescription: draft.hasLocalText,
                         takePhoto: { isCameraPresented = true }
                     )
+                    if draft.hasLocalText {
+                        LocalInterpretationEditor(title: "Description", text: $draft.text)
+                    }
                 }
             }
 
@@ -65,9 +74,10 @@ struct MealEntryForm: View {
         Task {
             do {
                 if audioRecorder.isRecording {
-                    let media = try audioRecorder.stop()
-                    try setMedia(media)
-                    mediaMessage = .success("Audio ready.")
+                    let recording = try audioRecorder.stop()
+                    defer { recording.removeTemporaryFile() }
+                    try setMedia(recording.media)
+                    await processVoice(recording)
                 } else {
                     try await audioRecorder.start()
                     draft.clearMedia()
@@ -89,20 +99,23 @@ struct MealEntryForm: View {
             }
 
             let mimeType = item.supportedContentTypes.first?.preferredMIMEType ?? "image/jpeg"
-            try setMedia(Media(data: data, mimeType: mimeType))
-            mediaMessage = .success("Image ready.")
+            let media = Media(data: data, mimeType: mimeType)
+            try setMedia(media)
+            await processImage(media)
         } catch {
             mediaMessage = .error(error.localizedDescription)
         }
     }
 
     private func loadCameraImage(_ media: Media) {
-        do {
-            try setMedia(media)
-            selectedImage = nil
-            mediaMessage = .success("Image ready.")
-        } catch {
-            mediaMessage = .error(error.localizedDescription)
+        Task {
+            do {
+                try setMedia(media)
+                selectedImage = nil
+                await processImage(media)
+            } catch {
+                mediaMessage = .error(error.localizedDescription)
+            }
         }
     }
 
@@ -114,6 +127,38 @@ struct MealEntryForm: View {
 
         draft.mediaBase64 = media.data.base64EncodedString()
         draft.mimeType = media.mimeType
+    }
+
+    private func processVoice(_ recording: RecordedMedia) async {
+        mediaMessage = .info("Processing locally...")
+        do {
+            let result = try await interpreter.interpretVoice(fileURL: recording.fileURL)
+            apply(result)
+            mediaMessage = .success("Ready to review.")
+        } catch {
+            draft.processingSource = .cloud
+            draft.localProcessingWarning = error.localizedDescription
+            mediaMessage = .info("Using cloud processing.")
+        }
+    }
+
+    private func processImage(_ media: Media) async {
+        mediaMessage = .info("Processing locally...")
+        do {
+            let result = try await interpreter.interpretImage(media)
+            apply(result)
+            mediaMessage = .success("Ready to review.")
+        } catch {
+            draft.processingSource = .cloud
+            draft.localProcessingWarning = error.localizedDescription
+            mediaMessage = .info("Using cloud processing.")
+        }
+    }
+
+    private func apply(_ interpretation: MealInterpretation) {
+        draft.text = interpretation.usableText ?? interpretation.text
+        draft.processingSource = .local
+        draft.localProcessingWarning = interpretation.warningText ?? ""
     }
 }
 

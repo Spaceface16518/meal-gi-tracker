@@ -5,6 +5,7 @@ import UIKit
 struct ImageInput: View {
     @Binding var selectedImage: PhotosPickerItem?
     let hasImage: Bool
+    let hasDescription: Bool
     let takePhoto: () -> Void
 
     var body: some View {
@@ -25,7 +26,7 @@ struct ImageInput: View {
                 .buttonStyle(.bordered)
             }
 
-            MediaReadyRow(isReady: hasImage, label: "Image ready")
+            MediaReadyRow(isReady: hasImage || hasDescription, label: hasDescription ? "Description ready" : "Image ready")
         }
         .padding(.vertical, 4)
     }
@@ -34,6 +35,6 @@ struct ImageInput: View {
 #Preview {
     @Previewable @State var item: PhotosPickerItem?
 
-    ImageInput(selectedImage: $item, hasImage: true, takePhoto: {})
+    ImageInput(selectedImage: $item, hasImage: true, hasDescription: true, takePhoto: {})
         .padding()
 }

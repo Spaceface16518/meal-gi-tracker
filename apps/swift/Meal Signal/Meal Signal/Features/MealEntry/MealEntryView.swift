@@ -7,6 +7,8 @@ struct MealDraft {
     var eatenAt = Date()
     var mediaBase64 = ""
     var mimeType = ""
+    var processingSource: MealProcessingSource?
+    var localProcessingWarning = ""
 
     var trimmedText: String {
         text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -17,11 +19,31 @@ struct MealDraft {
     }
 
     var textPayload: String? {
-        mode == .text ? trimmedText : nil
+        trimmedText.nilIfEmpty
+    }
+
+    var mediaBase64Payload: String? {
+        textPayload == nil ? mediaBase64.nilIfEmpty : nil
+    }
+
+    var mimeTypePayload: String? {
+        textPayload == nil ? mimeType.nilIfEmpty : nil
+    }
+
+    var processingSourcePayload: String? {
+        processingSource?.rawValue
+    }
+
+    var localProcessingWarningPayload: String? {
+        localProcessingWarning.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
     }
 
     var hasMedia: Bool {
         !mediaBase64.isEmpty && !mimeType.isEmpty
+    }
+
+    var hasLocalText: Bool {
+        mode != .text && textPayload != nil
     }
 
     var canSave: Bool {
@@ -29,14 +51,22 @@ struct MealDraft {
         case .text:
             trimmedText.count > 2
         case .voice, .image:
-            hasMedia
+            trimmedText.count > 2 || hasMedia
         }
     }
 
     mutating func clearMedia() {
         mediaBase64 = ""
         mimeType = ""
+        processingSource = nil
+        localProcessingWarning = ""
+        if mode != .text { text = "" }
     }
+}
+
+enum MealProcessingSource: String {
+    case local
+    case cloud
 }
 
 struct MealEntryView: View {
@@ -82,10 +112,12 @@ struct MealEntryView: View {
                 try await service.createMeal(
                     mode: draft.mode,
                     text: draft.textPayload,
-                    mediaBase64: draft.mediaBase64,
-                    mimeType: draft.mimeType,
+                    mediaBase64: draft.mediaBase64Payload,
+                    mimeType: draft.mimeTypePayload,
                     eatenAt: draft.eatenAt,
-                    notes: draft.trimmedNotes
+                    notes: draft.trimmedNotes,
+                    processingSource: draft.processingSourcePayload,
+                    localProcessingWarning: draft.localProcessingWarningPayload
                 )
                 dismiss()
             } catch {

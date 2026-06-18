@@ -69,6 +69,8 @@ type CreateMealData = {
   mimeType?: string;
   eatenAt?: string;
   notes?: string;
+  processingSource?: "local" | "cloud";
+  localProcessingWarning?: string;
 };
 
 type CreateEventData = {
@@ -104,6 +106,8 @@ type MealDocument = {
   analysis: MealAnalysis;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  processingSource?: "local" | "cloud";
+  localProcessingWarning?: string;
   reanalyzedAt?: Timestamp;
 };
 
@@ -140,16 +144,26 @@ export const createMeal = onCall(
 
     const eatenAt = parseDate(data.eatenAt, "eatenAt");
     const notes = optionalString(data.notes, 1000);
+    const localText = optionalString(data.text, 8000);
+    const requestedProcessingSource = optionalProcessingSource(data.processingSource);
+    const localProcessingWarning = optionalString(data.localProcessingWarning, 1000);
     const now = Timestamp.now();
 
     let rawInput = "";
     let interpretedText = "";
     let analysis: MealAnalysis;
+    let processingSource: "local" | "cloud" | undefined;
 
     if (mode === "text") {
       rawInput = requiredString(data.text, "text", 8000);
       interpretedText = rawInput;
       analysis = await analyzeMealText(rawInput);
+      processingSource = requestedProcessingSource;
+    } else if (localText) {
+      rawInput = `[${mode}:local-text]`;
+      interpretedText = localText;
+      analysis = await analyzeMealText(localText);
+      processingSource = "local";
     } else {
       const mediaBase64 = requiredString(data.mediaBase64, "mediaBase64", 8_000_000);
       const originalMimeType = requiredString(data.mimeType, "mimeType", 120);
@@ -164,6 +178,7 @@ export const createMeal = onCall(
       const interpreted = await interpretMediaMeal(mode, mediaBase64, mimeType);
       interpretedText = interpreted.interpretedText;
       analysis = interpreted.analysis;
+      processingSource = "cloud";
     }
 
     const meal: MealDocument = {
@@ -177,6 +192,8 @@ export const createMeal = onCall(
       createdAt: now,
       updatedAt: now,
       ...(notes ? { notes } : {}),
+      ...(processingSource ? { processingSource } : {}),
+      ...(localProcessingWarning ? { localProcessingWarning } : {}),
     };
 
     const docRef = await db.collection("users").doc(uid).collection("meals").add(meal);
@@ -883,6 +900,12 @@ function optionalString(value: unknown, maxLength: number) {
     throw new HttpsError("invalid-argument", "Invalid text value.");
   }
   return value.trim();
+}
+
+function optionalProcessingSource(value: unknown) {
+  if (value == null || value === "") return undefined;
+  if (value === "local" || value === "cloud") return value;
+  throw new HttpsError("invalid-argument", "processingSource is invalid.");
 }
 
 function normalizeMediaMimeType(value: string) {

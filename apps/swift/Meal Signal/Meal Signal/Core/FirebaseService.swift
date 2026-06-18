@@ -50,7 +50,9 @@ final class FirebaseService {
         mediaBase64: String?,
         mimeType: String?,
         eatenAt: Date,
-        notes: String?
+        notes: String?,
+        processingSource: String? = nil,
+        localProcessingWarning: String? = nil
     ) async throws {
         var payload: [String: Any] = [
             "mode": mode.rawValue,
@@ -60,6 +62,8 @@ final class FirebaseService {
         if let mediaBase64 { payload["mediaBase64"] = mediaBase64 }
         if let mimeType { payload["mimeType"] = mimeType }
         if let notes { payload["notes"] = notes }
+        if let processingSource { payload["processingSource"] = processingSource }
+        if let localProcessingWarning { payload["localProcessingWarning"] = localProcessingWarning }
         _ = try await functions.httpsCallable("createMeal").call(payload)
     }
 

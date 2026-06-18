@@ -7,6 +7,15 @@ struct Media {
     let mimeType: String
 }
 
+struct RecordedMedia {
+    let media: Media
+    let fileURL: URL
+
+    func removeTemporaryFile() {
+        try? FileManager.default.removeItem(at: fileURL)
+    }
+}
+
 enum MediaError: LocalizedError {
     case fileTooLarge
     case recordingUnavailable

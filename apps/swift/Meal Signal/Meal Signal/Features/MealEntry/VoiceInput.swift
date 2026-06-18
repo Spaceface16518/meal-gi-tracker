@@ -3,6 +3,7 @@ import SwiftUI
 struct VoiceInput: View {
     let isRecording: Bool
     let hasAudio: Bool
+    let hasTranscript: Bool
     let toggleRecording: () -> Void
 
     var body: some View {
@@ -14,7 +15,7 @@ struct VoiceInput: View {
             .buttonStyle(.borderedProminent)
             .tint(isRecording ? .red : MealSignalDesign.brand)
 
-            MediaReadyRow(isReady: hasAudio, label: "Audio ready")
+            MediaReadyRow(isReady: hasAudio || hasTranscript, label: hasTranscript ? "Transcript ready" : "Audio ready")
         }
         .padding(.vertical, 4)
     }
@@ -26,6 +27,6 @@ struct VoiceInput: View {
 }
 
 #Preview {
-    VoiceInput(isRecording: false, hasAudio: true, toggleRecording: {})
+    VoiceInput(isRecording: false, hasAudio: true, hasTranscript: true, toggleRecording: {})
         .padding()
 }
