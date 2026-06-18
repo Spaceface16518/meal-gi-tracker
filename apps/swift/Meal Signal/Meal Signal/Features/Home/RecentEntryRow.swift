@@ -4,6 +4,7 @@ struct RecentEntryRow: View {
     @Environment(\.firebaseService) private var service
 
     let entry: RecentEntry
+    let isDeleting: Bool
     @Binding var deleteConfirmation: RecentEntry?
     @State private var isReanalyzing = false
     @State private var message: AppMessage?
@@ -17,12 +18,19 @@ struct RecentEntryRow: View {
                 }
                 Spacer()
                 if entry.kind == .meal {
-                    Button("Reanalyze", systemImage: "arrow.clockwise", action: reanalyzeEntry)
+                    Button(action: reanalyzeEntry) {
+                        LoadingIcon(systemImage: "arrow.clockwise", isLoading: isReanalyzing)
+                    }
+                        .accessibilityLabel(isReanalyzing ? "Reanalyzing" : "Reanalyze")
                         .labelStyle(.iconOnly)
                         .disabled(isReanalyzing)
                 }
-                Button("Delete", systemImage: "trash", action: confirmDelete)
+                Button(action: confirmDelete) {
+                    LoadingIcon(systemImage: "trash", isLoading: isDeleting)
+                }
+                    .accessibilityLabel(isDeleting ? "Deleting" : "Delete")
                     .labelStyle(.iconOnly)
+                    .disabled(isDeleting)
             }
             Text(entry.detail).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
             IrritantChips(chips: entry.chips)
@@ -77,6 +85,7 @@ private struct IrritantChips: View {
 
     RecentEntryRow(
         entry: PreviewFixtures.recentEntries[0],
+        isDeleting: false,
         deleteConfirmation: $deleteConfirmation
     )
     .padding()

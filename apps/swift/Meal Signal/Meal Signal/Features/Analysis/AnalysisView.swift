@@ -16,6 +16,7 @@ struct AnalysisView: View {
                 analysis: viewModel.analysis,
                 mealCount: viewModel.mealCount,
                 eventCount: viewModel.eventCount,
+                isLoading: viewModel.isLoading,
                 isRunning: isRunning,
                 runAnalysis: runAnalysis
             )
@@ -44,6 +45,7 @@ struct AnalysisContent: View {
     let analysis: CorrelationAnalysis?
     let mealCount: Int
     let eventCount: Int
+    let isLoading: Bool
     let isRunning: Bool
     let runAnalysis: () -> Void
 
@@ -60,10 +62,11 @@ struct AnalysisContent: View {
                             analysis: analysis,
                             mealCount: mealCount,
                             eventCount: eventCount,
+                            isLoading: isLoading,
                             isRunning: isRunning,
                             runAnalysis: runAnalysis
                         )
-                        AnalysisResults(analysis: analysis)
+                        AnalysisResults(analysis: analysis, isLoading: isLoading)
                     }
                 }
             }
@@ -77,10 +80,14 @@ private struct AnalysisHeader: View {
     let analysis: CorrelationAnalysis?
     let mealCount: Int
     let eventCount: Int
+    let isLoading: Bool
     let isRunning: Bool
     let runAnalysis: () -> Void
 
     private var subtitle: String {
+        if isLoading {
+            return "Loading meal and event counts"
+        }
         if let analysis {
             return "Updated \(analysis.generatedAt.formatted(date: .abbreviated, time: .shortened))"
         }
@@ -94,7 +101,9 @@ private struct AnalysisHeader: View {
                 Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
-            Button(isRunning ? "Starting" : "Run", systemImage: "arrow.clockwise", action: runAnalysis)
+            Button(action: runAnalysis) {
+                LoadingLabel(title: isRunning ? "Starting" : "Run", systemImage: "arrow.clockwise", isLoading: isRunning)
+            }
                 .buttonStyle(.borderedProminent)
                 .disabled(isRunning)
         }
@@ -103,6 +112,7 @@ private struct AnalysisHeader: View {
 
 private struct AnalysisResults: View {
     let analysis: CorrelationAnalysis?
+    let isLoading: Bool
 
     var body: some View {
         if let analysis {
@@ -113,6 +123,8 @@ private struct AnalysisResults: View {
                 }
                 DataQualityNotes(notes: analysis.dataQualityNotes)
             }
+        } else if isLoading {
+            LoadingStateView(title: "Loading analysis")
         } else {
             ContentUnavailableView("No analysis yet", systemImage: "chart.bar")
                 .frame(maxWidth: .infinity)
@@ -127,6 +139,7 @@ private struct AnalysisResults: View {
             analysis: PreviewFixtures.analysis,
             mealCount: 14,
             eventCount: 5,
+            isLoading: false,
             isRunning: false,
             runAnalysis: {}
         )
@@ -141,6 +154,7 @@ private struct AnalysisResults: View {
             analysis: nil,
             mealCount: 2,
             eventCount: 0,
+            isLoading: true,
             isRunning: true,
             runAnalysis: {}
         )

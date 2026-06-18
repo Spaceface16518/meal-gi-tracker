@@ -35,7 +35,9 @@ struct GIEventEntryView: View {
                         Button("Cancel", action: cancel)
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Save", action: save)
+                        Button(action: save) {
+                            LoadingLabel(title: isSaving ? "Saving" : "Save", isLoading: isSaving)
+                        }
                             .disabled(!canSave)
                     }
                 }

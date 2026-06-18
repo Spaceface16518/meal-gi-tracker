@@ -53,11 +53,14 @@ private struct AuthView: View {
                 }
 
                 Section {
-                    Button(isSignUp ? "Create account" : "Sign in", action: submit)
+                    Button(action: submit) {
+                        LoadingLabel(title: submitTitle, isLoading: busy)
+                    }
                         .disabled(email.isEmpty || password.count < 6 || busy)
                     Button(isSignUp ? "Use existing account" : "Create an account") {
                         isSignUp.toggle()
                     }
+                    .disabled(busy)
                 }
 
                 if let message = message ?? session.message {
@@ -83,6 +86,11 @@ private struct AuthView: View {
             }
             busy = false
         }
+    }
+
+    private var submitTitle: String {
+        if busy { return isSignUp ? "Creating" : "Signing in" }
+        return isSignUp ? "Create account" : "Sign in"
     }
 }
 

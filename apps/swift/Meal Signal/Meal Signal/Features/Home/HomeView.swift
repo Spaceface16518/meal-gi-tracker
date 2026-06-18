@@ -7,6 +7,7 @@ struct HomeView: View {
     let session: AuthSession
 
     @State private var deleteConfirmation: RecentEntry?
+    @State private var deletingEntryID: String?
     @State private var addSheet: AddSheet?
     @State private var actionMessage: AppMessage?
 
@@ -16,7 +17,9 @@ struct HomeView: View {
                 message: actionMessage ?? history.message,
                 mealCount: history.meals.count,
                 eventCount: history.events.count,
+                isLoading: history.isLoading,
                 entries: history.entries,
+                deletingEntryID: deletingEntryID,
                 addSheet: $addSheet,
                 deleteConfirmation: $deleteConfirmation
             )
@@ -38,13 +41,19 @@ struct HomeView: View {
                 set: { if !$0 { deleteConfirmation = nil } }
             )
         ) {
-            Button("Delete", role: .destructive, action: deleteEntry)
+            Button(deletingEntryID == nil ? "Delete" : "Deleting", role: .destructive, action: deleteEntry)
+                .disabled(deletingEntryID != nil)
         }
     }
 
     private func deleteEntry() {
-        guard let entry = deleteConfirmation else { return }
+        guard let entry = deleteConfirmation, deletingEntryID == nil else { return }
         Task {
+            deletingEntryID = entry.id
+            defer {
+                deletingEntryID = nil
+                deleteConfirmation = nil
+            }
             do {
                 switch entry.kind {
                 case .meal:

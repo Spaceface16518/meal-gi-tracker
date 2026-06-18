@@ -4,7 +4,9 @@ struct HomeContent: View {
     let message: AppMessage?
     let mealCount: Int
     let eventCount: Int
+    let isLoading: Bool
     let entries: [RecentEntry]
+    let deletingEntryID: String?
     @Binding var addSheet: AddSheet?
     @Binding var deleteConfirmation: RecentEntry?
 
@@ -22,6 +24,8 @@ struct HomeContent: View {
                 )
                 HistoryList(
                     entries: entries,
+                    isLoading: isLoading,
+                    deletingEntryID: deletingEntryID,
                     deleteConfirmation: $deleteConfirmation
                 )
             }
@@ -40,7 +44,9 @@ struct HomeContent: View {
             message: .success("Meal saved."),
             mealCount: 8,
             eventCount: 3,
+            isLoading: false,
             entries: PreviewFixtures.recentEntries,
+            deletingEntryID: nil,
             addSheet: $addSheet,
             deleteConfirmation: $deleteConfirmation
         )
