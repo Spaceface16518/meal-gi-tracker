@@ -1,18 +1,29 @@
 import PhotosUI
 import SwiftUI
+import UIKit
 
 struct ImageInput: View {
     @Binding var selectedImage: PhotosPickerItem?
     let hasImage: Bool
+    let takePhoto: () -> Void
 
     var body: some View {
         VStack(spacing: 12) {
-            PhotosPicker(selection: $selectedImage, matching: .images) {
-                Label(hasImage ? "Choose another photo" : "Choose meal photo", systemImage: "photo")
-                    .frame(maxWidth: .infinity, minHeight: 44)
+            HStack(spacing: 10) {
+                Button(action: takePhoto) {
+                    Label("Take Photo", systemImage: "camera")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(MealSignalDesign.brand)
+                .disabled(!UIImagePickerController.isSourceTypeAvailable(.camera))
+
+                PhotosPicker(selection: $selectedImage, matching: .images) {
+                    Label(hasImage ? "Replace" : "Choose", systemImage: "photo")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(MealSignalDesign.brand)
 
             MediaReadyRow(isReady: hasImage, label: "Image ready")
         }
@@ -23,6 +34,6 @@ struct ImageInput: View {
 #Preview {
     @Previewable @State var item: PhotosPickerItem?
 
-    ImageInput(selectedImage: $item, hasImage: true)
+    ImageInput(selectedImage: $item, hasImage: true, takePhoto: {})
         .padding()
 }

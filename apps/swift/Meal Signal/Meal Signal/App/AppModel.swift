@@ -6,7 +6,11 @@ final class AppModel {
     let service: FirebaseService
     let session: AuthSession
 
-    init(service: FirebaseService = FirebaseService()) {
+    convenience init() {
+        self.init(service: FirebaseService())
+    }
+
+    init(service: FirebaseService) {
         self.service = service
         session = AuthSession(service: service)
     }

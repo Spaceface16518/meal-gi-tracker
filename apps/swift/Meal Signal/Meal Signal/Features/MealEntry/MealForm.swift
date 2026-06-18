@@ -6,6 +6,7 @@ struct MealEntryForm: View {
     let message: AppMessage?
 
     @State private var selectedImage: PhotosPickerItem?
+    @State private var isCameraPresented = false
     @State private var mediaMessage: AppMessage?
     @State private var audioRecorder = AudioRecorder()
 
@@ -35,7 +36,11 @@ struct MealEntryForm: View {
                         toggleRecording: toggleRecording
                     )
                 case .image:
-                    ImageInput(selectedImage: $selectedImage, hasImage: draft.hasMedia)
+                    ImageInput(
+                        selectedImage: $selectedImage,
+                        hasImage: draft.hasMedia,
+                        takePhoto: { isCameraPresented = true }
+                    )
                 }
             }
 
@@ -49,6 +54,10 @@ struct MealEntryForm: View {
         }
         .onChange(of: selectedImage) { _, item in
             Task { await loadImage(item) }
+        }
+        .sheet(isPresented: $isCameraPresented) {
+            CameraCapture(onCapture: loadCameraImage)
+                .ignoresSafeArea()
         }
     }
 
@@ -81,6 +90,16 @@ struct MealEntryForm: View {
 
             let mimeType = item.supportedContentTypes.first?.preferredMIMEType ?? "image/jpeg"
             try setMedia(Media(data: data, mimeType: mimeType))
+            mediaMessage = .success("Image ready.")
+        } catch {
+            mediaMessage = .error(error.localizedDescription)
+        }
+    }
+
+    private func loadCameraImage(_ media: Media) {
+        do {
+            try setMedia(media)
+            selectedImage = nil
             mediaMessage = .success("Image ready.")
         } catch {
             mediaMessage = .error(error.localizedDescription)
