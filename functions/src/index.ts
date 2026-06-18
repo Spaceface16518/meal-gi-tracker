@@ -131,6 +131,18 @@ type SensitivityContext = {
   }>;
 };
 
+type IrritantCatalogEntry = {
+  name: string;
+  category: IrritantSignal["category"];
+  examples: string[];
+  evidence: string;
+  aliases?: string[];
+};
+
+type MealAnalysisContext = {
+  availableIrritants: IrritantCatalogEntry[];
+};
+
 export const createMeal = onCall(
   { secrets: [geminiApiKey], timeoutSeconds: 120, memory: "512MiB" },
   async (request) => {
@@ -157,12 +169,12 @@ export const createMeal = onCall(
     if (mode === "text") {
       rawInput = requiredString(data.text, "text", 8000);
       interpretedText = rawInput;
-      analysis = await analyzeMealText(rawInput);
+      analysis = await analyzeMealText(uid, rawInput);
       processingSource = requestedProcessingSource;
     } else if (localText) {
       rawInput = `[${mode}:local-text]`;
       interpretedText = localText;
-      analysis = await analyzeMealText(localText);
+      analysis = await analyzeMealText(uid, localText);
       processingSource = "local";
     } else {
       const mediaBase64 = requiredString(data.mediaBase64, "mediaBase64", 8_000_000);
@@ -175,7 +187,7 @@ export const createMeal = onCall(
         mimeType,
         approxBytes: approximateBase64Bytes(mediaBase64),
       });
-      const interpreted = await interpretMediaMeal(mode, mediaBase64, mimeType);
+      const interpreted = await interpretMediaMeal(uid, mode, mediaBase64, mimeType);
       interpretedText = interpreted.interpretedText;
       analysis = interpreted.analysis;
       processingSource = "cloud";
@@ -257,7 +269,7 @@ export const reanalyzeMeal = onCall(
     const sourceText = meal.inputMode === "text"
       ? meal.rawInput || meal.interpretedText
       : meal.interpretedText || meal.rawInput;
-    const analysis = await analyzeMealText(sourceText);
+    const analysis = await analyzeMealText(uid, sourceText, { excludeMealId: mealId });
     const now = Timestamp.now();
     const update = {
       analysis,
@@ -310,7 +322,12 @@ export const weeklyCorrelationSweep = onSchedule(
   },
 );
 
-async function interpretMediaMeal(mode: InputMode, mediaBase64: string, mimeType: string) {
+async function interpretMediaMeal(
+  uid: string,
+  mode: InputMode,
+  mediaBase64: string,
+  mimeType: string,
+) {
   const ai = getGeminiClient();
   if (!ai) {
     const fallbackText =
@@ -326,14 +343,18 @@ async function interpretMediaMeal(mode: InputMode, mediaBase64: string, mimeType
   const promptConfig = await getPromptConfig();
   const instruction =
     mode === "voice" ? promptConfig.audioMealInstruction : promptConfig.imageMealInstruction;
-  const prompt = renderTemplate(promptConfig.mealAnalysisPromptTemplate, { input: instruction });
+  const analysisContext = await buildMealAnalysisContext(uid);
+  const prompt = renderMealAnalysisPrompt(promptConfig.mealAnalysisPromptTemplate, {
+    input: instruction,
+    analysisContext,
+  });
 
   try {
     const text = await generateJson(ai, [
       { text: prompt },
       { inlineData: { mimeType, data: mediaBase64 } },
     ], promptConfig.mealModelName);
-    const parsed = parseMealAnalysis(text);
+    const parsed = parseMealAnalysis(text, analysisContext);
 
     logger.info("Gemini media meal analysis succeeded", {
       mode,
@@ -361,15 +382,23 @@ async function interpretMediaMeal(mode: InputMode, mediaBase64: string, mimeType
   }
 }
 
-async function analyzeMealText(text: string) {
+async function analyzeMealText(
+  uid: string,
+  text: string,
+  options: { excludeMealId?: string } = {},
+) {
   const ai = getGeminiClient();
   if (!ai) return heuristicMealAnalysis(text);
 
   try {
     const promptConfig = await getPromptConfig();
-    const prompt = renderTemplate(promptConfig.mealAnalysisPromptTemplate, { input: text });
+    const analysisContext = await buildMealAnalysisContext(uid, options);
+    const prompt = renderMealAnalysisPrompt(promptConfig.mealAnalysisPromptTemplate, {
+      input: text,
+      analysisContext,
+    });
     const json = await generateJson(ai, [{ text: prompt }], promptConfig.mealModelName);
-    return parseMealAnalysis(json);
+    return parseMealAnalysis(json, analysisContext);
   } catch (error) {
     logger.warn("Gemini meal analysis failed; using heuristic fallback", { error });
     return heuristicMealAnalysis(text);
@@ -497,28 +526,13 @@ Return only JSON with this exact shape:
 
 Use conservative confidence scores. Include likely irritants only, but include
 multiple irritants when a common food implies more than one plausible trigger.
-Prefer specific irritant names over broad categories.
+Prefer specific irritant names over broad categories. Reuse existing irritant names
+from this user's log when they fit; create a new irritant only for a truly distinct
+trigger not covered by the available list.
 
-Common irritant mapping inspiration:
-- Beer: alcohol, barley/gluten, wheat if wheat beer or unspecified beer style,
-  carbonation, and fructans/FODMAP from barley or wheat.
-- Bread, pasta, pizza, crackers, cereal, flour tortillas, pastries, baked goods:
-  wheat/gluten and wheat fructans/FODMAP.
-- Barley, rye, malt, malt vinegar, malted drinks: gluten grain and fructans/FODMAP.
-- Milk, cream, soft cheese, yogurt, ice cream, whey: lactose/dairy.
-- Onion, garlic, leeks, shallots, inulin, chicory root: fructans/FODMAP.
-- Beans, lentils, chickpeas, peas, cashews, pistachios: GOS/FODMAP.
-- Apple, pear, mango, watermelon, honey, high-fructose corn syrup: excess fructose/FODMAP.
-- Stone fruits, avocado, mushrooms, cauliflower, sugar-free gum, xylitol, sorbitol,
-  mannitol, maltitol, isomalt: polyols/FODMAP.
-- Fried foods, fast food, bacon, sausage, heavy cream, rich sauces: high fat.
-- Coffee, espresso, energy drinks, cola, black or green tea: caffeine.
-- Hot sauce, chili, jalapeno, curry, pepper-heavy foods: spice/capsaicin.
-- Wine, liquor, cocktails, hard seltzer: alcohol; cocktails may also include carbonation,
-  fructose, or artificial sweeteners if indicated.
-- Carbonated drinks, soda, sparkling water, beer, hard seltzer: carbonation.
-- Processed meats, cured meats, packaged snacks, emulsifiers, sugar alcohols,
-  artificial sweeteners: additives/other when specifically indicated.
+{{availableIrritants}}
+
+{{knownIrritants}}
 
 Input:
 {{input}}`;
@@ -602,6 +616,236 @@ function getRemoteConfigValue(parameter: unknown) {
   return typeof value === "string" ? value : "";
 }
 
+const knownIrritantCatalog: IrritantCatalogEntry[] = [
+  {
+    name: "lactose",
+    category: "dairy",
+    examples: ["milk", "ice cream", "soft cheese", "yogurt", "cream", "whey"],
+    evidence: "Lactose is a FODMAP disaccharide found in many dairy products.",
+    aliases: ["dairy", "lactose/dairy"],
+  },
+  {
+    name: "wheat/gluten",
+    category: "gluten",
+    examples: ["bread", "pasta", "pizza", "crackers", "cereal", "pastries"],
+    evidence: "Wheat, barley, and rye are gluten grains and can overlap with fructan exposure.",
+    aliases: ["gluten", "wheat"],
+  },
+  {
+    name: "wheat fructans",
+    category: "fodmap",
+    examples: ["wheat bread", "pasta", "flour tortillas", "baked goods"],
+    evidence: "Wheat and related grains can contribute fructans, a FODMAP oligosaccharide.",
+    aliases: ["wheat fodmap", "wheat/fructans"],
+  },
+  {
+    name: "barley/gluten",
+    category: "gluten",
+    examples: ["beer", "malt", "barley", "stout", "malt vinegar"],
+    evidence: "Barley and malt are gluten grain sources.",
+    aliases: ["barley", "malt"],
+  },
+  {
+    name: "grain fructans",
+    category: "fodmap",
+    examples: ["barley", "rye", "malt", "wheat beer"],
+    evidence: "Barley, rye, and wheat can contribute fructans/FODMAPs.",
+  },
+  {
+    name: "fructans",
+    category: "fodmap",
+    examples: ["onion", "garlic", "leeks", "shallots", "inulin", "chicory root"],
+    evidence: "Fructans are FODMAP oligosaccharides common in alliums and some additives.",
+    aliases: ["onion/garlic fructans"],
+  },
+  {
+    name: "GOS/FODMAP",
+    category: "fodmap",
+    examples: ["beans", "lentils", "chickpeas", "peas", "cashews", "pistachios"],
+    evidence: "Galactooligosaccharides are FODMAPs common in legumes and some nuts.",
+    aliases: ["GOS", "galactooligosaccharides", "galactans"],
+  },
+  {
+    name: "excess fructose",
+    category: "fodmap",
+    examples: ["apple", "pear", "mango", "watermelon", "honey", "high-fructose corn syrup"],
+    evidence: "Excess fructose is a FODMAP monosaccharide in some fruits and sweeteners.",
+    aliases: ["fructose", "high fructose"],
+  },
+  {
+    name: "polyols",
+    category: "fodmap",
+    examples: [
+      "sorbitol",
+      "mannitol",
+      "xylitol",
+      "maltitol",
+      "isomalt",
+      "stone fruits",
+      "mushrooms",
+      "cauliflower",
+    ],
+    evidence: "Polyols are FODMAP sugar alcohols found in some produce and sugar-free products.",
+    aliases: ["sugar alcohols"],
+  },
+  {
+    name: "high fat",
+    category: "fat",
+    examples: ["fried foods", "fast food", "bacon", "sausage", "heavy cream", "rich sauces"],
+    evidence: "High-fat meals are commonly linked with reflux symptoms and can affect motility.",
+    aliases: ["fatty foods", "fried foods"],
+  },
+  {
+    name: "spice/capsaicin",
+    category: "spice",
+    examples: ["hot sauce", "chili", "jalapeno", "curry", "pepper-heavy foods"],
+    evidence: "Spicy foods are commonly linked with reflux symptoms and GI discomfort.",
+    aliases: ["spice", "capsaicin", "spicy foods"],
+  },
+  {
+    name: "caffeine",
+    category: "caffeine",
+    examples: ["coffee", "espresso", "energy drinks", "cola", "black tea", "green tea", "matcha"],
+    evidence: "Coffee and other caffeine sources are commonly linked with GERD symptoms.",
+  },
+  {
+    name: "alcohol",
+    category: "alcohol",
+    examples: ["beer", "wine", "liquor", "cocktails", "hard seltzer"],
+    evidence: "Alcoholic drinks are commonly linked with GERD symptoms.",
+  },
+  {
+    name: "carbonation",
+    category: "other",
+    examples: ["soda", "sparkling water", "beer", "hard seltzer", "tonic"],
+    evidence: "Carbonated drinks can contribute bloating and reflux-like symptoms for some people.",
+    aliases: ["carbonated drinks"],
+  },
+  {
+    name: "acidic foods",
+    category: "other",
+    examples: ["citrus", "tomatoes", "tomato sauce", "vinegar-heavy foods"],
+    evidence: "Citrus and tomatoes are commonly linked with GERD symptoms.",
+    aliases: ["citrus/tomato acid", "acid"],
+  },
+  {
+    name: "chocolate",
+    category: "caffeine",
+    examples: ["chocolate", "cocoa", "brownies", "mocha"],
+    evidence: "Chocolate is commonly linked with GERD symptoms and may overlap with caffeine/fat.",
+  },
+  {
+    name: "mint",
+    category: "other",
+    examples: ["peppermint", "spearmint", "mint tea", "mint candy"],
+    evidence: "Mint is commonly linked with GERD symptoms.",
+    aliases: ["peppermint"],
+  },
+  {
+    name: "additives",
+    category: "additive",
+    examples: [
+      "artificial sweeteners",
+      "emulsifiers",
+      "processed meats",
+      "cured meats",
+      "packaged snacks",
+    ],
+    evidence: "Processed foods and additives can be relevant when specifically indicated.",
+    aliases: ["processed food additives"],
+  },
+  {
+    name: "insoluble fiber load",
+    category: "fiber",
+    examples: ["bran", "large raw salads", "cruciferous vegetables", "whole-grain overload"],
+    evidence: "Fiber tolerance varies; rapid increases can trigger gas and bloating.",
+    aliases: ["fiber"],
+  },
+];
+
+async function buildMealAnalysisContext(
+  uid: string,
+  options: { excludeMealId?: string } = {},
+): Promise<MealAnalysisContext> {
+  const snapshot = await db.collection("users").doc(uid).collection("meals")
+    .orderBy("updatedAt", "desc")
+    .limit(120)
+    .get();
+
+  const byName = new Map<string, IrritantCatalogEntry>();
+  for (const doc of snapshot.docs) {
+    if (doc.id === options.excludeMealId) continue;
+    const meal = doc.data() as Partial<MealDocument>;
+    const irritants = Array.isArray(meal.analysis?.irritants) ? meal.analysis.irritants : [];
+    for (const irritant of irritants) {
+      if (!irritant?.name) continue;
+      const name = cleanGeneratedString(irritant.name, "", 80);
+      if (!name) continue;
+      const key = canonicalKey(name);
+      if (byName.has(key)) continue;
+      byName.set(key, {
+        name,
+        category: normalizeCategory(irritant.category),
+        examples: [],
+        evidence: cleanGeneratedString(irritant.evidence, "Previously used in this user's log.", 160),
+      });
+    }
+  }
+
+  return { availableIrritants: [...byName.values()].slice(0, 60) };
+}
+
+function renderMealAnalysisPrompt(
+  template: string,
+  values: { input: string; analysisContext: MealAnalysisContext },
+) {
+  const base = renderTemplate(template, {
+    input: values.input,
+    knownIrritants: renderKnownIrritantCatalog(),
+    availableIrritants: renderAvailableIrritants(values.analysisContext),
+  });
+
+  const needsKnownBlock = !template.includes("{{knownIrritants}}");
+  const needsAvailableBlock = !template.includes("{{availableIrritants}}");
+  if (!needsKnownBlock && !needsAvailableBlock) return base;
+
+  return `${base}
+
+${needsAvailableBlock ? renderAvailableIrritants(values.analysisContext) : ""}
+
+${needsKnownBlock ? renderKnownIrritantCatalog() : ""}`;
+}
+
+function renderAvailableIrritants(context: MealAnalysisContext) {
+  const rows = context.availableIrritants.length
+    ? context.availableIrritants.map((item) => {
+        const category = item.category ? ` (${item.category})` : "";
+        return `- ${item.name}${category}`;
+      }).join("\n")
+    : "- None yet for this user.";
+
+  return `Available irritants already used in this user's meal log:
+${rows}
+
+Prefer these exact existing irritant names when they fit the meal. Add a new irritant only
+when the meal clearly contains a materially different GI-relevant trigger that is not covered
+by the available list.`;
+}
+
+function renderKnownIrritantCatalog() {
+  const rows = knownIrritantCatalog.map((item) => {
+    const examples = item.examples.length ? ` Examples: ${item.examples.join(", ")}.` : "";
+    return `- ${item.name} (${item.category}).${examples} ${item.evidence}`;
+  }).join("\n");
+
+  return `Known GI irritant catalog for novel irritants:
+${rows}`;
+}
+
+function canonicalKey(value: string) {
+  return value.trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, " ").trim();
+}
+
 function renderTemplate(template: string, values: Record<string, string>) {
   return Object.entries(values).reduce(
     (current, [key, value]) => current.replaceAll(`{{${key}}}`, value),
@@ -609,16 +853,11 @@ function renderTemplate(template: string, values: Record<string, string>) {
   );
 }
 
-function parseMealAnalysis(text: string): MealAnalysis {
+function parseMealAnalysis(text: string, context?: MealAnalysisContext): MealAnalysis {
   const parsed = parseJsonObject(text);
   const foods = validateGeneratedStringList(parsed.foods, 24, 80);
   const irritants = Array.isArray(parsed.irritants)
-    ? parsed.irritants.slice(0, 20).map((item) => ({
-        name: cleanGeneratedString(item?.name, "unknown", 80),
-        category: normalizeCategory(item?.category),
-        confidence: clampNumber(Number(item?.confidence ?? 0.4), 0, 1),
-        evidence: cleanGeneratedString(item?.evidence, "Possible irritant.", 240),
-      }))
+    ? parsed.irritants.slice(0, 20).map((item) => normalizeGeneratedIrritant(item, context))
     : [];
 
   return {
@@ -627,6 +866,34 @@ function parseMealAnalysis(text: string): MealAnalysis {
     irritants,
     summary: cleanGeneratedString(parsed.summary, foods.join(", ") || "Meal", 500),
   };
+}
+
+function normalizeGeneratedIrritant(
+  value: unknown,
+  context?: MealAnalysisContext,
+): IrritantSignal {
+  const item = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const generatedName = cleanGeneratedString(item.name, "unknown", 80);
+  const matched = findCatalogMatch(generatedName, context);
+  return {
+    name: matched?.name ?? generatedName,
+    category: matched?.category ?? normalizeCategory(item.category),
+    confidence: clampNumber(Number(item.confidence ?? 0.4), 0, 1),
+    evidence: cleanGeneratedString(item.evidence, matched?.evidence ?? "Possible irritant.", 240),
+  };
+}
+
+function findCatalogMatch(name: string, context?: MealAnalysisContext) {
+  const key = canonicalKey(name);
+  if (!key) return undefined;
+
+  const existing = context?.availableIrritants.find((item) => canonicalKey(item.name) === key);
+  if (existing) return existing;
+
+  return knownIrritantCatalog.find((item) => (
+    canonicalKey(item.name) === key ||
+    item.aliases?.some((alias) => canonicalKey(alias) === key)
+  ));
 }
 
 function normalizeCorrelationAnalysis(
@@ -719,13 +986,13 @@ function heuristicMealAnalysis(text: string): MealAnalysis {
       [
         signal("alcohol", "alcohol", "Beer or malt beverage terms were present."),
         signal("barley/gluten", "gluten", "Most beer is brewed with barley or other gluten grains unless labeled gluten-free."),
-        signal("barley fructans", "fodmap", "Barley and wheat can contribute fructans/FODMAPs."),
+        signal("grain fructans", "fodmap", "Barley and wheat can contribute fructans/FODMAPs."),
         signal("carbonation", "other", "Beer is typically carbonated."),
       ],
     ],
     [
       "milk|cream|yogurt|ice cream|latte|whey|cottage cheese|ricotta|soft cheese",
-      [signal("lactose/dairy", "dairy", "Lactose-containing dairy terms were present.")],
+      [signal("lactose", "dairy", "Lactose-containing dairy terms were present.")],
     ],
     [
       "bread|pasta|wheat|pizza|bun|sandwich|cracker|cereal|flour tortilla|pastry|bagel|muffin",
@@ -737,7 +1004,7 @@ function heuristicMealAnalysis(text: string): MealAnalysis {
     [
       "barley|rye|malt|malted|malt vinegar",
       [
-        signal("gluten grain", "gluten", "Barley, rye, or malt terms were present."),
+        signal("barley/gluten", "gluten", "Barley, rye, or malt terms were present."),
         signal("grain fructans", "fodmap", "Barley and rye can contribute fructans/FODMAPs."),
       ],
     ],
@@ -778,8 +1045,24 @@ function heuristicMealAnalysis(text: string): MealAnalysis {
       [signal("carbonation", "other", "Carbonated beverage terms were present.")],
     ],
     [
+      "citrus|orange|lemon|lime|grapefruit|tomato|tomato sauce|marinara|vinegar",
+      [signal("acidic foods", "other", "Acidic food terms were present.")],
+    ],
+    [
+      "chocolate|cocoa|brownie|mocha",
+      [signal("chocolate", "caffeine", "Chocolate or cocoa terms were present.")],
+    ],
+    [
+      "peppermint|spearmint|mint tea|mint candy|\\bmint\\b",
+      [signal("mint", "other", "Mint terms were present.")],
+    ],
+    [
       "processed meat|cured meat|deli meat|emulsifier|artificial sweetener|sucralose|aspartame",
       [signal("additives", "additive", "Processed food or additive terms were present.")],
+    ],
+    [
+      "bran|large salad|raw salad|cruciferous|whole-grain overload",
+      [signal("insoluble fiber load", "fiber", "Large or rough-fiber food terms were present.")],
     ],
   ];
   const irritants = rules
