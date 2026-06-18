@@ -11,6 +11,7 @@ struct VoiceInput: View {
             Button(action: toggleRecording) {
                 Label(buttonTitle, systemImage: isRecording ? "stop.circle.fill" : "mic.circle.fill")
                     .frame(maxWidth: .infinity, minHeight: 44)
+                    .tint(.primary)
             }
             .buttonStyle(.borderedProminent)
             .tint(isRecording ? .red : MealSignalDesign.brand)
@@ -27,6 +28,8 @@ struct VoiceInput: View {
 }
 
 #Preview {
-    VoiceInput(isRecording: false, hasAudio: true, hasTranscript: true, toggleRecording: {})
+    @Previewable @State var recording = false;
+    
+    VoiceInput(isRecording: recording, hasAudio: false, hasTranscript: true, toggleRecording: {recording = !recording})
         .padding()
 }
