@@ -34,16 +34,22 @@ struct HomeView: View {
                 GIEventEntryView()
             }
         }
-        .confirmationDialog(
-            "Delete this entry? This cannot be undone.",
-            isPresented: Binding(
-                get: { deleteConfirmation != nil },
-                set: { if !$0 { deleteConfirmation = nil } }
-            )
-        ) {
+        .alert("Delete this entry?", isPresented: deleteAlertBinding) {
+            Button("Cancel", role: .cancel) {
+                deleteConfirmation = nil
+            }
             Button(deletingEntryID == nil ? "Delete" : "Deleting", role: .destructive, action: deleteEntry)
                 .disabled(deletingEntryID != nil)
+        } message: {
+            Text("This cannot be undone.")
         }
+    }
+
+    private var deleteAlertBinding: Binding<Bool> {
+        Binding(
+            get: { deleteConfirmation != nil },
+            set: { if !$0 && deletingEntryID == nil { deleteConfirmation = nil } }
+        )
     }
 
     private func deleteEntry() {
