@@ -14,6 +14,7 @@ struct ImageInput: View {
                 Button(action: takePhoto) {
                     Label("Take Photo", systemImage: "camera")
                         .frame(maxWidth: .infinity, minHeight: 44)
+                        .foregroundStyle(.white)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(MealSignalDesign.brand)
@@ -22,6 +23,7 @@ struct ImageInput: View {
                 PhotosPicker(selection: $selectedImage, matching: .images) {
                     Label(hasImage ? "Replace" : "Choose", systemImage: "photo")
                         .frame(maxWidth: .infinity, minHeight: 44)
+                        .foregroundStyle(MealSignalDesign.brand)
                 }
                 .buttonStyle(.bordered)
             }

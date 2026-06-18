@@ -11,7 +11,7 @@ struct VoiceInput: View {
             Button(action: toggleRecording) {
                 Label(buttonTitle, systemImage: isRecording ? "stop.circle.fill" : "mic.circle.fill")
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .tint(.primary)
+                    .foregroundStyle(.white)
             }
             .buttonStyle(.borderedProminent)
             .tint(isRecording ? .red : MealSignalDesign.brand)
