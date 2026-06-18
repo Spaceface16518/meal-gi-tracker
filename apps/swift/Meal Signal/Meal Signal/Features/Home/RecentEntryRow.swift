@@ -17,9 +17,6 @@ struct RecentEntryRow: View {
                     HStack(spacing: 12) {
                         EntryIcon(kind: entry.kind)
                         EntrySummary(entry: entry)
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
                     }
                     .contentShape(Rectangle())
                 }

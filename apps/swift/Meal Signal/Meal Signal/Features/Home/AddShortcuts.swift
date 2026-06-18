@@ -98,7 +98,7 @@ private struct AddShortcutButton: View {
                 }
                 .shadow(color: .black.opacity(0.06), radius: 12, y: 4)
         }
-        .glassSurface()
+        .glassSurface(interactive: true)
     }
 }
 
