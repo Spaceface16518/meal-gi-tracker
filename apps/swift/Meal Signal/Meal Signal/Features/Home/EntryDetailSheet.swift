@@ -6,21 +6,27 @@ struct EntryDetailSheet: View {
 
     @State private var entry: RecentEntry
     @State private var eventDraft: GIEventDraft
-    @State private var isEditingEvent = false
-    @State private var isSavingEvent = false
+    @State private var mealDraft: MealEditDraft
+    @State private var isEditing = false
+    @State private var isSaving = false
     @State private var message: AppMessage?
 
     init(entry: RecentEntry) {
         _entry = State(initialValue: entry)
         _eventDraft = State(initialValue: entry.event.map(GIEventDraft.init(event:)) ?? GIEventDraft())
+        _mealDraft = State(initialValue: entry.meal.map(MealEditDraft.init(meal:)) ?? MealEditDraft())
     }
 
     var body: some View {
         NavigationStack {
             Group {
-                if isEditingEvent {
-                    GIEventEntryForm(draft: $eventDraft, message: message)
-                        .scrollContentBackground(.hidden)
+                if isEditing {
+                    if entry.event != nil {
+                        GIEventEntryForm(draft: $eventDraft, message: message)
+                            .scrollContentBackground(.hidden)
+                    } else {
+                        MealEditForm(draft: $mealDraft, message: message)
+                    }
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 18) {
@@ -43,50 +49,65 @@ struct EntryDetailSheet: View {
             .navigationTitle(entry.kind == .meal ? "Meal Details" : "Event Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if entry.event != nil {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button(isEditingEvent ? "View" : "Edit", action: toggleEventEditing)
-                            .disabled(isSavingEvent)
-                    }
-                    if isEditingEvent {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button(action: saveEvent) {
-                                LoadingLabel(title: isSavingEvent ? "Saving" : "Save", isLoading: isSavingEvent)
-                            }
-                            .disabled(!canSaveEvent)
-                        }
-                    }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(isEditing ? "View" : "Edit", action: toggleEditing)
+                        .disabled(isSaving)
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .disabled(isSavingEvent)
+                if isEditing {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(action: saveEntry) {
+                            LoadingLabel(title: isSaving ? "Saving" : "Save", isLoading: isSaving)
+                        }
+                        .disabled(!canSave)
+                    }
+                } else {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { dismiss() }
+                            .disabled(isSaving)
+                    }
                 }
             }
         }
     }
 
-    private var canSaveEvent: Bool {
-        (!eventDraft.symptoms.isEmpty || eventDraft.stoolType != nil) && !isSavingEvent
+    private var canSave: Bool {
+        guard !isSaving else { return false }
+        if entry.event != nil {
+            return !eventDraft.symptoms.isEmpty || eventDraft.stoolType != nil
+        }
+        return !mealDraft.trimmedName.isEmpty && mealDraft.trimmedDescription.count > 2
     }
 
-    private func toggleEventEditing() {
-        guard !isSavingEvent else { return }
+    private func toggleEditing() {
+        guard !isSaving else { return }
         message = nil
-        if isEditingEvent, let event = entry.event {
+        if isEditing, let event = entry.event {
             eventDraft = GIEventDraft(event: event)
         }
-        isEditingEvent.toggle()
+        if isEditing, let meal = entry.meal {
+            mealDraft = MealEditDraft(meal: meal)
+        }
+        isEditing.toggle()
+    }
+
+    private func saveEntry() {
+        if entry.event != nil {
+            saveEvent()
+        } else {
+            saveMeal()
+        }
     }
 
     private func saveEvent() {
-        guard let event = entry.event, canSaveEvent else {
+        guard let event = entry.event else { return }
+        guard !eventDraft.symptoms.isEmpty || eventDraft.stoolType != nil else {
             message = .error("Choose a symptom or stool type.")
             return
         }
 
         Task {
-            isSavingEvent = true
-            defer { isSavingEvent = false }
+            isSaving = true
+            defer { isSaving = false }
 
             do {
                 try await service.updateEvent(
@@ -113,11 +134,129 @@ struct EntryDetailSheet: View {
                 entry = .event(updatedEvent)
                 eventDraft = GIEventDraft(event: updatedEvent)
                 message = .success("Event saved.")
-                isEditingEvent = false
+                isEditing = false
             } catch {
                 message = .error("Event could not be saved.")
             }
         }
+    }
+
+    private func saveMeal() {
+        guard let meal = entry.meal else { return }
+        guard !mealDraft.trimmedName.isEmpty else {
+            message = .error("Enter a meal name.")
+            return
+        }
+        guard mealDraft.trimmedDescription.count > 2 else {
+            message = .error("Enter a meal description.")
+            return
+        }
+
+        Task {
+            isSaving = true
+            defer { isSaving = false }
+
+            do {
+                try await service.updateMeal(
+                    uid: meal.uid,
+                    id: meal.id,
+                    mealName: mealDraft.trimmedName,
+                    rawInput: mealDraft.trimmedDescription,
+                    interpretedText: mealDraft.trimmedDescription,
+                    eatenAt: mealDraft.eatenAt,
+                    notes: mealDraft.trimmedNotes
+                )
+                let updatedAnalysis = MealAnalysis(
+                    mealName: mealDraft.trimmedName,
+                    foods: meal.analysis.foods,
+                    irritants: meal.analysis.irritants,
+                    summary: meal.analysis.summary
+                )
+                let updatedMeal = Meal(
+                    id: meal.id,
+                    uid: meal.uid,
+                    inputMode: meal.inputMode,
+                    rawInput: mealDraft.trimmedDescription,
+                    interpretedText: mealDraft.trimmedDescription,
+                    eatenAt: mealDraft.eatenAt,
+                    notes: mealDraft.trimmedNotes,
+                    status: meal.status,
+                    analysis: updatedAnalysis,
+                    createdAt: meal.createdAt,
+                    updatedAt: Date(),
+                    reanalyzedAt: meal.reanalyzedAt
+                )
+                entry = .meal(updatedMeal)
+                mealDraft = MealEditDraft(meal: updatedMeal)
+                message = .success("Meal saved.")
+                isEditing = false
+            } catch {
+                message = .error("Meal could not be saved.")
+            }
+        }
+    }
+}
+
+private struct MealEditDraft {
+    var name = ""
+    var description = ""
+    var notes = ""
+    var eatenAt = Date()
+
+    var trimmedName: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var trimmedDescription: String {
+        description.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var trimmedNotes: String? {
+        notes.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+    }
+
+    nonisolated init() {}
+
+    nonisolated init(meal: Meal) {
+        name = meal.analysis.mealName
+        let interpretedText = meal.interpretedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        description = interpretedText.isEmpty ? meal.rawInput : meal.interpretedText
+        notes = meal.notes ?? ""
+        eatenAt = meal.eatenAt
+    }
+}
+
+private struct MealEditForm: View {
+    @Binding var draft: MealEditDraft
+    let message: AppMessage?
+
+    var body: some View {
+        Form {
+            if let message {
+                Section { StatusBanner(message: message) }
+            }
+
+            Section("Meal") {
+                TextField("Name", text: $draft.name)
+                    .onChange(of: draft.name) { _, value in
+                        draft.name = String(value.prefix(120))
+                    }
+                TextEditor(text: $draft.description)
+                    .frame(minHeight: 120)
+                    .onChange(of: draft.description) { _, value in
+                        draft.description = String(value.prefix(8000))
+                    }
+            }
+
+            Section("Details") {
+                DatePicker("Eaten at", selection: $draft.eatenAt)
+                TextField("Notes", text: $draft.notes)
+                    .onChange(of: draft.notes) { _, value in
+                        draft.notes = String(value.prefix(1000))
+                    }
+            }
+        }
+        .scrollContentBackground(.hidden)
     }
 }
 

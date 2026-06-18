@@ -67,6 +67,31 @@ final class FirebaseService {
         _ = try await functions.httpsCallable("createMeal").call(payload)
     }
 
+    func updateMeal(
+        uid: String,
+        id: String,
+        mealName: String,
+        rawInput: String,
+        interpretedText: String,
+        eatenAt: Date,
+        notes: String?
+    ) async throws {
+        var payload: [String: Any] = [
+            "analysis.mealName": mealName,
+            "rawInput": rawInput,
+            "interpretedText": interpretedText,
+            "eatenAt": eatenAt,
+            "updatedAt": FieldValue.serverTimestamp(),
+        ]
+        if let notes {
+            payload["notes"] = notes
+        } else {
+            payload["notes"] = FieldValue.delete()
+        }
+
+        try await db.collection("users").document(uid).collection("meals").document(id).updateData(payload)
+    }
+
     func createEvent(
         occurredAt: Date,
         severity: Int,
