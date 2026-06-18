@@ -1,31 +1,121 @@
 import SwiftUI
 
 struct EntryDetailSheet: View {
+    @Environment(\.firebaseService) private var service
     @Environment(\.dismiss) private var dismiss
 
-    let entry: RecentEntry
+    @State private var entry: RecentEntry
+    @State private var eventDraft: GIEventDraft
+    @State private var isEditingEvent = false
+    @State private var isSavingEvent = false
+    @State private var message: AppMessage?
+
+    init(entry: RecentEntry) {
+        _entry = State(initialValue: entry)
+        _eventDraft = State(initialValue: entry.event.map(GIEventDraft.init(event:)) ?? GIEventDraft())
+    }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    EntryDetailHeader(entry: entry)
+            Group {
+                if isEditingEvent {
+                    GIEventEntryForm(draft: $eventDraft, message: message)
+                        .scrollContentBackground(.hidden)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 18) {
+                            if let message {
+                                StatusBanner(message: message)
+                            }
+                            EntryDetailHeader(entry: entry)
 
-                    if let event = entry.event {
-                        GIEventDetailContent(event: event)
-                    } else if let meal = entry.meal {
-                        MealDetailContent(meal: meal)
+                            if let event = entry.event {
+                                GIEventDetailContent(event: event)
+                            } else if let meal = entry.meal {
+                                MealDetailContent(meal: meal)
+                            }
+                        }
+                        .padding()
                     }
                 }
-                .padding()
             }
             .background(MealSignalDesign.background.ignoresSafeArea())
             .navigationTitle(entry.kind == .meal ? "Meal Details" : "Event Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                if entry.event != nil {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(isEditingEvent ? "View" : "Edit", action: toggleEventEditing)
+                            .disabled(isSavingEvent)
+                    }
+                    if isEditingEvent {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(action: saveEvent) {
+                                LoadingLabel(title: isSavingEvent ? "Saving" : "Save", isLoading: isSavingEvent)
+                            }
+                            .disabled(!canSaveEvent)
+                        }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
+                        .disabled(isSavingEvent)
                 }
+            }
+        }
+    }
+
+    private var canSaveEvent: Bool {
+        (!eventDraft.symptoms.isEmpty || eventDraft.stoolType != nil) && !isSavingEvent
+    }
+
+    private func toggleEventEditing() {
+        guard !isSavingEvent else { return }
+        message = nil
+        if isEditingEvent, let event = entry.event {
+            eventDraft = GIEventDraft(event: event)
+        }
+        isEditingEvent.toggle()
+    }
+
+    private func saveEvent() {
+        guard let event = entry.event, canSaveEvent else {
+            message = .error("Choose a symptom or stool type.")
+            return
+        }
+
+        Task {
+            isSavingEvent = true
+            defer { isSavingEvent = false }
+
+            do {
+                try await service.updateEvent(
+                    uid: event.uid,
+                    id: event.id,
+                    occurredAt: eventDraft.occurredAt,
+                    severity: eventDraft.severity,
+                    symptoms: eventDraft.symptoms,
+                    notes: eventDraft.trimmedNotes,
+                    stoolType: eventDraft.stoolType,
+                    durationMinutes: eventDraft.durationMinutes
+                )
+                let updatedEvent = GIEvent(
+                    id: event.id,
+                    uid: event.uid,
+                    occurredAt: eventDraft.occurredAt,
+                    severity: eventDraft.severity,
+                    symptoms: eventDraft.symptoms,
+                    notes: eventDraft.trimmedNotes,
+                    stoolType: eventDraft.stoolType,
+                    durationMinutes: eventDraft.durationMinutes,
+                    createdAt: event.createdAt
+                )
+                entry = .event(updatedEvent)
+                eventDraft = GIEventDraft(event: updatedEvent)
+                message = .success("Event saved.")
+                isEditingEvent = false
+            } catch {
+                message = .error("Event could not be saved.")
             }
         }
     }

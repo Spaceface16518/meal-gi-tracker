@@ -11,6 +11,31 @@ struct GIEventDraft {
     var trimmedNotes: String? {
         notes.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
     }
+
+    nonisolated init(
+        occurredAt: Date = Date(),
+        severity: Int = 4,
+        symptoms: [String] = [],
+        notes: String = "",
+        stoolType: Int? = nil,
+        durationMinutes: Int? = nil
+    ) {
+        self.occurredAt = occurredAt
+        self.severity = severity
+        self.symptoms = symptoms
+        self.notes = notes
+        self.stoolType = stoolType
+        self.durationMinutes = durationMinutes
+    }
+
+    nonisolated init(event: GIEvent) {
+        occurredAt = event.occurredAt
+        severity = event.severity
+        symptoms = event.symptoms
+        notes = event.notes ?? ""
+        stoolType = event.stoolType
+        durationMinutes = event.durationMinutes
+    }
 }
 
 struct GIEventEntryView: View {

@@ -86,6 +86,40 @@ final class FirebaseService {
         _ = try await functions.httpsCallable("createGiEvent").call(payload)
     }
 
+    func updateEvent(
+        uid: String,
+        id: String,
+        occurredAt: Date,
+        severity: Int,
+        symptoms: [String],
+        notes: String?,
+        stoolType: Int?,
+        durationMinutes: Int?
+    ) async throws {
+        var payload: [String: Any] = [
+            "occurredAt": occurredAt,
+            "severity": severity,
+            "symptoms": symptoms,
+        ]
+        if let notes {
+            payload["notes"] = notes
+        } else {
+            payload["notes"] = FieldValue.delete()
+        }
+        if let stoolType {
+            payload["stoolType"] = stoolType
+        } else {
+            payload["stoolType"] = FieldValue.delete()
+        }
+        if let durationMinutes {
+            payload["durationMinutes"] = durationMinutes
+        } else {
+            payload["durationMinutes"] = FieldValue.delete()
+        }
+
+        try await db.collection("users").document(uid).collection("events").document(id).updateData(payload)
+    }
+
     func analyzeCorrelations() async throws {
         _ = try await functions.httpsCallable("analyzeCorrelations").call()
     }
