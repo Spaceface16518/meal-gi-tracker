@@ -10,6 +10,8 @@ struct RecentEntry: Identifiable, Hashable {
     let title: String
     let detail: String
     let chips: [String]
+    let meal: Meal?
+    let event: GIEvent?
 
     static func meal(_ meal: Meal) -> RecentEntry {
         RecentEntry(
@@ -19,7 +21,9 @@ struct RecentEntry: Identifiable, Hashable {
             date: meal.eatenAt,
             title: meal.analysis.mealName,
             detail: meal.interpretedText,
-            chips: meal.analysis.irritants.prefix(3).map(\.name)
+            chips: meal.analysis.irritants.prefix(3).map(\.name),
+            meal: meal,
+            event: nil
         )
     }
 
@@ -33,7 +37,9 @@ struct RecentEntry: Identifiable, Hashable {
             date: event.occurredAt,
             title: "Severity \(event.severity)",
             detail: details.isEmpty ? "No details recorded" : details.joined(separator: ", "),
-            chips: []
+            chips: event.symptoms,
+            meal: nil,
+            event: event
         )
     }
 }

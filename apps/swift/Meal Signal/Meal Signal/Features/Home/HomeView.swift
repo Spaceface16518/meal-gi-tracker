@@ -9,6 +9,7 @@ struct HomeView: View {
     @State private var deleteConfirmation: RecentEntry?
     @State private var deletingEntryID: String?
     @State private var addSheet: AddSheet?
+    @State private var selectedEntry: RecentEntry?
     @State private var actionMessage: AppMessage?
 
     var body: some View {
@@ -21,7 +22,8 @@ struct HomeView: View {
                 entries: history.entries,
                 deletingEntryID: deletingEntryID,
                 addSheet: $addSheet,
-                deleteConfirmation: $deleteConfirmation
+                deleteConfirmation: $deleteConfirmation,
+                selectedEntry: $selectedEntry
             )
             .navigationTitle("Meal Signal")
             .toolbar { AccountToolbar(session: session) }
@@ -33,6 +35,9 @@ struct HomeView: View {
             case .event:
                 GIEventEntryView()
             }
+        }
+        .sheet(item: $selectedEntry) { entry in
+            EntryDetailSheet(entry: entry)
         }
         .alert("Delete this entry?", isPresented: deleteAlertBinding) {
             Button("Cancel", role: .cancel) {

@@ -9,6 +9,7 @@ struct HomeContent: View {
     let deletingEntryID: String?
     @Binding var addSheet: AddSheet?
     @Binding var deleteConfirmation: RecentEntry?
+    @Binding var selectedEntry: RecentEntry?
 
     var body: some View {
         ScrollView {
@@ -26,7 +27,8 @@ struct HomeContent: View {
                     entries: entries,
                     isLoading: isLoading,
                     deletingEntryID: deletingEntryID,
-                    deleteConfirmation: $deleteConfirmation
+                    deleteConfirmation: $deleteConfirmation,
+                    selectedEntry: $selectedEntry
                 )
             }
             .padding()
@@ -38,6 +40,7 @@ struct HomeContent: View {
 #Preview {
     @Previewable @State var addSheet: AddSheet?
     @Previewable @State var deleteConfirmation: RecentEntry?
+    @Previewable @State var selectedEntry: RecentEntry?
 
     NavigationStack {
         HomeContent(
@@ -48,7 +51,8 @@ struct HomeContent: View {
             entries: PreviewFixtures.recentEntries,
             deletingEntryID: nil,
             addSheet: $addSheet,
-            deleteConfirmation: $deleteConfirmation
+            deleteConfirmation: $deleteConfirmation,
+            selectedEntry: $selectedEntry
         )
         .navigationTitle("Meal Signal")
     }
