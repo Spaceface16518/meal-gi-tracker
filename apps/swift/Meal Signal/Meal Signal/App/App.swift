@@ -5,18 +5,17 @@
 //  Created by Amrit Rathie on 6/17/26.
 //
 
-import SwiftUI
 import FirebaseCore
+import SwiftUI
 import UIKit
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(
         _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+        didFinishLaunchingWithOptions launchOptions: [UIApplication
+            .LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        if FirebaseApp.app() == nil, Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
-            FirebaseApp.configure()
-        }
+        FirebaseApp.configure()
         return true
     }
 }
