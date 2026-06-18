@@ -9,7 +9,6 @@ struct MealEntryForm: View {
     @State private var isCameraPresented = false
     @State private var mediaMessage: AppMessage?
     @State private var audioRecorder = AudioRecorder()
-    private let interpreter: LocalMealInterpreter = AppleLocalMealInterpreter()
 
     var body: some View {
         Form {
@@ -132,7 +131,7 @@ struct MealEntryForm: View {
     private func processVoice(_ recording: RecordedMedia) async {
         mediaMessage = .info("Processing locally...")
         do {
-            let result = try await interpreter.interpretVoice(fileURL: recording.fileURL)
+            let result = try await AppleLocalMealInterpreter().interpretVoice(fileURL: recording.fileURL)
             apply(result)
             mediaMessage = .success("Ready to review.")
         } catch {
@@ -145,7 +144,7 @@ struct MealEntryForm: View {
     private func processImage(_ media: Media) async {
         mediaMessage = .info("Processing locally...")
         do {
-            let result = try await interpreter.interpretImage(media)
+            let result = try await AppleLocalMealInterpreter().interpretImage(media)
             apply(result)
             mediaMessage = .success("Ready to review.")
         } catch {
