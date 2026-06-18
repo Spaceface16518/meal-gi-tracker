@@ -1,9 +1,22 @@
 import SwiftUI
+import UIKit
 
 enum MealSignalDesign {
-    static let brand = Color(red: 0.02, green: 0.31, blue: 0.23)
-    static let background = Color(red: 0.97, green: 0.97, blue: 0.94)
-    static let surface = Color.white
+    static let brand = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.34, green: 0.72, blue: 0.56, alpha: 1)
+            : UIColor(red: 0.02, green: 0.31, blue: 0.23, alpha: 1)
+    })
+    static let background = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.06, green: 0.07, blue: 0.06, alpha: 1)
+            : UIColor(red: 0.97, green: 0.97, blue: 0.94, alpha: 1)
+    })
+    static let surface = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor.secondarySystemGroupedBackground
+            : UIColor.white
+    })
     static let muted = Color.secondary
 }
 
