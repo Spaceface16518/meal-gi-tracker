@@ -9,6 +9,7 @@ struct EntryDetailSheet: View {
     @State private var mealDraft: MealEditDraft
     @State private var isEditing = false
     @State private var isSaving = false
+    @State private var isReanalyzing = false
     @State private var message: AppMessage?
 
     init(entry: RecentEntry) {
@@ -61,9 +62,16 @@ struct EntryDetailSheet: View {
                         .disabled(!canSave)
                     }
                 } else {
-                    ToolbarItem(placement: .topBarTrailing) {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        if entry.meal != nil {
+                            Button(action: reanalyzeMeal) {
+                                LoadingIcon(systemImage: "arrow.clockwise", isLoading: isReanalyzing)
+                            }
+                            .accessibilityLabel(isReanalyzing ? "Reanalyzing meal" : "Reanalyze meal")
+                            .disabled(isReanalyzing)
+                        }
                         Button("Done") { dismiss() }
-                            .disabled(isSaving)
+                            .disabled(isSaving || isReanalyzing)
                     }
                 }
             }
@@ -76,6 +84,8 @@ struct EntryDetailSheet: View {
             return !eventDraft.symptoms.isEmpty || eventDraft.stoolType != nil
         }
         return !mealDraft.trimmedName.isEmpty && mealDraft.trimmedDescription.count > 2
+            && mealDraft.hasValidFoods
+            && mealDraft.hasValidIrritants
     }
 
     private func toggleEditing() {
@@ -164,13 +174,16 @@ struct EntryDetailSheet: View {
                     rawInput: mealDraft.trimmedDescription,
                     interpretedText: mealDraft.trimmedDescription,
                     eatenAt: mealDraft.eatenAt,
-                    notes: mealDraft.trimmedNotes
+                    notes: mealDraft.trimmedNotes,
+                    foods: mealDraft.trimmedFoods,
+                    irritants: mealDraft.irritantSignals,
+                    analysisSummary: mealDraft.trimmedAnalysisSummary
                 )
                 let updatedAnalysis = MealAnalysis(
                     mealName: mealDraft.trimmedName,
-                    foods: meal.analysis.foods,
-                    irritants: meal.analysis.irritants,
-                    summary: meal.analysis.summary
+                    foods: mealDraft.trimmedFoods,
+                    irritants: mealDraft.irritantSignals,
+                    summary: mealDraft.trimmedAnalysisSummary
                 )
                 let updatedMeal = Meal(
                     id: meal.id,
@@ -195,6 +208,20 @@ struct EntryDetailSheet: View {
             }
         }
     }
+
+    private func reanalyzeMeal() {
+        guard let meal = entry.meal else { return }
+        Task {
+            isReanalyzing = true
+            defer { isReanalyzing = false }
+            do {
+                try await service.reanalyzeMeal(id: meal.id)
+                message = .success("Meal analysis refreshed.")
+            } catch {
+                message = .error("Meal analysis could not be refreshed.")
+            }
+        }
+    }
 }
 
 private struct MealEditDraft {
@@ -202,6 +229,9 @@ private struct MealEditDraft {
     var description = ""
     var notes = ""
     var eatenAt = Date()
+    var foods: [EditableFood] = []
+    var analysisSummary = ""
+    var irritants: [EditableIrritant] = []
 
     var trimmedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -215,6 +245,26 @@ private struct MealEditDraft {
         notes.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
     }
 
+    var trimmedFoods: [String] {
+        foods.map(\.trimmedName).filter { !$0.isEmpty }
+    }
+
+    var hasValidFoods: Bool {
+        foods.allSatisfy { !$0.trimmedName.isEmpty }
+    }
+
+    var trimmedAnalysisSummary: String {
+        analysisSummary.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var irritantSignals: [IrritantSignal] {
+        irritants.map(\.signal)
+    }
+
+    var hasValidIrritants: Bool {
+        irritants.allSatisfy { !$0.trimmedName.isEmpty }
+    }
+
     nonisolated init() {}
 
     nonisolated init(meal: Meal) {
@@ -223,6 +273,68 @@ private struct MealEditDraft {
         description = interpretedText.isEmpty ? meal.rawInput : meal.interpretedText
         notes = meal.notes ?? ""
         eatenAt = meal.eatenAt
+        foods = meal.analysis.foods.map { EditableFood(name: $0) }
+        analysisSummary = meal.analysis.summary
+        irritants = meal.analysis.irritants.map(EditableIrritant.init(irritant:))
+    }
+
+    mutating func addFood() {
+        foods.append(EditableFood(name: ""))
+    }
+
+    mutating func addIrritant() {
+        irritants.append(
+            EditableIrritant(
+                name: "",
+                category: "edited",
+                confidence: 1,
+                evidence: "Manually edited in Meal Signal."
+            )
+        )
+    }
+}
+
+private struct EditableFood: Identifiable, Hashable {
+    let id = UUID()
+    var name: String
+
+    var trimmedName: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+private struct EditableIrritant: Identifiable, Hashable {
+    let id = UUID()
+    var name: String
+    var category: String
+    var confidence: Double
+    var evidence: String
+
+    var trimmedName: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var signal: IrritantSignal {
+        IrritantSignal(
+            name: trimmedName,
+            category: category,
+            confidence: confidence,
+            evidence: evidence
+        )
+    }
+
+    nonisolated init(name: String, category: String, confidence: Double, evidence: String) {
+        self.name = name
+        self.category = category
+        self.confidence = confidence
+        self.evidence = evidence
+    }
+
+    nonisolated init(irritant: IrritantSignal) {
+        name = irritant.name
+        category = irritant.category
+        confidence = irritant.confidence
+        evidence = irritant.evidence
     }
 }
 
@@ -254,6 +366,53 @@ private struct MealEditForm: View {
                     .onChange(of: draft.notes) { _, value in
                         draft.notes = String(value.prefix(1000))
                     }
+            }
+
+            Section("Foods") {
+                ForEach($draft.foods) { $food in
+                    TextField("Food", text: $food.name)
+                        .onChange(of: food.name) { _, value in
+                            food.name = String(value.prefix(80))
+                        }
+                }
+                .onDelete { offsets in
+                    draft.foods.remove(atOffsets: offsets)
+                }
+
+                Button(action: { draft.addFood() }) {
+                    Label("Add Food", systemImage: "plus")
+                }
+            }
+
+            Section("Analysis Summary") {
+                TextEditor(text: $draft.analysisSummary)
+                    .frame(minHeight: 90)
+                    .onChange(of: draft.analysisSummary) { _, value in
+                        draft.analysisSummary = String(value.prefix(4000))
+                    }
+            }
+
+            Section("Irritants") {
+                ForEach($draft.irritants) { $irritant in
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Irritant", text: $irritant.name)
+                            .onChange(of: irritant.name) { _, value in
+                                irritant.name = String(value.prefix(80))
+                            }
+                        if !irritant.evidence.isBlank {
+                            Text(irritant.evidence)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .onDelete { offsets in
+                    draft.irritants.remove(atOffsets: offsets)
+                }
+
+                Button(action: { draft.addIrritant() }) {
+                    Label("Add Irritant", systemImage: "plus")
+                }
             }
         }
         .scrollContentBackground(.hidden)

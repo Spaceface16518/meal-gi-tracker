@@ -24,6 +24,10 @@ service cloud.firestore {
     //   - notes: string (optional) - user notes
     //   - status: string (required) - analyzed, needs_review, or failed
     //   - analysis: map (required) - generated structured meal analysis
+    //     - mealName: string (required)
+    //     - foods: list (required)
+    //     - irritants: list (required)
+    //     - summary: string (required)
     //   - createdAt: timestamp (required) - creation time
     //   - updatedAt: timestamp (required) - update time
     //
@@ -80,6 +84,21 @@ service cloud.firestore {
         isValidTimestamp('updatedAt');
     }
 
+    function isValidMealAnalysis() {
+      return request.resource.data.analysis is map &&
+        request.resource.data.analysis.keys().hasOnly(['mealName', 'foods', 'irritants', 'summary']) &&
+        request.resource.data.analysis.keys().hasAll(['mealName', 'foods', 'irritants', 'summary']) &&
+        request.resource.data.analysis.mealName is string &&
+        request.resource.data.analysis.mealName.size() > 0 &&
+        request.resource.data.analysis.mealName.size() <= 120 &&
+        request.resource.data.analysis.foods is list &&
+        request.resource.data.analysis.foods.size() <= 50 &&
+        request.resource.data.analysis.irritants is list &&
+        request.resource.data.analysis.irritants.size() <= 30 &&
+        request.resource.data.analysis.summary is string &&
+        request.resource.data.analysis.summary.size() <= 4000;
+    }
+
     function isValidMeal(userId) {
       return hasOnlyAllowedFields([
         'uid',
@@ -111,7 +130,7 @@ service cloud.firestore {
         request.resource.data.interpretedText is string &&
         request.resource.data.interpretedText.size() <= 8000 &&
         request.resource.data.status in ['analyzed', 'needs_review', 'failed'] &&
-        request.resource.data.analysis is map &&
+        isValidMealAnalysis() &&
         isOptionalString('notes', 1000) &&
         isValidTimestamp('eatenAt') &&
         isValidTimestamp('createdAt') &&
@@ -167,6 +186,8 @@ service cloud.firestore {
           resource.data.uid == userId &&
           request.resource.data.uid == resource.data.uid &&
           request.resource.data.createdAt == resource.data.createdAt &&
+          request.resource.data.inputMode == resource.data.inputMode &&
+          request.resource.data.status == resource.data.status &&
           isValidMeal(userId);
         allow delete: if isOwner(userId);
       }

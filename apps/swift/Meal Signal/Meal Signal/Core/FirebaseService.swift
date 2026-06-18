@@ -74,10 +74,23 @@ final class FirebaseService {
         rawInput: String,
         interpretedText: String,
         eatenAt: Date,
-        notes: String?
+        notes: String?,
+        foods: [String],
+        irritants: [IrritantSignal],
+        analysisSummary: String
     ) async throws {
         var payload: [String: Any] = [
             "analysis.mealName": mealName,
+            "analysis.foods": foods,
+            "analysis.irritants": irritants.map { irritant in
+                [
+                    "name": irritant.name,
+                    "category": irritant.category,
+                    "confidence": irritant.confidence,
+                    "evidence": irritant.evidence,
+                ]
+            },
+            "analysis.summary": analysisSummary,
             "rawInput": rawInput,
             "interpretedText": interpretedText,
             "eatenAt": eatenAt,
