@@ -124,12 +124,15 @@ type EventDocument = {
 
 type SensitivityContext = {
   explanation: string;
+  categoryNormalization: CategoryNormalizationMap;
   overall: SensitivityScore[];
   bySymptom: Array<{
     symptom: string;
     scores: SensitivityScore[];
   }>;
 };
+
+type CategoryNormalizationMap = Record<string, string[]>;
 
 type IrritantCatalogEntry = {
   name: string;
@@ -428,12 +431,24 @@ async function runCorrelationForUser(uid: string) {
 
   const meals = mealsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   const events = eventsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-  const sensitivityContext = buildSensitivityContext(meals, events);
   const ai = getGeminiClient();
+  const promptConfig = ai ? await getPromptConfig() : undefined;
+  const categoryNormalization = ai
+    ? await buildCategoryNormalizationMap(meals, ai, promptConfig?.correlationModelName)
+    : heuristicCategoryNormalizationMap(meals);
+  const normalizedMeals = normalizeMealsForSensitivity(meals, categoryNormalization);
+  const sensitivityContext = buildSensitivityContext(normalizedMeals, events, categoryNormalization);
 
   const analysis = ai
-    ? await analyzeCorrelationsWithGemini(uid, meals, events, sensitivityContext, ai)
-    : heuristicCorrelationAnalysis(uid, meals, events, sensitivityContext);
+    ? await analyzeCorrelationsWithGemini(
+        uid,
+        normalizedMeals,
+        events,
+        sensitivityContext,
+        ai,
+        promptConfig,
+      )
+    : heuristicCorrelationAnalysis(uid, normalizedMeals, events, sensitivityContext);
 
   await saveAnalysis(uid, analysis);
   return analysis;
@@ -445,8 +460,10 @@ async function analyzeCorrelationsWithGemini(
   events: FirebaseFirestore.DocumentData[],
   sensitivityContext: SensitivityContext,
   ai: GoogleGenAI,
+  promptConfig?: PromptConfig,
 ) {
   try {
+    const config = promptConfig ?? await getPromptConfig();
     const mealPayload = meals.map((meal) => ({
       id: meal.id,
       eatenAt: meal.eatenAt?.toDate?.()?.toISOString(),
@@ -465,20 +482,20 @@ async function analyzeCorrelationsWithGemini(
       durationMinutes: event.durationMinutes,
     }));
 
-    const promptConfig = await getPromptConfig();
     const prompt =
-      renderTemplate(promptConfig.correlationAnalysisPromptTemplate, {
+      renderTemplate(config.correlationAnalysisPromptTemplate, {
         mealsJson: JSON.stringify(mealPayload),
         eventsJson: JSON.stringify(eventPayload),
         sensitivityExplanation: sensitivityContext.explanation,
         sensitivityJson: JSON.stringify(sensitivityContext),
+        categoryNormalizationJson: JSON.stringify(sensitivityContext.categoryNormalization),
       }) +
       renderSensitivityPromptBlock(sensitivityContext);
     const json = await generateJson(ai, [
       {
         text: prompt,
       },
-    ], promptConfig.correlationModelName);
+    ], config.correlationModelName);
 
     const parsed = parseJsonObject(json);
     return normalizeCorrelationAnalysis(uid, meals.length, events.length, parsed);
@@ -492,6 +509,208 @@ async function saveAnalysis(uid: string, analysis: CorrelationAnalysis) {
   const currentRef = db.collection("users").doc(uid).collection("analyses").doc("current");
   const runRef = db.collection("users").doc(uid).collection("analyses").doc();
   await Promise.all([currentRef.set(analysis), runRef.set(analysis)]);
+}
+
+async function buildCategoryNormalizationMap(
+  meals: FirebaseFirestore.DocumentData[],
+  ai: GoogleGenAI,
+  modelName?: string,
+): Promise<CategoryNormalizationMap> {
+  const labels = extractAnalysisLabels(meals);
+  if (labels.length === 0) return {};
+
+  try {
+    const prompt = renderCategoryNormalizationPrompt(labels);
+    const json = await generateJson(ai, [{ text: prompt }], modelName || defaultCorrelationModelName);
+    return normalizeCategoryNormalizationMap(parseJsonObject(json), labels);
+  } catch (error) {
+    logger.warn("Gemini category normalization failed; using heuristic category map", { error });
+    return heuristicCategoryNormalizationMap(meals);
+  }
+}
+
+function renderCategoryNormalizationPrompt(labels: string[]) {
+  return `Group meal-analysis irritant labels into canonical analysis categories.
+
+Return only JSON with this shape:
+{
+  "canonical category": ["original label", "synonym label"]
+}
+
+Rules:
+- Every input label must appear in exactly one list.
+- Use short, specific canonical labels that are useful for GI tracking.
+- Merge synonyms, spelling variants, category/name duplicates, and close equivalents
+  such as "dairy", "lactose", and "lactose/dairy"; "gluten", "wheat/gluten",
+  and "barley/gluten"; or "spice", "capsaicin", and "spice/capsaicin".
+- Do not over-merge distinct triggers. For example, keep lactose separate from
+  high fat unless the labels clearly refer to the same trigger.
+
+Input labels:
+${JSON.stringify(labels)}`;
+}
+
+function normalizeCategoryNormalizationMap(
+  parsed: Record<string, unknown>,
+  inputLabels: string[],
+): CategoryNormalizationMap {
+  const remaining = new Map(inputLabels.map((label) => [canonicalKey(label), label]));
+  const map: CategoryNormalizationMap = {};
+
+  for (const [rawCanonical, rawAliases] of Object.entries(parsed)) {
+    const canonical = cleanGeneratedString(rawCanonical, "", 100);
+    if (!canonical || !Array.isArray(rawAliases)) continue;
+    const labels = rawAliases
+      .map((item) => cleanGeneratedString(item, "", 100))
+      .filter(Boolean)
+      .filter((label) => remaining.has(canonicalKey(label)));
+    if (labels.length === 0) continue;
+    map[canonical] = [...new Set([...(map[canonical] ?? []), ...labels])];
+    for (const label of labels) remaining.delete(canonicalKey(label));
+  }
+
+  for (const label of remaining.values()) {
+    const canonical = heuristicCanonicalCategory(label);
+    map[canonical] = [...new Set([...(map[canonical] ?? []), label])];
+  }
+
+  return sortCategoryNormalizationMap(map);
+}
+
+function heuristicCategoryNormalizationMap(meals: FirebaseFirestore.DocumentData[]) {
+  const map: CategoryNormalizationMap = {};
+  for (const label of extractAnalysisLabels(meals)) {
+    const canonical = heuristicCanonicalCategory(label);
+    map[canonical] = [...new Set([...(map[canonical] ?? []), label])];
+  }
+  return sortCategoryNormalizationMap(map);
+}
+
+function sortCategoryNormalizationMap(map: CategoryNormalizationMap) {
+  return Object.fromEntries(
+    Object.entries(map)
+      .map(([canonical, labels]): [string, string[]] => [
+        canonical,
+        [...labels].sort((a, b) => a.localeCompare(b)),
+      ])
+      .sort(([a], [b]) => a.localeCompare(b)),
+  );
+}
+
+function normalizeMealsForSensitivity(
+  meals: FirebaseFirestore.DocumentData[],
+  categoryNormalization: CategoryNormalizationMap,
+) {
+  const lookup = buildCategoryLookup(categoryNormalization);
+  return meals.map((meal) => {
+    const analysis = meal.analysis && typeof meal.analysis === "object"
+      ? meal.analysis as Record<string, unknown>
+      : {};
+    const irritants = Array.isArray(analysis.irritants)
+      ? analysis.irritants.map((irritant) => normalizeIrritantForSensitivity(irritant, lookup))
+      : analysis.irritants;
+
+    return {
+      ...meal,
+      analysis: {
+        ...analysis,
+        irritants,
+        allergens: normalizeTagFieldForSensitivity(analysis.allergens, lookup),
+        allergenTags: normalizeTagFieldForSensitivity(analysis.allergenTags, lookup),
+        fodmaps: normalizeTagFieldForSensitivity(analysis.fodmaps, lookup),
+        fodmap: normalizeTagFieldForSensitivity(analysis.fodmap, lookup),
+        fodmapTags: normalizeTagFieldForSensitivity(analysis.fodmapTags, lookup),
+        fodmapRelatedTags: normalizeTagFieldForSensitivity(analysis.fodmapRelatedTags, lookup),
+        tags: normalizeTagFieldForSensitivity(analysis.tags, lookup),
+      },
+    };
+  });
+}
+
+function normalizeIrritantForSensitivity(
+  irritant: unknown,
+  lookup: Map<string, string>,
+) {
+  if (!irritant || typeof irritant !== "object" || Array.isArray(irritant)) return irritant;
+  const record = irritant as Record<string, unknown>;
+  const name = cleanGeneratedString(record.name, "", 100);
+  const category = cleanGeneratedString(record.category, "", 100);
+  const canonical = lookup.get(canonicalKey(name)) ?? lookup.get(canonicalKey(category));
+  if (!canonical) return irritant;
+  return { ...record, name: canonical, category: canonical };
+}
+
+function normalizeTagFieldForSensitivity(value: unknown, lookup: Map<string, string>): unknown {
+  if (typeof value === "string") {
+    return lookup.get(canonicalKey(value)) ?? value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeTagFieldForSensitivity(item, lookup));
+  }
+
+  if (!value || typeof value !== "object") return value;
+  const record = value as Record<string, unknown>;
+  const rawLabel = cleanGeneratedString(record.name ?? record.tag ?? record.label ?? record.value, "", 100);
+  const rawCategory = cleanGeneratedString(record.category, "", 100);
+  const canonical = lookup.get(canonicalKey(rawLabel)) ?? lookup.get(canonicalKey(rawCategory));
+  if (!canonical) return value;
+  return { ...record, name: canonical, tag: canonical, label: canonical, value: canonical, category: canonical };
+}
+
+function buildCategoryLookup(categoryNormalization: CategoryNormalizationMap) {
+  const lookup = new Map<string, string>();
+  for (const [canonical, labels] of Object.entries(categoryNormalization)) {
+    lookup.set(canonicalKey(canonical), canonical);
+    for (const label of labels) lookup.set(canonicalKey(label), canonical);
+  }
+  return lookup;
+}
+
+function extractAnalysisLabels(meals: FirebaseFirestore.DocumentData[]) {
+  const labels = new Set<string>();
+  for (const meal of meals) {
+    const analysis = meal.analysis;
+    if (!analysis || typeof analysis !== "object" || Array.isArray(analysis)) continue;
+    const record = analysis as Record<string, unknown>;
+    collectIrritantLabels(record.irritants, labels);
+    collectTagLabels(record.allergens, labels);
+    collectTagLabels(record.allergenTags, labels);
+    collectTagLabels(record.fodmaps, labels);
+    collectTagLabels(record.fodmap, labels);
+    collectTagLabels(record.fodmapTags, labels);
+    collectTagLabels(record.fodmapRelatedTags, labels);
+    collectTagLabels(record.tags, labels);
+  }
+  return [...labels].sort((a, b) => a.localeCompare(b)).slice(0, 160);
+}
+
+function collectIrritantLabels(value: unknown, labels: Set<string>) {
+  if (!Array.isArray(value)) return;
+  for (const item of value) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const record = item as Record<string, unknown>;
+    collectTagLabels(record.name, labels);
+    collectTagLabels(record.category, labels);
+  }
+}
+
+function collectTagLabels(value: unknown, labels: Set<string>) {
+  if (typeof value === "string") {
+    const label = cleanGeneratedString(value, "", 100);
+    if (label) labels.add(label);
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) collectTagLabels(item, labels);
+    return;
+  }
+
+  if (!value || typeof value !== "object") return;
+  const record = value as Record<string, unknown>;
+  collectTagLabels(record.name ?? record.tag ?? record.label ?? record.value, labels);
+  collectTagLabels(record.category, labels);
 }
 
 async function generateJson(ai: GoogleGenAI, parts: unknown[], modelName: string) {
@@ -557,12 +776,16 @@ Return only JSON with this shape:
 }
 
 Use conservative language. Do not make medical claims. Look for repeated GI events within 2, 6, 12, 24, 48, and 120 hour windows after meals.
+Meal irritant labels have been normalized into canonical categories before statistical scoring.
 
 Meals:
 {{mealsJson}}
 
 GI events:
-{{eventsJson}}`;
+{{eventsJson}}
+
+Category normalization map:
+{{categoryNormalizationJson}}`;
 
 let promptConfigCache: { expiresAt: number; values: PromptConfig } | null = null;
 
@@ -846,6 +1069,15 @@ function canonicalKey(value: string) {
   return value.trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, " ").trim();
 }
 
+function heuristicCanonicalCategory(value: string) {
+  const key = canonicalKey(value);
+  const matched = knownIrritantCatalog.find((item) => (
+    canonicalKey(item.name) === key ||
+    item.aliases?.some((alias) => canonicalKey(alias) === key)
+  ));
+  return matched?.name ?? value.trim().toLowerCase();
+}
+
 function renderTemplate(template: string, values: Record<string, string>) {
   return Object.entries(values).reduce(
     (current, [key, value]) => current.replaceAll(`{{${key}}}`, value),
@@ -936,6 +1168,7 @@ function normalizeCorrelationAnalysis(
 function buildSensitivityContext(
   meals: FirebaseFirestore.DocumentData[],
   events: FirebaseFirestore.DocumentData[],
+  categoryNormalization: CategoryNormalizationMap = {},
 ): SensitivityContext {
   const symptoms = [...new Set(
     events.flatMap((event) => (
@@ -954,6 +1187,7 @@ function buildSensitivityContext(
       "Events closer to a meal count more using a 24 hour half-life, events after 120 hours " +
       "are ignored, and scores are normalized per exposure. These are exploratory associations, " +
       "not evidence that an irritant causes symptoms.",
+    categoryNormalization,
     overall: computeIrritantSensitivity(meals, events).slice(0, 12),
     bySymptom: symptoms.map((symptom) => ({
       symptom,
@@ -972,6 +1206,8 @@ Use these hard statistical rankings to inform the findings. Prefer irritants wit
 normalizedSensitivity and enough exposureCount, but keep cautious language such as
 "associated with symptoms" or "possible sensitivity". Do not say an irritant causes symptoms.
 Do not expose raw score values, weighted scores, formulas, or calculation output in the response.
+The rankings use canonical categories from the categoryNormalization map, so findings should use
+canonical category names and may mention grouped source labels only as plain-language context.
 
 Sensitivity rankings JSON:
 ${JSON.stringify(sensitivityContext)}
