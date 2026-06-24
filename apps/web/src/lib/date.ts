@@ -4,6 +4,12 @@ export function toDatetimeLocalValue(date: Date) {
   return local.toISOString().slice(0, 16);
 }
 
+export function toDateInputValue(date: Date) {
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60_000);
+  return local.toISOString().slice(0, 10);
+}
+
 export function formatRelativeTime(date: Date) {
   const diffMs = Date.now() - date.getTime();
   const diffMinutes = Math.round(diffMs / 60_000);

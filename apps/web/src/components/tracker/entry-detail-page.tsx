@@ -8,6 +8,7 @@ import {
   Plus,
   RefreshCcw,
   Save,
+  Sparkles,
   Trash2,
   Utensils,
 } from "lucide-solid";
@@ -17,14 +18,15 @@ import { reanalyzeMeal } from "@/lib/callables";
 import { toDatetimeLocalValue } from "@/lib/date";
 import { demoReadOnlyMessage } from "@/lib/demo";
 import { getErrorMessage } from "@/lib/errors";
-import { updateGiEvent, updateMeal } from "@/lib/firestore";
-import { symptomOptions } from "@/components/tracker/constants";
+import { updateGiEvent, updateMeal, updateSkinEntry } from "@/lib/firestore";
+import { skinBodyAreaOptions, skinSymptomOptions, symptomOptions } from "@/components/tracker/constants";
 import { StatusMessage } from "@/components/tracker/ui";
-import type { GiEvent, IrritantSignal, Meal } from "@/lib/types";
+import type { GiEvent, IrritantSignal, Meal, SkinEntry } from "@/lib/types";
 
 export type RecentEntry =
   | { kind: "meal"; date: Date; meal: Meal }
-  | { kind: "event"; date: Date; event: GiEvent };
+  | { kind: "event"; date: Date; event: GiEvent }
+  | { kind: "skin"; date: Date; skinEntry: SkinEntry };
 
 type MessageTone = "info" | "error";
 
@@ -47,10 +49,12 @@ function trimOrUndefined(value: string) {
 }
 
 function detailTitle(entry: RecentEntry) {
-  return entry.kind === "meal" ? entry.meal.analysis.mealName : `Severity ${entry.event.severity}`;
+  if (entry.kind === "meal") return entry.meal.analysis.mealName;
+  if (entry.kind === "event") return `Severity ${entry.event.severity}`;
+  return `${entry.skinEntry.entryType === "daily" ? "Skin day" : "Skin observation"} · Severity ${entry.skinEntry.severity}`;
 }
 
-function DetailSection(props: { title: string; icon: "meal" | "event" | "record"; children: JSX.Element }) {
+function DetailSection(props: { title: string; icon: "meal" | "event" | "skin" | "record"; children: JSX.Element }) {
   return (
     <section class="rounded-lg border border-border bg-surface p-4">
       <div class="mb-3 flex items-center gap-2">
@@ -58,6 +62,8 @@ function DetailSection(props: { title: string; icon: "meal" | "event" | "record"
           <Utensils size={17} class="text-brand" aria-hidden />
         ) : props.icon === "event" ? (
           <Activity size={17} class="text-brand" aria-hidden />
+        ) : props.icon === "skin" ? (
+          <Sparkles size={17} class="text-brand" aria-hidden />
         ) : (
           <CalendarClock size={17} class="text-brand" aria-hidden />
         )}
@@ -172,6 +178,44 @@ function EventDetailView(props: { event: GiEvent }) {
           />
           <DetailField label="Occurred" value={props.event.occurredAt.toLocaleString()} />
           <DetailField label="Created" value={props.event.createdAt.toLocaleString()} />
+        </dl>
+      </DetailSection>
+    </div>
+  );
+}
+
+function SkinDetailView(props: { entry: SkinEntry }) {
+  return (
+    <div class="grid gap-3">
+      <DetailSection title="Symptoms" icon="skin">
+        <PillList values={props.entry.symptoms} empty="No skin symptoms recorded" />
+      </DetailSection>
+
+      <DetailSection title="Body areas" icon="skin">
+        <PillList values={props.entry.bodyAreas} empty="No body areas recorded" />
+      </DetailSection>
+
+      {props.entry.notes ? (
+        <DetailSection title="Notes" icon="record">
+          <p class="whitespace-pre-wrap text-sm leading-6 text-muted-strong">{props.entry.notes}</p>
+        </DetailSection>
+      ) : null}
+
+      <DetailSection title="Record" icon="record">
+        <dl>
+          <DetailField label="Type" value={props.entry.entryType === "daily" ? "Daily skin state" : "Timed observation"} />
+          <DetailField label="Severity" value={`${props.entry.severity}/10`} />
+          {props.entry.entryType === "daily" ? (
+            <DetailField label="Date" value={props.entry.localDate ?? "Not set"} />
+          ) : (
+            <DetailField label="Occurred" value={props.entry.occurredAt?.toLocaleString() ?? "Not set"} />
+          )}
+          <DetailField
+            label="Duration"
+            value={props.entry.durationMinutes ? `${props.entry.durationMinutes} min` : "Not set"}
+          />
+          <DetailField label="Updated" value={props.entry.updatedAt.toLocaleString()} />
+          <DetailField label="Created" value={props.entry.createdAt.toLocaleString()} />
         </dl>
       </DetailSection>
     </div>
@@ -667,6 +711,175 @@ function EventEditForm(props: {
   );
 }
 
+function SkinEditForm(props: {
+  entry: SkinEntry;
+  readOnly?: boolean;
+  onSaved: (message: string) => void;
+  onError: (message: string) => void;
+}) {
+  const [occurredAt, setOccurredAt] = createSignal("");
+  const [severity, setSeverity] = createSignal(4);
+  const [symptoms, setSymptoms] = createSignal<string[]>([]);
+  const [bodyAreas, setBodyAreas] = createSignal<string[]>([]);
+  const [notes, setNotes] = createSignal("");
+  const [durationMinutes, setDurationMinutes] = createSignal("");
+  const [saving, setSaving] = createSignal(false);
+
+  createEffect(() => {
+    const entry = props.entry;
+    setOccurredAt(entry.occurredAt ? toDatetimeLocalValue(entry.occurredAt) : "");
+    setSeverity(entry.severity);
+    setSymptoms([...entry.symptoms]);
+    setBodyAreas([...entry.bodyAreas]);
+    setNotes(entry.notes ?? "");
+    setDurationMinutes(entry.durationMinutes?.toString() ?? "");
+  });
+
+  const canSave = createMemo(() => !saving() && symptoms().length > 0);
+
+  function toggleValue(value: string, current: () => string[], setCurrent: (next: string[]) => void) {
+    setCurrent(
+      current().includes(value)
+        ? current().filter((item) => item !== value)
+        : [...current(), value],
+    );
+  }
+
+  async function save(event: Event) {
+    event.preventDefault();
+
+    if (props.readOnly) {
+      props.onSaved(demoReadOnlyMessage);
+      return;
+    }
+
+    const occurredAtDate = props.entry.entryType === "timed" ? new Date(occurredAt()) : undefined;
+    if (props.entry.entryType === "timed" && (!occurredAtDate || Number.isNaN(occurredAtDate.getTime()))) {
+      props.onError("Choose a valid observation time.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await updateSkinEntry(props.entry.uid, props.entry.id, {
+        entryType: props.entry.entryType,
+        severity: severity(),
+        symptoms: symptoms(),
+        bodyAreas: bodyAreas(),
+        notes: trimOrUndefined(notes()),
+        durationMinutes: durationMinutes() ? Number(durationMinutes()) : undefined,
+        localDate: props.entry.entryType === "daily" ? props.entry.localDate : undefined,
+        occurredAt: occurredAtDate,
+      });
+      props.onSaved("Skin entry saved.");
+    } catch (err) {
+      props.onError(getErrorMessage(err, "Skin entry could not be saved."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form class="grid gap-4" onSubmit={save}>
+      <div class="grid gap-4 sm:grid-cols-2">
+        {props.entry.entryType === "daily" ? (
+          <label class="grid gap-1 text-sm font-medium text-muted-strong">
+            Date
+            <input
+              class="h-11 rounded-lg border border-border-strong bg-surface-muted px-3 text-base text-muted-strong outline-none"
+              type="date"
+              value={props.entry.localDate ?? ""}
+              disabled
+            />
+          </label>
+        ) : (
+          <label class="grid gap-1 text-sm font-medium text-muted-strong">
+            Observed at
+            <input
+              class="h-11 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+              type="datetime-local"
+              value={occurredAt()}
+              onInput={(event) => setOccurredAt((event.target as HTMLInputElement).value)}
+              required
+            />
+          </label>
+        )}
+        <label class="grid gap-1 text-sm font-medium text-muted-strong">
+          Severity: {severity()}
+          <input
+            class="h-11 accent-brand"
+            type="range"
+            min="1"
+            max="10"
+            value={severity()}
+            onChange={(event) => setSeverity(Number((event.target as HTMLInputElement).value))}
+          />
+        </label>
+      </div>
+
+      <div class="grid gap-2">
+        <span class="text-sm font-medium text-muted-strong">Symptoms</span>
+        <div class="flex flex-wrap gap-2">
+          <For each={skinSymptomOptions}>
+            {(symptom) => (
+              <button
+                type="button"
+                onClick={() => toggleValue(symptom, symptoms, setSymptoms)}
+                classList={{
+                  "h-9 rounded-md border px-3 text-sm font-medium transition": true,
+                  "border-brand bg-brand text-background": symptoms().includes(symptom),
+                  "border-border-strong bg-surface text-muted-strong hover:border-muted": !symptoms().includes(symptom),
+                }}
+              >
+                {symptom}
+              </button>
+            )}
+          </For>
+        </div>
+      </div>
+
+      <div class="grid gap-2">
+        <span class="text-sm font-medium text-muted-strong">Body areas</span>
+        <div class="flex flex-wrap gap-2">
+          <For each={skinBodyAreaOptions}>
+            {(area) => (
+              <button
+                type="button"
+                onClick={() => toggleValue(area, bodyAreas, setBodyAreas)}
+                classList={{
+                  "h-9 rounded-md border px-3 text-sm font-medium transition": true,
+                  "border-brand bg-brand text-background": bodyAreas().includes(area),
+                  "border-border-strong bg-surface text-muted-strong hover:border-muted": !bodyAreas().includes(area),
+                }}
+              >
+                {area}
+              </button>
+            )}
+          </For>
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        {props.entry.entryType === "timed" ? (
+          <TextInput label="Minutes" value={durationMinutes()} onInput={setDurationMinutes} />
+        ) : null}
+        <TextInput label="Notes" value={notes()} onInput={setNotes} maxLength={1000} />
+      </div>
+
+      <div class="flex justify-end">
+        <button
+          type="submit"
+          disabled={!canSave()}
+          class="flex h-11 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-background transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saving() ? "Saving..." : "Save changes"}
+          {saving() ? <RefreshCcw class="animate-spin" size={16} aria-hidden /> : <Save size={16} aria-hidden />}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export function EntryDetailPage(props: {
   entry: RecentEntry;
   readOnly?: boolean;
@@ -698,8 +911,14 @@ export function EntryDetailPage(props: {
               Back to log
             </A>
             <div class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase text-muted">
-              {props.entry.kind === "meal" ? <Utensils size={14} aria-hidden /> : <Activity size={14} aria-hidden />}
-              {props.entry.kind === "meal" ? "Meal" : "GI event"}
+              {props.entry.kind === "meal" ? (
+                <Utensils size={14} aria-hidden />
+              ) : props.entry.kind === "event" ? (
+                <Activity size={14} aria-hidden />
+              ) : (
+                <Sparkles size={14} aria-hidden />
+              )}
+              {props.entry.kind === "meal" ? "Meal" : props.entry.kind === "event" ? "GI event" : "Skin"}
             </div>
             <h2 id="entry-detail-title" class="truncate text-lg font-semibold">{detailTitle(props.entry)}</h2>
             <p class="text-sm text-muted">{props.entry.date.toLocaleString()}</p>
@@ -749,9 +968,19 @@ export function EntryDetailPage(props: {
                 onError={setError}
                 onReanalyzingChange={setReanalyzing}
               />
-            ) : (
+            ) : props.entry.kind === "event" ? (
               <EventEditForm
                 event={props.entry.event}
+                readOnly={props.readOnly}
+                onSaved={(value) => {
+                  setInfo(value);
+                  setEditing(false);
+                }}
+                onError={setError}
+              />
+            ) : (
+              <SkinEditForm
+                entry={props.entry.skinEntry}
                 readOnly={props.readOnly}
                 onSaved={(value) => {
                   setInfo(value);
@@ -762,8 +991,10 @@ export function EntryDetailPage(props: {
             )
           ) : props.entry.kind === "meal" ? (
             <MealDetailView meal={props.entry.meal} />
-          ) : (
+          ) : props.entry.kind === "event" ? (
             <EventDetailView event={props.entry.event} />
+          ) : (
+            <SkinDetailView entry={props.entry.skinEntry} />
           )}
         </div>
       </section>

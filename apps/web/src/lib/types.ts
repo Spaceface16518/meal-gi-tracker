@@ -53,6 +53,24 @@ export type GiEvent = {
   createdAt: Date;
 };
 
+export type SkinEntryType = "daily" | "timed";
+
+export type SkinEntry = {
+  id: string;
+  uid: string;
+  entryType: SkinEntryType;
+  severity: number;
+  symptoms: string[];
+  bodyAreas: string[];
+  notes?: string;
+  durationMinutes?: number;
+  localDate?: string;
+  occurredAt?: Date;
+  sortAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type CorrelationFinding = {
   irritant: string;
   confidence: number;
@@ -90,6 +108,17 @@ export type CreateGiEventPayload = {
   notes?: string;
   stoolType?: number;
   durationMinutes?: number;
+};
+
+export type SaveSkinEntryPayload = {
+  entryType: SkinEntryType;
+  severity: number;
+  symptoms: string[];
+  bodyAreas: string[];
+  notes?: string;
+  durationMinutes?: number;
+  localDate?: string;
+  occurredAt?: string;
 };
 
 export type ReanalyzeMealPayload = {

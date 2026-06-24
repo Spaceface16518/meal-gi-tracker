@@ -6,6 +6,7 @@ import { A, useLocation, useParams } from "@solidjs/router";
 import { AuthScreen } from "@/components/tracker/auth-screen";
 import { GiEventForm } from "@/components/tracker/gi-event-form";
 import { MealComposer } from "@/components/tracker/meal-composer";
+import { SkinEntryForm } from "@/components/tracker/skin-entry-form";
 import { AnalysisPanel } from "@/components/tracker/analysis-panel";
 import { EntryDetailPage, type RecentEntry } from "@/components/tracker/entry-detail-page";
 import { RecentEntries, StatsStrip } from "@/components/tracker/sidebar";
@@ -18,14 +19,16 @@ import {
   subscribeCurrentAnalysis,
   subscribeGiEvents,
   subscribeMeals,
+  subscribeSkinEntries,
 } from "@/lib/firestore";
-import type { CorrelationAnalysis, GiEvent, Meal } from "@/lib/types";
+import type { CorrelationAnalysis, GiEvent, Meal, SkinEntry } from "@/lib/types";
 
 type TrackerContextValue = {
   user: () => User;
   readOnly: () => boolean;
   meals: () => Meal[];
   events: () => GiEvent[];
+  skinEntries: () => SkinEntry[];
   analysis: () => CorrelationAnalysis | null;
 };
 
@@ -61,6 +64,7 @@ export function TrackerApp(props: { children?: JSX.Element }) {
   const [authReady, setAuthReady] = createSignal(false);
   const [meals, setMeals] = createSignal<Meal[]>([]);
   const [events, setEvents] = createSignal<GiEvent[]>([]);
+  const [skinEntries, setSkinEntries] = createSignal<SkinEntry[]>([]);
   const [analysis, setAnalysis] = createSignal<CorrelationAnalysis | null>(null);
   const [appError, setAppError] = createSignal("");
   const readOnly = createMemo(() => isDemoUser(user()));
@@ -73,6 +77,7 @@ export function TrackerApp(props: { children?: JSX.Element }) {
     if (!currentUser) {
       setMeals([]);
       setEvents([]);
+      setSkinEntries([]);
       setAnalysis(null);
       return;
     }
@@ -100,11 +105,13 @@ export function TrackerApp(props: { children?: JSX.Element }) {
 
     const unsubscribeMeals = subscribeMeals(u.uid, setMeals, handleSubscriptionError);
     const unsubscribeEvents = subscribeGiEvents(u.uid, setEvents, handleSubscriptionError);
+    const unsubscribeSkinEntries = subscribeSkinEntries(u.uid, setSkinEntries, handleSubscriptionError);
     const unsubscribeAnalysis = subscribeCurrentAnalysis(u.uid, setAnalysis, handleSubscriptionError);
 
     onCleanup(() => {
       unsubscribeMeals();
       unsubscribeEvents();
+      unsubscribeSkinEntries();
       unsubscribeAnalysis();
     });
   });
@@ -128,6 +135,7 @@ export function TrackerApp(props: { children?: JSX.Element }) {
               readOnly,
               meals,
               events,
+              skinEntries,
               analysis,
             }}
           >
@@ -181,8 +189,14 @@ export function TrackerApp(props: { children?: JSX.Element }) {
                 </section>
 
                 <aside class="grid content-start gap-5">
-                  <StatsStrip meals={meals()} events={events()} analysis={analysis()} />
-                  <RecentEntries uid={user()!.uid} meals={meals()} events={events()} readOnly={readOnly()} />
+                  <StatsStrip meals={meals()} events={events()} skinEntries={skinEntries()} analysis={analysis()} />
+                  <RecentEntries
+                    uid={user()!.uid}
+                    meals={meals()}
+                    events={events()}
+                    skinEntries={skinEntries()}
+                    readOnly={readOnly()}
+                  />
                 </aside>
               </div>
             </main>
@@ -200,6 +214,7 @@ export function LogPage() {
     <div class="grid gap-5">
       <MealComposer readOnly={readOnly()} />
       <GiEventForm readOnly={readOnly()} />
+      <SkinEntryForm readOnly={readOnly()} />
     </div>
   );
 }
@@ -219,7 +234,7 @@ export function AnalysisPage() {
 }
 
 export function EntryPage() {
-  const { readOnly, meals, events } = useTrackerContext();
+  const { readOnly, meals, events, skinEntries } = useTrackerContext();
   const params = useParams<{ entryKind?: string; entryId?: string }>();
   const entry = createMemo<RecentEntry | null>(() => {
     if (params.entryKind === "meals") {
@@ -230,6 +245,11 @@ export function EntryPage() {
     if (params.entryKind === "events") {
       const event = events().find((item) => item.id === params.entryId);
       return event ? { kind: "event", date: event.occurredAt, event } : null;
+    }
+
+    if (params.entryKind === "skin") {
+      const skinEntry = skinEntries().find((item) => item.id === params.entryId);
+      return skinEntry ? { kind: "skin", date: skinEntry.sortAt, skinEntry } : null;
     }
 
     return null;

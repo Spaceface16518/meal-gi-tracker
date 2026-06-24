@@ -3,7 +3,7 @@ import { BarChart3, CircleAlert, FileJson, FileText, RefreshCcw } from "lucide-s
 import { analyzeCorrelations } from "@/lib/callables";
 import { exportAnalysisHtml, exportAnalysisJson, exportMealsJson } from "@/lib/export-data";
 import { getErrorMessage } from "@/lib/errors";
-import { getAllGiEvents, getAllMeals } from "@/lib/firestore";
+import { getAllGiEvents, getAllMeals, getAllSkinEntries } from "@/lib/firestore";
 import { demoReadOnlyMessage } from "@/lib/demo";
 import type { CorrelationAnalysis } from "@/lib/types";
 import { EmptyState, StatusMessage } from "@/components/tracker/ui";
@@ -42,8 +42,12 @@ export function AnalysisPanel(props: {
   }
 
   async function loadExportData() {
-    const [meals, events] = await Promise.all([getAllMeals(props.uid), getAllGiEvents(props.uid)]);
-    return { meals, events };
+    const [meals, events, skinEntries] = await Promise.all([
+      getAllMeals(props.uid),
+      getAllGiEvents(props.uid),
+      getAllSkinEntries(props.uid),
+    ]);
+    return { meals, events, skinEntries };
   }
 
   async function exportData(kind: "analysis-html" | "analysis-json" | "meals-json") {
@@ -52,12 +56,12 @@ export function AnalysisPanel(props: {
     setIsError(false);
 
     try {
-      const { meals, events } = await loadExportData();
+      const { meals, events, skinEntries } = await loadExportData();
       if (kind === "analysis-html") {
-        exportAnalysisHtml({ analysis: props.analysis, meals, events });
+        exportAnalysisHtml({ analysis: props.analysis, meals, events, skinEntries });
         setMessage("Analysis HTML exported.");
       } else if (kind === "analysis-json") {
-        exportAnalysisJson({ analysis: props.analysis, meals, events });
+        exportAnalysisJson({ analysis: props.analysis, meals, events, skinEntries });
         setMessage("Analysis JSON exported.");
       } else {
         exportMealsJson(meals);

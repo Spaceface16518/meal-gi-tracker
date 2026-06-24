@@ -43,6 +43,21 @@ service cloud.firestore {
     //   - durationMinutes: number (optional, 1-1440) - event duration
     //   - createdAt: timestamp (required) - creation time
     //
+    // Collection: users/{uid}/skinEntries
+    // Fields:
+    //   - uid: string (required, immutable) - owner uid
+    //   - entryType: string (required) - daily or timed
+    //   - severity: number (required, 1-10) - skin severity
+    //   - symptoms: list (required, at least one item) - skin symptom tags
+    //   - bodyAreas: list (required, can be empty) - body area tags
+    //   - notes: string (optional) - user notes
+    //   - durationMinutes: number (optional, 1-1440) - observation duration
+    //   - localDate: string (daily only, YYYY-MM-DD) - local calendar date
+    //   - occurredAt: timestamp (timed only) - observation time
+    //   - sortAt: timestamp (required) - ordering timestamp
+    //   - createdAt: timestamp (required) - creation time
+    //   - updatedAt: timestamp (required) - update time
+    //
     // Collection: users/{uid}/analyses
     // Document IDs: current or generated run IDs
     // Writes are performed by Cloud Functions using Admin SDK.
@@ -186,6 +201,53 @@ service cloud.firestore {
         isValidTimestamp('createdAt');
     }
 
+    function isValidSkinEntry(userId) {
+      return hasOnlyAllowedFields([
+        'uid',
+        'entryType',
+        'severity',
+        'symptoms',
+        'bodyAreas',
+        'notes',
+        'durationMinutes',
+        'localDate',
+        'occurredAt',
+        'sortAt',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+        hasRequiredFields(['uid', 'entryType', 'severity', 'symptoms', 'bodyAreas', 'sortAt', 'createdAt', 'updatedAt']) &&
+        request.resource.data.uid == userId &&
+        request.resource.data.entryType in ['daily', 'timed'] &&
+        request.resource.data.severity is number &&
+        request.resource.data.severity >= 1 &&
+        request.resource.data.severity <= 10 &&
+        request.resource.data.symptoms is list &&
+        request.resource.data.symptoms.size() > 0 &&
+        request.resource.data.symptoms.size() <= 12 &&
+        request.resource.data.bodyAreas is list &&
+        request.resource.data.bodyAreas.size() <= 12 &&
+        isOptionalString('notes', 1000) &&
+        (!('durationMinutes' in request.resource.data) ||
+          (request.resource.data.durationMinutes is number &&
+            request.resource.data.durationMinutes >= 1 &&
+            request.resource.data.durationMinutes <= 1440)) &&
+        (
+          (request.resource.data.entryType == 'daily' &&
+            'localDate' in request.resource.data &&
+            !('occurredAt' in request.resource.data) &&
+            request.resource.data.localDate is string &&
+            request.resource.data.localDate.matches('^\\d{4}-\\d{2}-\\d{2}$')) ||
+          (request.resource.data.entryType == 'timed' &&
+            'occurredAt' in request.resource.data &&
+            !('localDate' in request.resource.data) &&
+            request.resource.data.occurredAt is timestamp)
+        ) &&
+        isValidTimestamp('sortAt') &&
+        isValidTimestamp('createdAt') &&
+        isValidTimestamp('updatedAt');
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create: if isWritableOwner(userId) && isValidUserProfile(userId);
@@ -223,6 +285,18 @@ service cloud.firestore {
           request.resource.data.uid == resource.data.uid &&
           request.resource.data.createdAt == resource.data.createdAt &&
           isValidGiEvent(userId);
+        allow delete: if isWritableOwner(userId);
+      }
+
+      match /skinEntries/{entryId} {
+        allow read: if isOwner(userId);
+        allow create: if isWritableOwner(userId) && isValidSkinEntry(userId);
+        allow update: if isWritableOwner(userId) &&
+          resource.data.uid == userId &&
+          request.resource.data.uid == resource.data.uid &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          request.resource.data.entryType == resource.data.entryType &&
+          isValidSkinEntry(userId);
         allow delete: if isWritableOwner(userId);
       }
 

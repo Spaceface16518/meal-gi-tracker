@@ -1,13 +1,13 @@
 import { createMemo, createSignal } from "solid-js";
-import { Activity, BarChart3, CalendarClock, FileJson, RefreshCcw, Trash2, Utensils } from "lucide-solid";
+import { Activity, BarChart3, CalendarClock, FileJson, RefreshCcw, Sparkles, Trash2, Utensils } from "lucide-solid";
 import { useLocation, useNavigate } from "@solidjs/router";
 import { reanalyzeMeal } from "@/lib/callables";
 import { formatRelativeTime } from "@/lib/date";
 import { exportMealJson } from "@/lib/export-data";
 import { getErrorMessage } from "@/lib/errors";
-import { deleteGiEvent, deleteMeal } from "@/lib/firestore";
+import { deleteGiEvent, deleteMeal, deleteSkinEntry } from "@/lib/firestore";
 import { demoReadOnlyMessage } from "@/lib/demo";
-import type { CorrelationAnalysis, GiEvent, Meal } from "@/lib/types";
+import type { CorrelationAnalysis, GiEvent, Meal, SkinEntry } from "@/lib/types";
 import type { RecentEntry } from "@/components/tracker/entry-detail-page";
 import { EmptyState, Stat, StatusMessage } from "@/components/tracker/ui";
 
@@ -17,9 +17,16 @@ function describeEvent(event: GiEvent) {
   return details.length ? details.join(", ") : "No details recorded";
 }
 
+function describeSkinEntry(entry: SkinEntry) {
+  const details = [...entry.symptoms];
+  if (entry.bodyAreas.length) details.push(entry.bodyAreas.join(", "));
+  return details.length ? details.join(" · ") : "No skin details recorded";
+}
+
 export function StatsStrip(props: {
   meals: Meal[];
   events: GiEvent[];
+  skinEntries: SkinEntry[];
   analysis: CorrelationAnalysis | null;
 }) {
   const topIrritant = createMemo(() => {
@@ -34,15 +41,22 @@ export function StatsStrip(props: {
   });
 
   return (
-    <section class="grid grid-cols-3 gap-2">
+    <section class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
       <Stat icon={<Utensils size={17} />} label="Meals" value={props.meals.length.toString()} />
-      <Stat icon={<Activity size={17} />} label="Events" value={props.events.length.toString()} />
+      <Stat icon={<Activity size={17} />} label="GI" value={props.events.length.toString()} />
+      <Stat icon={<Sparkles size={17} />} label="Skin" value={props.skinEntries.length.toString()} />
       <Stat icon={<BarChart3 size={17} />} label="Signal" value={props.analysis ? topIrritant() : "Pending"} />
     </section>
   );
 }
 
-export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEvent[]; readOnly?: boolean }) {
+export function RecentEntries(props: {
+  uid: string;
+  meals: Meal[];
+  events: GiEvent[];
+  skinEntries: SkinEntry[];
+  readOnly?: boolean;
+}) {
   const location = useLocation();
   const navigate = useNavigate();
   const [reanalyzingMealId, setReanalyzingMealId] = createSignal("");
@@ -53,12 +67,15 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
     [
       ...props.meals.map((meal) => ({ kind: "meal" as const, date: meal.eatenAt, meal })),
       ...props.events.map((event) => ({ kind: "event" as const, date: event.occurredAt, event })),
+      ...props.skinEntries.map((skinEntry) => ({ kind: "skin" as const, date: skinEntry.sortAt, skinEntry })),
     ]
       .sort((a, b) => b.date.getTime() - a.date.getTime()),
   );
 
   function entryPath(entry: RecentEntry) {
-    return entry.kind === "meal" ? `/entries/meals/${entry.meal.id}` : `/entries/events/${entry.event.id}`;
+    if (entry.kind === "meal") return `/entries/meals/${entry.meal.id}`;
+    if (entry.kind === "event") return `/entries/events/${entry.event.id}`;
+    return `/entries/skin/${entry.skinEntry.id}`;
   }
 
   function openEntry(entry: RecentEntry) {
@@ -91,8 +108,8 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
     }
   }
 
-  async function removeEntry(entry: { kind: "meal"; id: string } | { kind: "event"; id: string }) {
-    const label = entry.kind === "meal" ? "meal" : "event";
+  async function removeEntry(entry: { kind: "meal"; id: string } | { kind: "event"; id: string } | { kind: "skin"; id: string }) {
+    const label = entry.kind === "meal" ? "meal" : entry.kind === "event" ? "event" : "skin entry";
     if (props.readOnly) {
       setMessage(demoReadOnlyMessage);
       setIsError(false);
@@ -109,10 +126,12 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
     try {
       if (entry.kind === "meal") {
         await deleteMeal(props.uid, entry.id);
-      } else {
+      } else if (entry.kind === "event") {
         await deleteGiEvent(props.uid, entry.id);
+      } else {
+        await deleteSkinEntry(props.uid, entry.id);
       }
-      setMessage(`${label === "meal" ? "Meal" : "Event"} deleted.`);
+      setMessage(`${entry.kind === "meal" ? "Meal" : entry.kind === "event" ? "Event" : "Skin entry"} deleted.`);
     } catch (err) {
       setIsError(true);
       setMessage(getErrorMessage(err, `The ${label} could not be deleted.`));
@@ -135,8 +154,9 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
         ) : null}
         {combined().length ? (
           <div class="grid gap-3">
-            {combined().map((item) =>
-              item.kind === "meal" ? (
+            {combined().map((item) => {
+              if (item.kind === "meal") {
+                return (
                 <article
                   classList={{
                     "cursor-pointer rounded-lg border p-3 transition hover:bg-surface-accent": true,
@@ -210,7 +230,10 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
                   ))}
                 </div>
               </article>
-            ) : (
+                );
+              }
+              if (item.kind === "event") {
+                return (
               <article
                 classList={{
                   "cursor-pointer rounded-lg border p-3 transition hover:bg-surface-accent": true,
@@ -246,8 +269,52 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
                 </div>
                 <p class="mt-1 text-sm text-muted-strong">{describeEvent(item.event)}</p>
               </article>
-            ),
-            )}
+                );
+              }
+              return (
+                <article
+                  classList={{
+                    "cursor-pointer rounded-lg border p-3 transition hover:bg-surface-accent": true,
+                    "border-brand bg-brand-soft shadow-sm": isSelectedEntry(item),
+                    "border-transparent bg-surface-muted": !isSelectedEntry(item),
+                  }}
+                  role="button"
+                  aria-current={isSelectedEntry(item) ? "page" : undefined}
+                  tabIndex={0}
+                  onClick={() => openEntry(item)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") openEntry(item);
+                  }}
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <h3 class="text-sm font-semibold">
+                      {item.skinEntry.entryType === "daily" ? "Skin day" : "Skin observation"} · Severity {item.skinEntry.severity}
+                    </h3>
+                    <div class="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          removeEntry({ kind: "skin", id: item.skinEntry.id });
+                        }}
+                        disabled={deletingEntryId() === `skin-${item.skinEntry.id}`}
+                        class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label="Delete skin entry"
+                        title="Delete skin entry"
+                      >
+                        <Trash2 size={14} aria-hidden />
+                      </button>
+                      <span class="text-xs text-muted">
+                        {item.skinEntry.entryType === "daily" && item.skinEntry.localDate
+                          ? new Date(`${item.skinEntry.localDate}T12:00:00`).toLocaleDateString()
+                          : formatRelativeTime(item.date)}
+                      </span>
+                    </div>
+                  </div>
+                  <p class="mt-1 text-sm text-muted-strong">{describeSkinEntry(item.skinEntry)}</p>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <EmptyState icon={<CalendarClock size={22} />} title="No entries yet" />
