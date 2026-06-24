@@ -1,5 +1,6 @@
 import { createMemo, createSignal } from "solid-js";
 import { Activity, BarChart3, CalendarClock, FileJson, RefreshCcw, Trash2, Utensils } from "lucide-solid";
+import { useLocation, useNavigate } from "@solidjs/router";
 import { reanalyzeMeal } from "@/lib/callables";
 import { formatRelativeTime } from "@/lib/date";
 import { exportMealJson } from "@/lib/export-data";
@@ -7,6 +8,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { deleteGiEvent, deleteMeal } from "@/lib/firestore";
 import { demoReadOnlyMessage } from "@/lib/demo";
 import type { CorrelationAnalysis, GiEvent, Meal } from "@/lib/types";
+import type { RecentEntry } from "@/components/tracker/entry-detail-page";
 import { EmptyState, Stat, StatusMessage } from "@/components/tracker/ui";
 
 function describeEvent(event: GiEvent) {
@@ -41,18 +43,31 @@ export function StatsStrip(props: {
 }
 
 export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEvent[]; readOnly?: boolean }) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [reanalyzingMealId, setReanalyzingMealId] = createSignal("");
   const [deletingEntryId, setDeletingEntryId] = createSignal("");
   const [message, setMessage] = createSignal("");
   const [isError, setIsError] = createSignal(false);
-  const combined = createMemo(() =>
+  const combined = createMemo<RecentEntry[]>(() =>
     [
       ...props.meals.map((meal) => ({ kind: "meal" as const, date: meal.eatenAt, meal })),
       ...props.events.map((event) => ({ kind: "event" as const, date: event.occurredAt, event })),
     ]
-      .sort((a, b) => b.date.getTime() - a.date.getTime())
-      .slice(0, 12),
+      .sort((a, b) => b.date.getTime() - a.date.getTime()),
   );
+
+  function entryPath(entry: RecentEntry) {
+    return entry.kind === "meal" ? `/entries/meals/${entry.meal.id}` : `/entries/events/${entry.event.id}`;
+  }
+
+  function openEntry(entry: RecentEntry) {
+    navigate(entryPath(entry));
+  }
+
+  function isSelectedEntry(entry: RecentEntry) {
+    return location.pathname === entryPath(entry);
+  }
 
   async function redoMealAnalysis(mealId: string) {
     setReanalyzingMealId(mealId);
@@ -107,27 +122,44 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
   }
 
   return (
-    <section class="rounded-lg border border-border bg-surface p-4 shadow-sm">
-      <div class="mb-3 flex items-center gap-2">
-        <CalendarClock size={18} class="text-brand" aria-hidden />
-        <h2 class="font-semibold">Recent</h2>
-      </div>
-      {message() ? (
-        <div class="mb-3">
-          <StatusMessage tone={isError() ? "error" : "info"}>{message()}</StatusMessage>
+    <>
+      <section class="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <div class="mb-3 flex items-center gap-2">
+          <CalendarClock size={18} class="text-brand" aria-hidden />
+          <h2 class="font-semibold">Past entries</h2>
         </div>
-      ) : null}
-      {combined().length ? (
-        <div class="grid gap-3">
-          {combined().map((item) =>
-            item.kind === "meal" ? (
-              <article class="rounded-lg bg-surface-muted p-3">
+        {message() ? (
+          <div class="mb-3">
+            <StatusMessage tone={isError() ? "error" : "info"}>{message()}</StatusMessage>
+          </div>
+        ) : null}
+        {combined().length ? (
+          <div class="grid gap-3">
+            {combined().map((item) =>
+              item.kind === "meal" ? (
+                <article
+                  classList={{
+                    "cursor-pointer rounded-lg border p-3 transition hover:bg-surface-accent": true,
+                    "border-brand bg-brand-soft shadow-sm": isSelectedEntry(item),
+                    "border-transparent bg-surface-muted": !isSelectedEntry(item),
+                  }}
+                  role="button"
+                  aria-current={isSelectedEntry(item) ? "page" : undefined}
+                  tabIndex={0}
+                  onClick={() => openEntry(item)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") openEntry(item);
+                  }}
+                >
                 <div class="flex items-start justify-between gap-3">
                   <h3 class="text-sm font-semibold">{item.meal.analysis.mealName}</h3>
                   <div class="flex shrink-0 items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => redoMealAnalysis(item.meal.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        redoMealAnalysis(item.meal.id);
+                      }}
                       disabled={reanalyzingMealId() === item.meal.id}
                       class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Redo meal analysis"
@@ -141,7 +173,10 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
                     </button>
                     <button
                       type="button"
-                      onClick={() => exportMealJson(item.meal)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        exportMealJson(item.meal);
+                      }}
                       class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Export meal JSON"
                       title="Export meal JSON"
@@ -150,7 +185,10 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
                     </button>
                     <button
                       type="button"
-                      onClick={() => removeEntry({ kind: "meal", id: item.meal.id })}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        removeEntry({ kind: "meal", id: item.meal.id });
+                      }}
                       disabled={deletingEntryId() === `meal-${item.meal.id}`}
                       class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Delete meal"
@@ -173,13 +211,29 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
                 </div>
               </article>
             ) : (
-              <article class="rounded-lg bg-surface-muted p-3">
+              <article
+                classList={{
+                  "cursor-pointer rounded-lg border p-3 transition hover:bg-surface-accent": true,
+                  "border-brand bg-brand-soft shadow-sm": isSelectedEntry(item),
+                  "border-transparent bg-surface-muted": !isSelectedEntry(item),
+                }}
+                role="button"
+                aria-current={isSelectedEntry(item) ? "page" : undefined}
+                tabIndex={0}
+                onClick={() => openEntry(item)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") openEntry(item);
+                }}
+              >
                 <div class="flex items-start justify-between gap-3">
                   <h3 class="text-sm font-semibold">Severity {item.event.severity}</h3>
                   <div class="flex shrink-0 items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => removeEntry({ kind: "event", id: item.event.id })}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        removeEntry({ kind: "event", id: item.event.id });
+                      }}
                       disabled={deletingEntryId() === `event-${item.event.id}`}
                       class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Delete event"
@@ -193,11 +247,13 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
                 <p class="mt-1 text-sm text-muted-strong">{describeEvent(item.event)}</p>
               </article>
             ),
-          )}
-        </div>
-      ) : (
-        <EmptyState icon={<CalendarClock size={22} />} title="No entries yet" />
-      )}
-    </section>
+            )}
+          </div>
+        ) : (
+          <EmptyState icon={<CalendarClock size={22} />} title="No entries yet" />
+        )}
+      </section>
+
+    </>
   );
 }

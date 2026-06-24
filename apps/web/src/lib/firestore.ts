@@ -1,6 +1,7 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -11,6 +12,8 @@ import {
   serverTimestamp,
   setDoc,
   Timestamp,
+  updateDoc,
+  type FieldValue,
   type DocumentData,
   type FirestoreError,
   type QueryDocumentSnapshot,
@@ -108,6 +111,39 @@ export async function deleteMeal(uid: string, mealId: string) {
 
 export async function deleteGiEvent(uid: string, eventId: string) {
   await deleteDoc(doc(db, "users", uid, "events", eventId));
+}
+
+export async function updateMeal(
+  uid: string,
+  mealId: string,
+  meal: Pick<Meal, "rawInput" | "interpretedText" | "eatenAt" | "notes" | "analysis">,
+) {
+  await updateDoc(doc(db, "users", uid, "meals", mealId), {
+    rawInput: meal.rawInput,
+    interpretedText: meal.interpretedText,
+    eatenAt: Timestamp.fromDate(meal.eatenAt),
+    notes: meal.notes ?? deleteField(),
+    analysis: meal.analysis,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function updateGiEvent(
+  uid: string,
+  eventId: string,
+  event: Pick<GiEvent, "occurredAt" | "severity" | "symptoms" | "notes" | "stoolType" | "durationMinutes">,
+) {
+  const payload: Record<string, string | number | string[] | Timestamp | FieldValue> = {
+    occurredAt: Timestamp.fromDate(event.occurredAt),
+    severity: event.severity,
+    symptoms: event.symptoms,
+    notes: event.notes ?? deleteField(),
+  };
+
+  payload.stoolType = event.stoolType ?? deleteField();
+  payload.durationMinutes = event.durationMinutes ?? deleteField();
+
+  await updateDoc(doc(db, "users", uid, "events", eventId), payload);
 }
 
 export async function getAllMeals(uid: string) {

@@ -30,6 +30,7 @@ service cloud.firestore {
     //     - summary: string (required)
     //   - createdAt: timestamp (required) - creation time
     //   - updatedAt: timestamp (required) - update time
+    //   - reanalyzedAt: timestamp (optional, immutable by clients) - last backend reanalysis time
     //
     // Collection: users/{uid}/events
     // Fields:
@@ -82,6 +83,12 @@ service cloud.firestore {
       return request.resource.data[field] is timestamp;
     }
 
+    function isOptionalTimestamp(field) {
+      return !(field in request.resource.data) ||
+        request.resource.data[field] == null ||
+        request.resource.data[field] is timestamp;
+    }
+
     function isValidUserProfile(userId) {
       return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'createdAt', 'updatedAt']) &&
         hasRequiredFields(['uid', 'createdAt', 'updatedAt']) &&
@@ -118,7 +125,8 @@ service cloud.firestore {
         'status',
         'analysis',
         'createdAt',
-        'updatedAt'
+        'updatedAt',
+        'reanalyzedAt'
       ]) &&
         hasRequiredFields([
           'uid',
@@ -140,6 +148,7 @@ service cloud.firestore {
         request.resource.data.status in ['analyzed', 'needs_review', 'failed'] &&
         isValidMealAnalysis() &&
         isOptionalString('notes', 1000) &&
+        isOptionalTimestamp('reanalyzedAt') &&
         isValidTimestamp('eatenAt') &&
         isValidTimestamp('createdAt') &&
         isValidTimestamp('updatedAt');
@@ -192,13 +201,16 @@ service cloud.firestore {
 
       match /meals/{mealId} {
         allow read: if isOwner(userId);
-        allow create: if isWritableOwner(userId) && isValidMeal(userId);
+        allow create: if isWritableOwner(userId) &&
+          !('reanalyzedAt' in request.resource.data) &&
+          isValidMeal(userId);
         allow update: if isWritableOwner(userId) &&
           resource.data.uid == userId &&
           request.resource.data.uid == resource.data.uid &&
           request.resource.data.createdAt == resource.data.createdAt &&
           request.resource.data.inputMode == resource.data.inputMode &&
           request.resource.data.status == resource.data.status &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['reanalyzedAt']) &&
           isValidMeal(userId);
         allow delete: if isWritableOwner(userId);
       }
