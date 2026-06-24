@@ -13,6 +13,29 @@ export default defineConfig({
   build: {
     target: "esnext",
     outDir: "dist",
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) {
+            return;
+          }
+
+          if (id.includes("/firebase/") || id.includes("@firebase")) {
+            return "firebase";
+          }
+
+          if (id.includes("/solid-js/") || id.includes("/vite-plugin-solid/")) {
+            return "solid";
+          }
+
+          if (id.includes("/lucide-solid/")) {
+            return "icons";
+          }
+
+          return "vendor";
+        },
+      },
+    },
   },
   server: {
     port: 3000,
