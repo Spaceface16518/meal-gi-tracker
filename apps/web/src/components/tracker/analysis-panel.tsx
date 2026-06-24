@@ -7,12 +7,7 @@ import { getAllGiEvents, getAllMeals } from "@/lib/firestore";
 import type { CorrelationAnalysis } from "@/lib/types";
 import { EmptyState, StatusMessage } from "@/components/tracker/ui";
 
-export function AnalysisPanel({
-  uid,
-  analysis,
-  mealCount,
-  eventCount,
-}: {
+export function AnalysisPanel(props: {
   uid: string;
   analysis: CorrelationAnalysis | null;
   mealCount: number;
@@ -39,7 +34,7 @@ export function AnalysisPanel({
   }
 
   async function loadExportData() {
-    const [meals, events] = await Promise.all([getAllMeals(uid), getAllGiEvents(uid)]);
+    const [meals, events] = await Promise.all([getAllMeals(props.uid), getAllGiEvents(props.uid)]);
     return { meals, events };
   }
 
@@ -51,10 +46,10 @@ export function AnalysisPanel({
     try {
       const { meals, events } = await loadExportData();
       if (kind === "analysis-html") {
-        exportAnalysisHtml({ analysis, meals, events });
+        exportAnalysisHtml({ analysis: props.analysis, meals, events });
         setMessage("Analysis HTML exported.");
       } else if (kind === "analysis-json") {
-        exportAnalysisJson({ analysis, meals, events });
+        exportAnalysisJson({ analysis: props.analysis, meals, events });
         setMessage("Analysis JSON exported.");
       } else {
         exportMealsJson(meals);
@@ -74,9 +69,9 @@ export function AnalysisPanel({
         <div>
           <h2 class="text-lg font-semibold">Correlation analysis</h2>
           <p class="text-sm text-muted">
-            {analysis
-              ? `Updated ${analysis.generatedAt.toLocaleString()}`
-              : `${mealCount} meals and ${eventCount} GI events available`}
+            {props.analysis
+              ? `Updated ${props.analysis.generatedAt.toLocaleString()}`
+              : `${props.mealCount} meals and ${props.eventCount} GI events available`}
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
@@ -129,17 +124,17 @@ export function AnalysisPanel({
         </div>
       ) : null}
 
-      {analysis ? (
+      {props.analysis ? (
         <div class="grid gap-4">
           <div class="rounded-lg bg-surface-accent p-4">
-            <p class="text-sm font-medium text-brand">{analysis.summary}</p>
+            <p class="text-sm font-medium text-brand">{props.analysis.summary}</p>
             <p class="mt-2 text-xs text-muted-strong">
-              {analysis.mealCount} meals, {analysis.eventCount} GI events
+              {props.analysis.mealCount} meals, {props.analysis.eventCount} GI events
             </p>
           </div>
 
           <div class="grid gap-3">
-            {analysis.findings.map((finding) => (
+            {props.analysis.findings.map((finding) => (
               <article
                 class="rounded-lg border border-border p-4"
               >
@@ -163,14 +158,14 @@ export function AnalysisPanel({
             ))}
           </div>
 
-          {analysis.dataQualityNotes.length ? (
+          {props.analysis.dataQualityNotes.length ? (
             <div class="rounded-lg border border-warning-border bg-warning-soft p-4">
               <div class="mb-2 flex items-center gap-2 text-sm font-semibold text-warning">
                 <CircleAlert size={16} aria-hidden />
                 Data notes
               </div>
               <ul class="grid gap-1 text-sm text-warning">
-                {analysis.dataQualityNotes.map((note) => (
+                {props.analysis.dataQualityNotes.map((note) => (
                   <li>{note}</li>
                 ))}
               </ul>

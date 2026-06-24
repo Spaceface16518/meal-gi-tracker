@@ -27,70 +27,70 @@ function getStoolType(value: string) {
   return stoolTypes.find((type) => type.value === parsed) ?? null;
 }
 
-function StoolTypeIcon({ type }: { type: StoolTypeValue | null }) {
-  const fill = type ? "#5f4b32" : "#d6d3d1";
-  const stroke = type ? "#3f3323" : "#a8a29e";
+function StoolTypeIcon(props: { type: StoolTypeValue | null }) {
+  const fill = () => props.type ? "#5f4b32" : "#d6d3d1";
+  const stroke = () => props.type ? "#3f3323" : "#a8a29e";
 
   return (
     <svg
       class="h-12 w-20 shrink-0"
       viewBox="0 0 80 48"
       role="img"
-      aria-label={type ? `Bristol stool type ${type}` : "No stool type selected"}
+      aria-label={props.type ? `Bristol stool type ${props.type}` : "No stool type selected"}
     >
-      {type === 1 ? (
+      {props.type === 1 ? (
         <>
-          <circle cx="22" cy="26" r="7" fill={fill} stroke={stroke} stroke-width="2" />
-          <circle cx="38" cy="20" r="6" fill={fill} stroke={stroke} stroke-width="2" />
-          <circle cx="52" cy="29" r="7" fill={fill} stroke={stroke} stroke-width="2" />
-          <circle cx="62" cy="18" r="5" fill={fill} stroke={stroke} stroke-width="2" />
+          <circle cx="22" cy="26" r="7" fill={fill()} stroke={stroke()} stroke-width="2" />
+          <circle cx="38" cy="20" r="6" fill={fill()} stroke={stroke()} stroke-width="2" />
+          <circle cx="52" cy="29" r="7" fill={fill()} stroke={stroke()} stroke-width="2" />
+          <circle cx="62" cy="18" r="5" fill={fill()} stroke={stroke()} stroke-width="2" />
         </>
       ) : null}
-      {type === 2 ? (
+      {props.type === 2 ? (
         <>
-          <ellipse cx="40" cy="25" rx="29" ry="11" fill={fill} stroke={stroke} stroke-width="2" />
+          <ellipse cx="40" cy="25" rx="29" ry="11" fill={fill()} stroke={stroke()} stroke-width="2" />
           <path d="M18 24c8-8 16 7 24-1s14 6 22-1" fill="none" stroke="#f3efe7" stroke-width="3" />
         </>
       ) : null}
-      {type === 3 ? (
+      {props.type === 3 ? (
         <>
-          <ellipse cx="40" cy="25" rx="30" ry="10" fill={fill} stroke={stroke} stroke-width="2" />
+          <ellipse cx="40" cy="25" rx="30" ry="10" fill={fill()} stroke={stroke()} stroke-width="2" />
           <path d="M25 18l5 8M40 16l-3 10M53 19l-5 8" stroke="#f3efe7" stroke-width="3" stroke-linecap="round" />
         </>
       ) : null}
-      {type === 4 ? (
+      {props.type === 4 ? (
         <path
           d="M14 27c8-13 21-16 34-11 10 4 16 1 20 8 4 8-5 15-20 14-12-1-23 5-32-1-4-3-5-6-2-10Z"
-          fill={fill}
-          stroke={stroke}
+          fill={fill()}
+          stroke={stroke()}
           stroke-width="2"
         />
       ) : null}
-      {type === 5 ? (
+      {props.type === 5 ? (
         <>
-          <ellipse cx="24" cy="27" rx="11" ry="9" fill={fill} stroke={stroke} stroke-width="2" />
-          <ellipse cx="43" cy="22" rx="12" ry="9" fill={fill} stroke={stroke} stroke-width="2" />
-          <ellipse cx="57" cy="31" rx="10" ry="8" fill={fill} stroke={stroke} stroke-width="2" />
+          <ellipse cx="24" cy="27" rx="11" ry="9" fill={fill()} stroke={stroke()} stroke-width="2" />
+          <ellipse cx="43" cy="22" rx="12" ry="9" fill={fill()} stroke={stroke()} stroke-width="2" />
+          <ellipse cx="57" cy="31" rx="10" ry="8" fill={fill()} stroke={stroke()} stroke-width="2" />
         </>
       ) : null}
-      {type === 6 ? (
+      {props.type === 6 ? (
         <>
-          <path d="M18 30c-5-9 8-18 17-11 8-8 23 0 18 12 8-1 12 10 4 14H21c-9-1-11-10-3-15Z" fill={fill} stroke={stroke} stroke-width="2" />
+          <path d="M18 30c-5-9 8-18 17-11 8-8 23 0 18 12 8-1 12 10 4 14H21c-9-1-11-10-3-15Z" fill={fill()} stroke={stroke()} stroke-width="2" />
           <path d="M29 22l-6 5M43 20l4 6M53 33l-7 4" stroke="#f3efe7" stroke-width="2" stroke-linecap="round" />
         </>
       ) : null}
-      {type === 7 ? (
+      {props.type === 7 ? (
         <>
           <ellipse cx="40" cy="29" rx="31" ry="10" fill="#8b6f47" opacity="0.55" />
-          <ellipse cx="31" cy="26" rx="9" ry="4" fill={fill} opacity="0.7" />
-          <ellipse cx="52" cy="31" rx="11" ry="4" fill={fill} opacity="0.6" />
+          <ellipse cx="31" cy="26" rx="9" ry="4" fill={fill()} opacity="0.7" />
+          <ellipse cx="52" cy="31" rx="11" ry="4" fill={fill()} opacity="0.6" />
         </>
       ) : null}
-      {!type ? (
+      {!props.type ? (
         <path
           d="M17 28c7-11 18-14 29-10 8 3 14 1 17 7 4 8-4 14-17 13-10-1-20 4-28-1-4-2-4-6-1-9Z"
-          fill={fill}
-          stroke={stroke}
+          fill={fill()}
+          stroke={stroke()}
           stroke-width="2"
         />
       ) : null}

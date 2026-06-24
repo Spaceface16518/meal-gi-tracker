@@ -14,18 +14,14 @@ function describeEvent(event: GiEvent) {
   return details.length ? details.join(", ") : "No details recorded";
 }
 
-export function StatsStrip({
-  meals,
-  events,
-  analysis,
-}: {
+export function StatsStrip(props: {
   meals: Meal[];
   events: GiEvent[];
   analysis: CorrelationAnalysis | null;
 }) {
   const topIrritant = createMemo(() => {
     const counts = new Map<string, number>();
-    for (const meal of meals) {
+    for (const meal of props.meals) {
       for (const irritant of meal.analysis.irritants ?? []) {
         counts.set(irritant.name, (counts.get(irritant.name) ?? 0) + 1);
       }
@@ -36,24 +32,26 @@ export function StatsStrip({
 
   return (
     <section class="grid grid-cols-3 gap-2">
-      <Stat icon={<Utensils size={17} />} label="Meals" value={meals.length.toString()} />
-      <Stat icon={<Activity size={17} />} label="Events" value={events.length.toString()} />
-      <Stat icon={<BarChart3 size={17} />} label="Signal" value={analysis ? topIrritant() : "Pending"} />
+      <Stat icon={<Utensils size={17} />} label="Meals" value={props.meals.length.toString()} />
+      <Stat icon={<Activity size={17} />} label="Events" value={props.events.length.toString()} />
+      <Stat icon={<BarChart3 size={17} />} label="Signal" value={props.analysis ? topIrritant() : "Pending"} />
     </section>
   );
 }
 
-export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal[]; events: GiEvent[] }) {
+export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEvent[] }) {
   const [reanalyzingMealId, setReanalyzingMealId] = createSignal("");
   const [deletingEntryId, setDeletingEntryId] = createSignal("");
   const [message, setMessage] = createSignal("");
   const [isError, setIsError] = createSignal(false);
-  const combined = [
-    ...meals.map((meal) => ({ kind: "meal" as const, date: meal.eatenAt, meal })),
-    ...events.map((event) => ({ kind: "event" as const, date: event.occurredAt, event })),
-  ]
-    .sort((a, b) => b.date.getTime() - a.date.getTime())
-    .slice(0, 12);
+  const combined = createMemo(() =>
+    [
+      ...props.meals.map((meal) => ({ kind: "meal" as const, date: meal.eatenAt, meal })),
+      ...props.events.map((event) => ({ kind: "event" as const, date: event.occurredAt, event })),
+    ]
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .slice(0, 12),
+  );
 
   async function redoMealAnalysis(mealId: string) {
     setReanalyzingMealId(mealId);
@@ -82,9 +80,9 @@ export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal
 
     try {
       if (entry.kind === "meal") {
-        await deleteMeal(uid, entry.id);
+        await deleteMeal(props.uid, entry.id);
       } else {
-        await deleteGiEvent(uid, entry.id);
+        await deleteGiEvent(props.uid, entry.id);
       }
       setMessage(`${label === "meal" ? "Meal" : "Event"} deleted.`);
     } catch (err) {
@@ -106,9 +104,9 @@ export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal
           <StatusMessage tone={isError() ? "error" : "info"}>{message()}</StatusMessage>
         </div>
       ) : null}
-      {combined.length ? (
+      {combined().length ? (
         <div class="grid gap-3">
-          {combined.map((item) =>
+          {combined().map((item) =>
             item.kind === "meal" ? (
               <article class="rounded-lg bg-surface-muted p-3">
                 <div class="flex items-start justify-between gap-3">
