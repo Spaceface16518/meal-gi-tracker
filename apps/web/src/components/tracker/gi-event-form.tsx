@@ -203,8 +203,8 @@ export function GiEventForm(props: { readOnly?: boolean }) {
               min="1"
               max="10"
               value={severity()}
-              onChange={(event) => setSeverity(Number((event.target as HTMLInputElement).value))}
-            />
+               onInput={(event) => setSeverity(Number((event.target as HTMLInputElement).value))}
+             />
           </label>
         </div>
 
@@ -268,7 +268,7 @@ export function GiEventForm(props: { readOnly?: boolean }) {
                 step="1"
                 value={stoolType() || "4"}
                 onPointerDown={() => setStoolType((current) => current || "4")}
-                onChange={(event) => setStoolType((event.target as HTMLInputElement).value)}
+                onInput={(event) => setStoolType((event.target as HTMLInputElement).value)}
                 onKeyDown={(event) => {
                   if (
                     !stoolType() &&
