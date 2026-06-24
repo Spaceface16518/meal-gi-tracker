@@ -1,5 +1,3 @@
-"use client";
-
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
 import type {
@@ -11,10 +9,7 @@ import type {
   ReanalyzeMealPayload,
 } from "@/lib/types";
 
-const createMealFn = httpsCallable<CreateMealPayload, { meal: Meal }>(
-  functions,
-  "createMeal",
-);
+const createMealFn = httpsCallable<CreateMealPayload, { meal: Meal }>(functions, "createMeal");
 
 const createGiEventFn = httpsCallable<CreateGiEventPayload, { event: GiEvent }>(
   functions,

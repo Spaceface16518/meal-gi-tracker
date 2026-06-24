@@ -1,5 +1,3 @@
-"use client";
-
 import type { CorrelationAnalysis, GiEvent, Meal } from "@/lib/types";
 
 type AnalysisExportInput = {

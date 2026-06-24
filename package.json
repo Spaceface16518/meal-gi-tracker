@@ -8,10 +8,8 @@
   "scripts": {
     "dev": "npm --prefix apps/web run dev",
     "build": "npm --prefix apps/web run build",
-    "start": "npm --prefix apps/web run start",
+    "preview": "npm --prefix apps/web run preview",
     "lint": "npm --prefix apps/web run lint",
-    "assets:pwa": "npm --prefix apps/web run assets:pwa",
-    "assets:favicon": "npm --prefix apps/web run assets:favicon",
     "functions:build": "npm --prefix functions run build",
     "functions:lint": "npm --prefix functions run lint"
   }

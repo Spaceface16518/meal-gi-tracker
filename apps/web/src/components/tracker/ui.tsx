@@ -1,6 +1,5 @@
-"use client";
-
-import { CircleAlert, Check, RefreshCcw } from "lucide-react";
+import { CircleAlert, Check, RefreshCcw } from "lucide-solid";
+import type { JSX } from "solid-js";
 
 export function TabButton({
   active,
@@ -9,17 +8,19 @@ export function TabButton({
   onClick,
 }: {
   active: boolean;
-  children: React.ReactNode;
-  icon: React.ReactNode;
+  children: JSX.Element;
+  icon: JSX.Element;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-10 items-center justify-center gap-2 rounded-md text-sm font-medium transition ${
-        active ? "bg-brand text-background shadow-sm" : "text-muted-strong hover:bg-surface-muted"
-      }`}
+      classList={{
+        "flex h-10 items-center justify-center gap-2 rounded-md text-sm font-medium transition": true,
+        "bg-brand text-background shadow-sm": active,
+        "text-muted-strong hover:bg-surface-muted": !active,
+      }}
     >
       {icon}
       {children}
@@ -34,19 +35,19 @@ export function ModeButton({
   onClick,
 }: {
   active: boolean;
-  children: React.ReactNode;
-  icon: React.ReactNode;
+  children: JSX.Element;
+  icon: JSX.Element;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-10 items-center justify-center gap-2 rounded-lg border text-sm font-semibold transition ${
-        active
-          ? "border-brand bg-brand text-background"
-          : "border-border-strong bg-surface text-muted-strong hover:border-muted"
-      }`}
+      classList={{
+        "flex h-10 items-center justify-center gap-2 rounded-lg border text-sm font-semibold transition": true,
+        "border-brand bg-brand text-background": active,
+        "border-border-strong bg-surface text-muted-strong hover:border-muted": !active,
+      }}
     >
       {icon}
       {children}
@@ -75,17 +76,17 @@ export function SubmitRow({
         : "text-muted-strong";
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <button
         type="submit"
         disabled={disabled}
-        className="flex h-11 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-background transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+        class="flex h-11 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-background transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
       >
         {busy ? "Saving..." : label}
-        {busy ? <RefreshCcw className="animate-spin" size={16} aria-hidden /> : <Check size={16} aria-hidden />}
+        {busy ? <RefreshCcw class="animate-spin" size={16} aria-hidden /> : <Check size={16} aria-hidden />}
       </button>
       {message ? (
-        <p className={`text-sm ${messageClass}`} aria-live="polite">
+        <p class={`text-sm ${messageClass}`} aria-live="polite">
           {message}
         </p>
       ) : null}
@@ -93,30 +94,30 @@ export function SubmitRow({
   );
 }
 
-export function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+export function Stat({ icon, label, value }: { icon: JSX.Element; label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-lg border border-border bg-surface p-3 shadow-sm">
-      <div className="mb-2 text-brand">{icon}</div>
-      <p className="truncate text-xs font-medium uppercase text-muted">{label}</p>
-      <p className="truncate text-lg font-semibold">{value}</p>
+    <div class="min-w-0 rounded-lg border border-border bg-surface p-3 shadow-sm">
+      <div class="mb-2 text-brand">{icon}</div>
+      <p class="truncate text-xs font-medium uppercase text-muted">{label}</p>
+      <p class="truncate text-lg font-semibold">{value}</p>
     </div>
   );
 }
 
 export function MediaReady({ ready, label }: { ready: boolean; label: string }) {
   return (
-    <div className={`flex items-center gap-2 text-sm ${ready ? "text-brand" : "text-muted"}`}>
+    <div classList={{ "flex items-center gap-2 text-sm": true, "text-brand": ready, "text-muted": !ready }}>
       {ready ? <Check size={16} aria-hidden /> : <CircleAlert size={16} aria-hidden />}
       {ready ? label : "No media selected"}
     </div>
   );
 }
 
-export function EmptyState({ icon, title }: { icon: React.ReactNode; title: string }) {
+export function EmptyState({ icon, title }: { icon: JSX.Element; title: string }) {
   return (
-    <div className="grid place-items-center rounded-lg border border-dashed border-border-strong p-8 text-center text-muted">
-      <div className="mb-2 text-muted">{icon}</div>
-      <p className="text-sm font-medium">{title}</p>
+    <div class="grid place-items-center rounded-lg border border-dashed border-border-strong p-8 text-center text-muted">
+      <div class="mb-2 text-muted">{icon}</div>
+      <p class="text-sm font-medium">{title}</p>
     </div>
   );
 }
@@ -125,7 +126,7 @@ export function StatusMessage({
   children,
   tone = "info",
 }: {
-  children: React.ReactNode;
+  children: JSX.Element;
   tone?: "info" | "error";
 }) {
   const className =
@@ -134,7 +135,7 @@ export function StatusMessage({
       : "border-border bg-surface-muted text-muted-strong";
 
   return (
-    <p className={`rounded-lg border px-3 py-2 text-sm ${className}`} aria-live="polite">
+    <p class={`rounded-lg border px-3 py-2 text-sm ${className}`} aria-live="polite">
       {children}
     </p>
   );
@@ -142,20 +143,19 @@ export function StatusMessage({
 
 export function LoadingScreen() {
   return (
-    <main className="grid min-h-screen place-items-center bg-background text-muted-strong">
-      <RefreshCcw className="animate-spin" size={22} aria-label="Loading" />
+    <main class="grid min-h-screen place-items-center bg-background text-muted-strong">
+      <RefreshCcw class="animate-spin" size={22} aria-label="Loading" />
     </main>
   );
 }
 
 export function ConfigMissing() {
   return (
-    <main className="grid min-h-screen place-items-center bg-background px-4 text-foreground">
-      <section className="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-sm">
-        <h1 className="mb-2 text-lg font-semibold">Firebase config missing</h1>
-        <p className="text-sm text-muted-strong">
-          Add the Firebase Web App values to `.env.local` or App Hosting build
-          environment variables.
+    <main class="grid min-h-screen place-items-center bg-background px-4 text-foreground">
+      <section class="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <h1 class="mb-2 text-lg font-semibold">Firebase config missing</h1>
+        <p class="text-sm text-muted-strong">
+          Add the Firebase Web App values to `.env.local` or the Vite environment variables.
         </p>
       </section>
     </main>

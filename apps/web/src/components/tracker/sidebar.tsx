@@ -1,7 +1,5 @@
-"use client";
-
-import { useMemo, useState } from "react";
-import { Activity, BarChart3, CalendarClock, FileJson, RefreshCcw, Trash2, Utensils } from "lucide-react";
+import { createMemo, createSignal } from "solid-js";
+import { Activity, BarChart3, CalendarClock, FileJson, RefreshCcw, Trash2, Utensils } from "lucide-solid";
 import { reanalyzeMeal } from "@/lib/callables";
 import { formatRelativeTime } from "@/lib/date";
 import { exportMealJson } from "@/lib/export-data";
@@ -25,7 +23,7 @@ export function StatsStrip({
   events: GiEvent[];
   analysis: CorrelationAnalysis | null;
 }) {
-  const topIrritant = useMemo(() => {
+  const topIrritant = createMemo(() => {
     const counts = new Map<string, number>();
     for (const meal of meals) {
       for (const irritant of meal.analysis.irritants ?? []) {
@@ -34,22 +32,22 @@ export function StatsStrip({
     }
 
     return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "None";
-  }, [meals]);
+  });
 
   return (
-    <section className="grid grid-cols-3 gap-2">
+    <section class="grid grid-cols-3 gap-2">
       <Stat icon={<Utensils size={17} />} label="Meals" value={meals.length.toString()} />
       <Stat icon={<Activity size={17} />} label="Events" value={events.length.toString()} />
-      <Stat icon={<BarChart3 size={17} />} label="Signal" value={analysis ? topIrritant : "Pending"} />
+      <Stat icon={<BarChart3 size={17} />} label="Signal" value={analysis ? topIrritant() : "Pending"} />
     </section>
   );
 }
 
 export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal[]; events: GiEvent[] }) {
-  const [reanalyzingMealId, setReanalyzingMealId] = useState("");
-  const [deletingEntryId, setDeletingEntryId] = useState("");
-  const [message, setMessage] = useState("");
-  const [isError, setIsError] = useState(false);
+  const [reanalyzingMealId, setReanalyzingMealId] = createSignal("");
+  const [deletingEntryId, setDeletingEntryId] = createSignal("");
+  const [message, setMessage] = createSignal("");
+  const [isError, setIsError] = createSignal(false);
   const combined = [
     ...meals.map((meal) => ({ kind: "meal" as const, date: meal.eatenAt, meal })),
     ...events.map((event) => ({ kind: "event" as const, date: event.occurredAt, event })),
@@ -98,42 +96,42 @@ export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal
   }
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm">
-      <div className="mb-3 flex items-center gap-2">
-        <CalendarClock size={18} className="text-brand" aria-hidden />
-        <h2 className="font-semibold">Recent</h2>
+    <section class="rounded-lg border border-border bg-surface p-4 shadow-sm">
+      <div class="mb-3 flex items-center gap-2">
+        <CalendarClock size={18} class="text-brand" aria-hidden />
+        <h2 class="font-semibold">Recent</h2>
       </div>
-      {message ? (
-        <div className="mb-3">
-          <StatusMessage tone={isError ? "error" : "info"}>{message}</StatusMessage>
+      {message() ? (
+        <div class="mb-3">
+          <StatusMessage tone={isError() ? "error" : "info"}>{message()}</StatusMessage>
         </div>
       ) : null}
       {combined.length ? (
-        <div className="grid gap-3">
+        <div class="grid gap-3">
           {combined.map((item) =>
             item.kind === "meal" ? (
-              <article key={`meal-${item.meal.id}`} className="rounded-lg bg-surface-muted p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-sm font-semibold">{item.meal.analysis.mealName}</h3>
-                  <div className="flex shrink-0 items-center gap-2">
+              <article class="rounded-lg bg-surface-muted p-3">
+                <div class="flex items-start justify-between gap-3">
+                  <h3 class="text-sm font-semibold">{item.meal.analysis.mealName}</h3>
+                  <div class="flex shrink-0 items-center gap-2">
                     <button
                       type="button"
                       onClick={() => redoMealAnalysis(item.meal.id)}
-                      disabled={reanalyzingMealId === item.meal.id}
-                      className="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={reanalyzingMealId() === item.meal.id}
+                      class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Redo meal analysis"
                       title="Redo meal analysis"
                     >
                       <RefreshCcw
                         size={14}
-                        className={reanalyzingMealId === item.meal.id ? "animate-spin" : ""}
+                        class={reanalyzingMealId() === item.meal.id ? "animate-spin" : ""}
                         aria-hidden
                       />
                     </button>
                     <button
                       type="button"
                       onClick={() => exportMealJson(item.meal)}
-                      className="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
+                      class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Export meal JSON"
                       title="Export meal JSON"
                     >
@@ -142,22 +140,21 @@ export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal
                     <button
                       type="button"
                       onClick={() => removeEntry({ kind: "meal", id: item.meal.id })}
-                      disabled={deletingEntryId === `meal-${item.meal.id}`}
-                      className="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={deletingEntryId() === `meal-${item.meal.id}`}
+                      class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Delete meal"
                       title="Delete meal"
                     >
                       <Trash2 size={14} aria-hidden />
                     </button>
-                    <span className="text-xs text-muted">{formatRelativeTime(item.date)}</span>
+                    <span class="text-xs text-muted">{formatRelativeTime(item.date)}</span>
                   </div>
                 </div>
-                <p className="mt-1 line-clamp-2 text-sm text-muted-strong">{item.meal.interpretedText}</p>
-                <div className="mt-2 flex flex-wrap gap-1">
+                <p class="mt-1 line-clamp-2 text-sm text-muted-strong">{item.meal.interpretedText}</p>
+                <div class="mt-2 flex flex-wrap gap-1">
                   {item.meal.analysis.irritants.slice(0, 3).map((irritant) => (
                     <span
-                      key={`${item.meal.id}-${irritant.name}`}
-                      className="rounded bg-surface px-2 py-1 text-xs font-medium text-muted-strong"
+                      class="rounded bg-surface px-2 py-1 text-xs font-medium text-muted-strong"
                     >
                       {irritant.name}
                     </span>
@@ -165,24 +162,24 @@ export function RecentEntries({ uid, meals, events }: { uid: string; meals: Meal
                 </div>
               </article>
             ) : (
-              <article key={`event-${item.event.id}`} className="rounded-lg bg-surface-muted p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-sm font-semibold">Severity {item.event.severity}</h3>
-                  <div className="flex shrink-0 items-center gap-2">
+              <article class="rounded-lg bg-surface-muted p-3">
+                <div class="flex items-start justify-between gap-3">
+                  <h3 class="text-sm font-semibold">Severity {item.event.severity}</h3>
+                  <div class="flex shrink-0 items-center gap-2">
                     <button
                       type="button"
                       onClick={() => removeEntry({ kind: "event", id: item.event.id })}
-                      disabled={deletingEntryId === `event-${item.event.id}`}
-                      className="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={deletingEntryId() === `event-${item.event.id}`}
+                      class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Delete event"
                       title="Delete event"
                     >
                       <Trash2 size={14} aria-hidden />
                     </button>
-                    <span className="text-xs text-muted">{formatRelativeTime(item.date)}</span>
+                    <span class="text-xs text-muted">{formatRelativeTime(item.date)}</span>
                   </div>
                 </div>
-                <p className="mt-1 text-sm text-muted-strong">{describeEvent(item.event)}</p>
+                <p class="mt-1 text-sm text-muted-strong">{describeEvent(item.event)}</p>
               </article>
             ),
           )}

@@ -1,7 +1,5 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
-import { Camera, Mic, Utensils } from "lucide-react";
+import { createSignal, onCleanup } from "solid-js";
+import { Camera, Mic, Utensils } from "lucide-solid";
 import { createMeal } from "@/lib/callables";
 import { toDatetimeLocalValue } from "@/lib/date";
 import { getErrorMessage } from "@/lib/errors";
@@ -12,34 +10,33 @@ import { MediaReady, ModeButton, SubmitRow } from "@/components/tracker/ui";
 type MessageTone = "info" | "error" | "success";
 
 export function MealComposer() {
-  const [mode, setMode] = useState<InputMode>("text");
-  const [text, setText] = useState("");
-  const [notes, setNotes] = useState("");
-  const [eatenAt, setEatenAt] = useState(toDatetimeLocalValue(new Date()));
-  const [mediaBase64, setMediaBase64] = useState("");
-  const [mimeType, setMimeType] = useState("");
-  const [recording, setRecording] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const [messageTone, setMessageTone] = useState<MessageTone>("info");
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const [mode, setMode] = createSignal<InputMode>("text");
+  const [text, setText] = createSignal("");
+  const [notes, setNotes] = createSignal("");
+  const [eatenAt, setEatenAt] = createSignal(toDatetimeLocalValue(new Date()));
+  const [mediaBase64, setMediaBase64] = createSignal("");
+  const [mimeType, setMimeType] = createSignal("");
+  const [recording, setRecording] = createSignal(false);
+  const [busy, setBusy] = createSignal(false);
+  const [message, setMessage] = createSignal("");
+  const [messageTone, setMessageTone] = createSignal<MessageTone>("info");
 
-  useEffect(() => {
-    return () => {
-      mediaRecorderRef.current?.stop();
-      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-    };
-  }, []);
+  let mediaRecorderRef: MediaRecorder | null = null;
+  let mediaStreamRef: MediaStream | null = null;
+  let chunksRef: Blob[] = [];
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  onCleanup(() => {
+    mediaRecorderRef?.stop();
+    mediaStreamRef?.getTracks().forEach((track) => track.stop());
+  });
+
+  async function submit(event: Event) {
     event.preventDefault();
     setBusy(true);
     setMessage("");
     setMessageTone("info");
 
-    const eatenAtDate = new Date(eatenAt);
+    const eatenAtDate = new Date(eatenAt());
     if (Number.isNaN(eatenAtDate.getTime())) {
       setMessageTone("error");
       setMessage("Choose a valid meal time.");
@@ -49,12 +46,12 @@ export function MealComposer() {
 
     try {
       await createMeal({
-        mode,
-        text: mode === "text" ? text : undefined,
-        mediaBase64: mode === "text" ? undefined : mediaBase64,
-        mimeType: mode === "text" ? undefined : mimeType,
+        mode: mode(),
+        text: mode() === "text" ? text() : undefined,
+        mediaBase64: mode() === "text" ? undefined : mediaBase64(),
+        mimeType: mode() === "text" ? undefined : mimeType(),
         eatenAt: eatenAtDate.toISOString(),
-        notes: notes.trim() || undefined,
+        notes: notes().trim() || undefined,
       });
       setText("");
       setNotes("");
@@ -100,8 +97,8 @@ export function MealComposer() {
     setMessage("");
     setMessageTone("info");
 
-    if (recording) {
-      mediaRecorderRef.current?.stop();
+    if (recording()) {
+      mediaRecorderRef?.stop();
       return;
     }
 
@@ -115,20 +112,20 @@ export function MealComposer() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
 
-      chunksRef.current = [];
-      mediaRecorderRef.current = recorder;
-      mediaStreamRef.current = stream;
+      chunksRef = [];
+      mediaRecorderRef = recorder;
+      mediaStreamRef = stream;
       recorder.ondataavailable = (event) => {
-        if (event.data.size) chunksRef.current.push(event.data);
+        if (event.data.size) chunksRef.push(event.data);
       };
       recorder.onerror = () => {
         setMessageTone("error");
         setMessage("Audio recording failed.");
       };
       recorder.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-        mediaStreamRef.current = null;
+        const blob = new Blob(chunksRef, { type: recorder.mimeType || "audio/webm" });
+        mediaStreamRef?.getTracks().forEach((track) => track.stop());
+        mediaStreamRef = null;
         setRecording(false);
 
         if (blob.size > maxMediaBytes) {
@@ -157,102 +154,102 @@ export function MealComposer() {
     }
   }
 
-  const canSubmit =
-    mode === "text" ? text.trim().length > 2 : mediaBase64.length > 0 && mimeType.length > 0;
+  const canSubmit = () =>
+    mode() === "text" ? text().trim().length > 2 : mediaBase64().length > 0 && mimeType().length > 0;
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
-      <div className="mb-4 flex items-start justify-between gap-4">
+    <section class="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
+      <div class="mb-4 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Meal</h2>
-          <p className="text-sm text-muted">Capture what you ate and when.</p>
+          <h2 class="text-lg font-semibold">Meal</h2>
+          <p class="text-sm text-muted">Capture what you ate and when.</p>
         </div>
-        <Utensils className="mt-1 text-brand" size={20} aria-hidden />
+        <Utensils class="mt-1 text-brand" size={20} aria-hidden />
       </div>
 
-      <form className="grid gap-4" onSubmit={submit}>
-        <div className="grid grid-cols-3 gap-2">
-          <ModeButton active={mode === "text"} onClick={() => setMode("text")} icon={<Utensils size={17} />}>
+      <form class="grid gap-4" onSubmit={submit}>
+        <div class="grid grid-cols-3 gap-2">
+          <ModeButton active={mode() === "text"} onClick={() => setMode("text")} icon={<Utensils size={17} />}>
             Text
           </ModeButton>
-          <ModeButton active={mode === "voice"} onClick={() => setMode("voice")} icon={<Mic size={17} />}>
+          <ModeButton active={mode() === "voice"} onClick={() => setMode("voice")} icon={<Mic size={17} />}>
             Voice
           </ModeButton>
-          <ModeButton active={mode === "image"} onClick={() => setMode("image")} icon={<Camera size={17} />}>
+          <ModeButton active={mode() === "image"} onClick={() => setMode("image")} icon={<Camera size={17} />}>
             Image
           </ModeButton>
         </div>
 
-        {mode === "text" ? (
-          <label className="grid gap-1 text-sm font-medium text-muted-strong">
+        {mode() === "text" ? (
+          <label class="grid gap-1 text-sm font-medium text-muted-strong">
             Meal text
             <textarea
-              className="min-h-28 rounded-lg border border-border-strong bg-surface px-3 py-2 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-              value={text}
-              onChange={(event) => setText(event.target.value)}
+              class="min-h-28 rounded-lg border border-border-strong bg-surface px-3 py-2 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+              value={text()}
+              onInput={(event) => setText((event.target as HTMLTextAreaElement).value)}
               placeholder="Turkey sandwich, chips, iced coffee"
             />
           </label>
-        ) : mode === "voice" ? (
-          <div className="grid gap-3 rounded-lg border border-border bg-surface-muted p-3">
+        ) : mode() === "voice" ? (
+          <div class="grid gap-3 rounded-lg border border-border bg-surface-muted p-3">
             <button
               type="button"
               onClick={toggleRecording}
-              className={`flex h-12 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition ${
-                recording
-                  ? "bg-danger text-background hover:bg-danger-strong"
-                  : "bg-brand text-background hover:bg-brand-hover"
-              }`}
+              classList={{
+                "flex h-12 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition": true,
+                "bg-danger text-background hover:bg-danger-strong": recording(),
+                "bg-brand text-background hover:bg-brand-hover": !recording(),
+              }}
             >
               <Mic size={18} aria-hidden />
-              {recording ? "Stop recording" : mediaBase64 ? "Record again" : "Record"}
+              {recording() ? "Stop recording" : mediaBase64() ? "Record again" : "Record"}
             </button>
-            <MediaReady ready={Boolean(mediaBase64)} label="Audio ready" />
+            <MediaReady ready={Boolean(mediaBase64())} label="Audio ready" />
           </div>
         ) : (
-          <label className="grid gap-3 rounded-lg border border-dashed border-border-strong bg-surface-muted p-4 text-sm font-medium text-muted-strong">
-            <span className="flex items-center gap-2">
+          <label class="grid gap-3 rounded-lg border border-dashed border-border-strong bg-surface-muted p-4 text-sm font-medium text-muted-strong">
+            <span class="flex items-center gap-2">
               <Camera size={18} aria-hidden />
               Meal photo
             </span>
             <input
-              className="block w-full text-sm text-muted-strong file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-semibold file:text-background"
+              class="block w-full text-sm text-muted-strong file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-semibold file:text-background"
               type="file"
               accept="image/*"
               capture="environment"
-              onChange={(event) => onFileChange(event.target.files?.[0])}
+              onChange={(event) => onFileChange((event.target as HTMLInputElement).files?.[0])}
             />
-            <MediaReady ready={Boolean(mediaBase64)} label="Image ready" />
+            <MediaReady ready={Boolean(mediaBase64())} label="Image ready" />
           </label>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-1 text-sm font-medium text-muted-strong">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="grid gap-1 text-sm font-medium text-muted-strong">
             Eaten at
             <input
-              className="h-11 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+              class="h-11 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
               type="datetime-local"
-              value={eatenAt}
-              onChange={(event) => setEatenAt(event.target.value)}
+              value={eatenAt()}
+              onInput={(event) => setEatenAt((event.target as HTMLInputElement).value)}
               required
             />
           </label>
-          <label className="grid gap-1 text-sm font-medium text-muted-strong">
+          <label class="grid gap-1 text-sm font-medium text-muted-strong">
             Notes
             <input
-              className="h-11 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
+              class="h-11 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+              value={notes()}
+              onInput={(event) => setNotes((event.target as HTMLInputElement).value)}
               placeholder="Portion, stress, meds"
             />
           </label>
         </div>
 
         <SubmitRow
-          busy={busy}
-          disabled={!canSubmit || busy}
-          message={message}
-          tone={messageTone}
+          busy={busy()}
+          disabled={!canSubmit() || busy()}
+          message={message()}
+          tone={messageTone()}
           label="Save meal"
         />
       </form>
