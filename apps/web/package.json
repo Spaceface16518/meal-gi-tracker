@@ -13,6 +13,7 @@
     "lint": "eslint \"src/**/*.ts\" \"src/**/*.tsx\""
   },
   "dependencies": {
+    "@solidjs/router": "^0.16.1",
     "firebase": "^12.14.0",
     "lucide-solid": "^0.475.0",
     "solid-js": "^1.9.4"

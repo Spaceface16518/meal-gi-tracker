@@ -1,6 +1,7 @@
-import { createEffect, createMemo, createSignal, For, onCleanup, onMount } from "solid-js";
+import { createEffect, createMemo, createSignal, For } from "solid-js";
 import {
   Activity,
+  ArrowLeft,
   CalendarClock,
   Check,
   Edit3,
@@ -9,8 +10,8 @@ import {
   Save,
   Trash2,
   Utensils,
-  X,
 } from "lucide-solid";
+import { A } from "@solidjs/router";
 import type { JSX } from "solid-js";
 import { reanalyzeMeal } from "@/lib/callables";
 import { toDatetimeLocalValue } from "@/lib/date";
@@ -666,39 +667,14 @@ function EventEditForm(props: {
   );
 }
 
-export function EntryDetailPopover(props: {
+export function EntryDetailPage(props: {
   entry: RecentEntry;
   readOnly?: boolean;
-  onClose: () => void;
 }) {
   const [editing, setEditing] = createSignal(false);
   const [message, setMessage] = createSignal("");
   const [messageTone, setMessageTone] = createSignal<MessageTone>("info");
   const [reanalyzing, setReanalyzing] = createSignal(false);
-
-  onMount(() => {
-    const scrollY = window.scrollY;
-    const previousBodyPosition = document.body.style.position;
-    const previousBodyTop = document.body.style.top;
-    const previousBodyWidth = document.body.style.width;
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousDocumentOverflow = document.documentElement.style.overflow;
-
-    document.documentElement.style.overflow = "hidden";
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = "100%";
-    document.body.style.overflow = "hidden";
-
-    onCleanup(() => {
-      document.documentElement.style.overflow = previousDocumentOverflow;
-      document.body.style.position = previousBodyPosition;
-      document.body.style.top = previousBodyTop;
-      document.body.style.width = previousBodyWidth;
-      document.body.style.overflow = previousBodyOverflow;
-      window.scrollTo(0, scrollY);
-    });
-  });
 
   function setInfo(value: string) {
     setMessageTone("info");
@@ -710,21 +686,17 @@ export function EntryDetailPopover(props: {
     setMessage(value);
   }
 
-  function closeOnBackdrop(event: MouseEvent) {
-    if (event.target === event.currentTarget) props.onClose();
-  }
-
   return (
-    <div
-      class="fixed inset-0 z-40 grid place-items-center overflow-y-auto bg-foreground/20 px-3 py-6 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="entry-detail-title"
-      onMouseDown={closeOnBackdrop}
-    >
-      <section class="max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-lg border border-border bg-background shadow-2xl">
+      <section class="overflow-hidden rounded-lg border border-border bg-background shadow-sm">
         <header class="flex items-start justify-between gap-3 border-b border-border bg-surface px-4 py-3 sm:px-5">
-          <div class="min-w-0">
+          <div class="min-w-0 flex-1">
+            <A
+              href="/"
+              class="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-muted-strong transition hover:text-brand"
+            >
+              <ArrowLeft size={15} aria-hidden />
+              Back to log
+            </A>
             <div class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase text-muted">
               {props.entry.kind === "meal" ? <Utensils size={14} aria-hidden /> : <Activity size={14} aria-hidden />}
               {props.entry.kind === "meal" ? "Meal" : "GI event"}
@@ -745,19 +717,10 @@ export function EntryDetailPopover(props: {
             >
               {editing() ? <Check size={17} aria-hidden /> : <Edit3 size={17} aria-hidden />}
             </button>
-            <button
-              type="button"
-              onClick={props.onClose}
-              class="grid size-9 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted"
-              aria-label="Close"
-              title="Close"
-            >
-              <X size={17} aria-hidden />
-            </button>
           </div>
         </header>
 
-        <div class="max-h-[calc(92vh-84px)] overflow-y-auto p-4 sm:p-5">
+        <div class="p-4 sm:p-5">
           {message() ? (
             <div class="mb-4">
               <StatusMessage tone={messageTone()}>{message()}</StatusMessage>
@@ -804,6 +767,5 @@ export function EntryDetailPopover(props: {
           )}
         </div>
       </section>
-    </div>
   );
 }

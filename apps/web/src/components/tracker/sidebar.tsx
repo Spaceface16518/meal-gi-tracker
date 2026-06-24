@@ -1,5 +1,6 @@
 import { createMemo, createSignal } from "solid-js";
 import { Activity, BarChart3, CalendarClock, FileJson, RefreshCcw, Trash2, Utensils } from "lucide-solid";
+import { useNavigate } from "@solidjs/router";
 import { reanalyzeMeal } from "@/lib/callables";
 import { formatRelativeTime } from "@/lib/date";
 import { exportMealJson } from "@/lib/export-data";
@@ -7,7 +8,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { deleteGiEvent, deleteMeal } from "@/lib/firestore";
 import { demoReadOnlyMessage } from "@/lib/demo";
 import type { CorrelationAnalysis, GiEvent, Meal } from "@/lib/types";
-import { EntryDetailPopover, type RecentEntry } from "@/components/tracker/entry-detail-popover";
+import type { RecentEntry } from "@/components/tracker/entry-detail-page";
 import { EmptyState, Stat, StatusMessage } from "@/components/tracker/ui";
 
 function describeEvent(event: GiEvent) {
@@ -42,9 +43,9 @@ export function StatsStrip(props: {
 }
 
 export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEvent[]; readOnly?: boolean }) {
+  const navigate = useNavigate();
   const [reanalyzingMealId, setReanalyzingMealId] = createSignal("");
   const [deletingEntryId, setDeletingEntryId] = createSignal("");
-  const [selectedEntryKey, setSelectedEntryKey] = createSignal("");
   const [message, setMessage] = createSignal("");
   const [isError, setIsError] = createSignal(false);
   const combined = createMemo<RecentEntry[]>(() =>
@@ -54,19 +55,13 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
     ]
       .sort((a, b) => b.date.getTime() - a.date.getTime()),
   );
-  const selectedEntry = createMemo(() =>
-    combined().find((entry) => {
-      const key = entry.kind === "meal" ? `meal-${entry.meal.id}` : `event-${entry.event.id}`;
-      return key === selectedEntryKey();
-    }) ?? null,
-  );
 
-  function keyForEntry(entry: RecentEntry) {
-    return entry.kind === "meal" ? `meal-${entry.meal.id}` : `event-${entry.event.id}`;
+  function entryPath(entry: RecentEntry) {
+    return entry.kind === "meal" ? `/entries/meals/${entry.meal.id}` : `/entries/events/${entry.event.id}`;
   }
 
   function openEntry(entry: RecentEntry) {
-    setSelectedEntryKey(keyForEntry(entry));
+    navigate(entryPath(entry));
   }
 
   async function redoMealAnalysis(mealId: string) {
@@ -244,13 +239,6 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
         )}
       </section>
 
-      {selectedEntry() ? (
-        <EntryDetailPopover
-          entry={selectedEntry()!}
-          readOnly={props.readOnly}
-          onClose={() => setSelectedEntryKey("")}
-        />
-      ) : null}
     </>
   );
 }
