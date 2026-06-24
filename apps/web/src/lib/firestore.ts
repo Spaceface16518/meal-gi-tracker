@@ -20,7 +20,7 @@ import {
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { db } from "@/lib/firebase";
-import type { CorrelationAnalysis, GiEvent, Meal, SkinEntry } from "@/lib/types";
+import type { CorrelationAnalysis, GiEvent, Meal, SkinConditionAssessment, SkinEntry } from "@/lib/types";
 
 type SubscriptionErrorHandler = (error: FirestoreError) => void;
 
@@ -36,6 +36,22 @@ function asDate(value: unknown) {
 
 function asStringArray(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function asSkinConditions(value: unknown): SkinConditionAssessment[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const data = item as Record<string, unknown>;
+      if (typeof data.condition !== "string") return null;
+      return {
+        condition: data.condition,
+        severity: typeof data.severity === "number" ? data.severity : 0,
+        bodyAreas: asStringArray(data.bodyAreas),
+      };
+    })
+    .filter((item): item is SkinConditionAssessment => item !== null);
 }
 
 function mealFromDoc(snapshot: QueryDocumentSnapshot<DocumentData>): Meal {
@@ -82,9 +98,10 @@ function skinEntryFromDoc(snapshot: QueryDocumentSnapshot<DocumentData>): SkinEn
     id: snapshot.id,
     uid: data.uid,
     entryType: data.entryType === "timed" ? "timed" : "daily",
-    severity: data.severity ?? 1,
+    severity: typeof data.severity === "number" ? data.severity : undefined,
     symptoms: asStringArray(data.symptoms),
     bodyAreas: asStringArray(data.bodyAreas),
+    conditions: asSkinConditions(data.conditions),
     notes: data.notes,
     durationMinutes: data.durationMinutes,
     localDate: data.localDate,
@@ -174,14 +191,11 @@ export async function updateSkinEntry(
   entryId: string,
   entry: Pick<
     SkinEntry,
-    "entryType" | "severity" | "symptoms" | "bodyAreas" | "notes" | "durationMinutes" | "localDate" | "occurredAt"
+    "entryType" | "severity" | "symptoms" | "bodyAreas" | "conditions" | "notes" | "durationMinutes" | "localDate" | "occurredAt"
   >,
 ) {
-  const payload: Record<string, string | number | string[] | Timestamp | FieldValue> = {
+  const payload: Record<string, unknown> = {
     entryType: entry.entryType,
-    severity: entry.severity,
-    symptoms: entry.symptoms,
-    bodyAreas: entry.bodyAreas,
     notes: entry.notes ?? deleteField(),
     durationMinutes: entry.durationMinutes ?? deleteField(),
     updatedAt: serverTimestamp(),
@@ -190,11 +204,19 @@ export async function updateSkinEntry(
   if (entry.entryType === "daily") {
     const localDate = entry.localDate ?? "";
     payload.localDate = localDate;
+    payload.conditions = entry.conditions;
     payload.sortAt = Timestamp.fromDate(new Date(`${localDate}T12:00:00.000Z`));
+    payload.severity = deleteField();
+    payload.symptoms = deleteField();
+    payload.bodyAreas = deleteField();
     payload.occurredAt = deleteField();
   } else if (entry.occurredAt) {
+    payload.severity = entry.severity;
+    payload.symptoms = entry.symptoms;
+    payload.bodyAreas = entry.bodyAreas;
     payload.occurredAt = Timestamp.fromDate(entry.occurredAt);
     payload.sortAt = Timestamp.fromDate(entry.occurredAt);
+    payload.conditions = deleteField();
     payload.localDate = deleteField();
   }
 

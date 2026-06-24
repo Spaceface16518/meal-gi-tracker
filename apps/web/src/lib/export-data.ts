@@ -57,6 +57,23 @@ function serializableSkinEntry(entry: SkinEntry) {
   };
 }
 
+function skinEntryDetails(entry: SkinEntry) {
+  if (entry.entryType === "daily") {
+    return entry.conditions.length
+      ? entry.conditions
+          .map((condition) => {
+            const areas = condition.bodyAreas.length ? ` (${condition.bodyAreas.join(", ")})` : "";
+            return `${condition.condition}: ${condition.severity}/10${areas}`;
+          })
+          .join("; ")
+      : "No condition assessments recorded";
+  }
+
+  return [...entry.symptoms, entry.bodyAreas.length ? `areas: ${entry.bodyAreas.join(", ")}` : ""]
+    .filter(Boolean)
+    .join("; ") || "No details recorded";
+}
+
 function serializableAnalysis(analysis: CorrelationAnalysis | null) {
   if (!analysis) return null;
   return {
@@ -227,8 +244,8 @@ export function exportAnalysisHtml({ analysis, meals, events, skinEntries = [], 
             (entry) => `<tr>
           <td>${escapeHtml(entry.entryType === "daily" ? entry.localDate ?? "" : entry.occurredAt?.toLocaleString() ?? "")}</td>
           <td>${escapeHtml(entry.entryType === "daily" ? "Skin day" : "Skin observation")}</td>
-          <td>${escapeHtml(entry.severity)}</td>
-          <td>${escapeHtml([...entry.symptoms, entry.bodyAreas.length ? `areas: ${entry.bodyAreas.join(", ")}` : ""].filter(Boolean).join("; ") || "No details recorded")}</td>
+          <td>${escapeHtml(entry.entryType === "timed" ? entry.severity ?? "" : "")}</td>
+          <td>${escapeHtml(skinEntryDetails(entry))}</td>
           <td>${escapeHtml(entry.notes ?? "")}</td>
         </tr>`,
           )

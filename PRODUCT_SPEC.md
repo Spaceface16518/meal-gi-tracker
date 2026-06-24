@@ -303,20 +303,35 @@ Stool type labels:
 
 Users can log skin state separately from GI events in two modes:
 
-- Day: one editable skin state for a local calendar date.
-- Time: a specific skin observation at a date/time.
+- Day: one editable current skin-quality assessment for a local calendar date.
+- Time: a specific skin observation or flare at a date/time.
 
-Every skin entry has:
+Day-mode skin entries have:
+
+- One assessment per supported chronic skin condition.
+- A severity slider from 0 to 10 for each condition.
+- Zero or more body area tags for each condition.
+- Optional notes.
+
+Supported daily skin conditions:
+
+- acne.
+- eczema.
+- psoriasis.
+- moles.
+- rosacea.
+- dryness.
+
+Timed skin observations have:
 
 - Severity from 1 to 10.
 - One or more skin symptom tags.
 - Zero or more body area tags.
-- Optional duration in minutes for timed observations.
+- Optional duration in minutes.
 - Optional notes.
 
-Supported skin symptom tags:
+Supported timed skin symptom tags:
 
-- acne.
 - rash.
 - itching.
 - hives.
@@ -339,6 +354,8 @@ Supported body area tags:
 
 Day-mode skin entries use deterministic document IDs in the form `daily_YYYY-MM-DD`, so saving the same local date updates that day's skin state instead of creating a duplicate. Timed skin observations use generated document IDs and multiple timed observations can exist on the same day.
 
+The client stores the last saved day-mode condition slider values and per-condition body areas in local storage. New day-mode logs preload those values because chronic skin condition locations and severities usually change gradually.
+
 Skin entries are tracked and exported, but they do not participate in the current GI-focused correlation analysis, deterministic sensitivity scoring, or Gemini correlation prompt.
 
 ### Skin Entry Validation
@@ -347,17 +364,20 @@ Backend validation:
 
 - User must be authenticated.
 - `entryType` must be `daily` or `timed`.
-- `severity` must be a number from 1 to 10.
-- `symptoms` must be an array with 1 to 12 items.
-- `bodyAreas` must be an array with 0 to 12 items.
-- `localDate` is required for daily entries and must use `YYYY-MM-DD`.
-- `occurredAt` is required for timed entries and must be a valid date.
-- `durationMinutes`, when present, must be a number from 1 to 1440.
+- Daily entries require `conditions`, an array with 1 to 12 items.
+- Each daily condition has a condition name, severity from 0 to 10, and 0 to 12 body areas.
+- Daily entries require `localDate` using `YYYY-MM-DD`.
+- Timed entries require `severity` from 1 to 10.
+- Timed entries require `symptoms`, an array with 1 to 12 items.
+- Timed entries require `bodyAreas`, an array with 0 to 12 items.
+- Timed entries require `occurredAt`, which must be a valid date.
+- Timed `durationMinutes`, when present, must be a number from 1 to 1440.
 - `notes`, when present, must be a string at most 1000 characters.
 
 Client validation:
 
-- Save is disabled while no skin symptom is selected.
+- Day-mode save is available after the date and condition assessments are present.
+- Timed save is disabled while no skin symptom is selected.
 - Daily save success message: "Skin day saved."
 - Timed save success message: "Skin observation saved."
 
@@ -670,11 +690,12 @@ Fields:
 - `id`: document ID.
 - `uid`: owner UID.
 - `entryType`: `daily` or `timed`.
-- `severity`: number.
-- `symptoms`: string list.
-- `bodyAreas`: string list.
+- `conditions`: daily condition assessments.
+- `severity`: timed observation severity.
+- `symptoms`: timed observation symptom list.
+- `bodyAreas`: timed observation body area list.
 - `notes`: optional note.
-- `durationMinutes`: optional number.
+- `durationMinutes`: optional timed observation duration.
 - `localDate`: daily entry local date.
 - `occurredAt`: timed entry timestamp.
 - `sortAt`: ordering timestamp.
@@ -683,8 +704,8 @@ Fields:
 
 Client fallback parsing:
 
-- Missing severity becomes 1.
-- Invalid or missing symptoms/body areas become empty lists.
+- Missing timed severity becomes unset on the client and timed edit defaults to 4.
+- Invalid or missing symptoms, body areas, and conditions become empty lists.
 - Missing or invalid dates fall back to the current date on the client.
 
 ### Correlation Analysis

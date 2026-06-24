@@ -19,9 +19,9 @@ import { toDatetimeLocalValue } from "@/lib/date";
 import { demoReadOnlyMessage } from "@/lib/demo";
 import { getErrorMessage } from "@/lib/errors";
 import { updateGiEvent, updateMeal, updateSkinEntry } from "@/lib/firestore";
-import { skinBodyAreaOptions, skinSymptomOptions, symptomOptions } from "@/components/tracker/constants";
+import { skinBodyAreaOptions, skinConditionOptions, skinSymptomOptions, symptomOptions } from "@/components/tracker/constants";
 import { StatusMessage } from "@/components/tracker/ui";
-import type { GiEvent, IrritantSignal, Meal, SkinEntry } from "@/lib/types";
+import type { GiEvent, IrritantSignal, Meal, SkinConditionAssessment, SkinEntry } from "@/lib/types";
 
 export type RecentEntry =
   | { kind: "meal"; date: Date; meal: Meal }
@@ -184,16 +184,48 @@ function EventDetailView(props: { event: GiEvent }) {
   );
 }
 
+function ConditionAssessmentList(props: { conditions: SkinConditionAssessment[] }) {
+  return props.conditions.length ? (
+    <div class="grid gap-2">
+      <For each={props.conditions}>
+        {(condition) => (
+          <article class="rounded-md bg-surface-muted p-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h4 class="text-sm font-semibold capitalize">{condition.condition}</h4>
+              <span class="rounded bg-surface px-2 py-0.5 text-xs font-semibold text-muted-strong">
+                {condition.severity}/10
+              </span>
+            </div>
+            <p class="mt-1 text-sm text-muted">
+              {condition.bodyAreas.length ? condition.bodyAreas.join(", ") : "No body areas recorded"}
+            </p>
+          </article>
+        )}
+      </For>
+    </div>
+  ) : (
+    <p class="text-sm text-muted">No condition assessments recorded</p>
+  );
+}
+
 function SkinDetailView(props: { entry: SkinEntry }) {
   return (
     <div class="grid gap-3">
-      <DetailSection title="Symptoms" icon="skin">
-        <PillList values={props.entry.symptoms} empty="No skin symptoms recorded" />
-      </DetailSection>
+      {props.entry.entryType === "daily" ? (
+        <DetailSection title="Condition assessments" icon="skin">
+          <ConditionAssessmentList conditions={props.entry.conditions} />
+        </DetailSection>
+      ) : (
+        <>
+          <DetailSection title="Symptoms" icon="skin">
+            <PillList values={props.entry.symptoms} empty="No skin symptoms recorded" />
+          </DetailSection>
 
-      <DetailSection title="Body areas" icon="skin">
-        <PillList values={props.entry.bodyAreas} empty="No body areas recorded" />
-      </DetailSection>
+          <DetailSection title="Body areas" icon="skin">
+            <PillList values={props.entry.bodyAreas} empty="No body areas recorded" />
+          </DetailSection>
+        </>
+      )}
 
       {props.entry.notes ? (
         <DetailSection title="Notes" icon="record">
@@ -204,7 +236,9 @@ function SkinDetailView(props: { entry: SkinEntry }) {
       <DetailSection title="Record" icon="record">
         <dl>
           <DetailField label="Type" value={props.entry.entryType === "daily" ? "Daily skin state" : "Timed observation"} />
-          <DetailField label="Severity" value={`${props.entry.severity}/10`} />
+          {props.entry.entryType === "timed" ? (
+            <DetailField label="Severity" value={`${props.entry.severity ?? 1}/10`} />
+          ) : null}
           {props.entry.entryType === "daily" ? (
             <DetailField label="Date" value={props.entry.localDate ?? "Not set"} />
           ) : (
@@ -721,6 +755,7 @@ function SkinEditForm(props: {
   const [severity, setSeverity] = createSignal(4);
   const [symptoms, setSymptoms] = createSignal<string[]>([]);
   const [bodyAreas, setBodyAreas] = createSignal<string[]>([]);
+  const [conditions, setConditions] = createSignal<SkinConditionAssessment[]>([]);
   const [notes, setNotes] = createSignal("");
   const [durationMinutes, setDurationMinutes] = createSignal("");
   const [saving, setSaving] = createSignal(false);
@@ -728,20 +763,41 @@ function SkinEditForm(props: {
   createEffect(() => {
     const entry = props.entry;
     setOccurredAt(entry.occurredAt ? toDatetimeLocalValue(entry.occurredAt) : "");
-    setSeverity(entry.severity);
+    setSeverity(entry.severity ?? 4);
     setSymptoms([...entry.symptoms]);
     setBodyAreas([...entry.bodyAreas]);
+    setConditions(
+      entry.conditions.length
+        ? entry.conditions.map((condition) => ({ ...condition, bodyAreas: [...condition.bodyAreas] }))
+        : skinConditionOptions.map((condition) => ({ condition, severity: 0, bodyAreas: [] })),
+    );
     setNotes(entry.notes ?? "");
     setDurationMinutes(entry.durationMinutes?.toString() ?? "");
   });
 
-  const canSave = createMemo(() => !saving() && symptoms().length > 0);
+  const canSave = createMemo(() => !saving() && (props.entry.entryType === "daily" || symptoms().length > 0));
 
   function toggleValue(value: string, current: () => string[], setCurrent: (next: string[]) => void) {
     setCurrent(
       current().includes(value)
         ? current().filter((item) => item !== value)
         : [...current(), value],
+    );
+  }
+
+  function updateConditionSeverity(condition: string, value: number) {
+    setConditions((current) =>
+      current.map((item) => item.condition === condition ? { ...item, severity: value } : item),
+    );
+  }
+
+  function toggleConditionArea(condition: string, area: string) {
+    setConditions((current) =>
+      current.map((item) =>
+        item.condition === condition
+          ? { ...item, bodyAreas: item.bodyAreas.includes(area) ? item.bodyAreas.filter((value) => value !== area) : [...item.bodyAreas, area] }
+          : item,
+      ),
     );
   }
 
@@ -766,6 +822,7 @@ function SkinEditForm(props: {
         severity: severity(),
         symptoms: symptoms(),
         bodyAreas: bodyAreas(),
+        conditions: conditions(),
         notes: trimOrUndefined(notes()),
         durationMinutes: durationMinutes() ? Number(durationMinutes()) : undefined,
         localDate: props.entry.entryType === "daily" ? props.entry.localDate : undefined,
@@ -804,60 +861,109 @@ function SkinEditForm(props: {
             />
           </label>
         )}
-        <label class="grid gap-1 text-sm font-medium text-muted-strong">
-          Severity: {severity()}
-          <input
-            class="h-11 accent-brand"
-            type="range"
-            min="1"
-            max="10"
-            value={severity()}
-            onChange={(event) => setSeverity(Number((event.target as HTMLInputElement).value))}
-          />
-        </label>
+        {props.entry.entryType === "timed" ? (
+          <label class="grid gap-1 text-sm font-medium text-muted-strong">
+            Severity: {severity()}
+            <input
+              class="h-11 accent-brand"
+              type="range"
+              min="1"
+              max="10"
+              value={severity()}
+              onChange={(event) => setSeverity(Number((event.target as HTMLInputElement).value))}
+            />
+          </label>
+        ) : null}
       </div>
 
-      <div class="grid gap-2">
-        <span class="text-sm font-medium text-muted-strong">Symptoms</span>
-        <div class="flex flex-wrap gap-2">
-          <For each={skinSymptomOptions}>
-            {(symptom) => (
-              <button
-                type="button"
-                onClick={() => toggleValue(symptom, symptoms, setSymptoms)}
-                classList={{
-                  "h-9 rounded-md border px-3 text-sm font-medium transition": true,
-                  "border-brand bg-brand text-background": symptoms().includes(symptom),
-                  "border-border-strong bg-surface text-muted-strong hover:border-muted": !symptoms().includes(symptom),
-                }}
-              >
-                {symptom}
-              </button>
+      {props.entry.entryType === "daily" ? (
+        <div class="grid gap-3">
+          <For each={conditions()}>
+            {(condition) => (
+              <article class="grid gap-3 rounded-lg border border-border bg-surface-muted p-3">
+                <div class="grid gap-3 sm:grid-cols-[140px_minmax(0,1fr)] sm:items-center">
+                  <div>
+                    <h3 class="text-sm font-semibold capitalize">{condition.condition}</h3>
+                    <p class="text-xs font-medium text-muted">Severity {condition.severity}</p>
+                  </div>
+                  <input
+                    class="h-8 accent-brand"
+                    type="range"
+                    min="0"
+                    max="10"
+                    value={condition.severity}
+                    aria-label={`${condition.condition} severity`}
+                    onInput={(event) =>
+                      updateConditionSeverity(condition.condition, Number((event.target as HTMLInputElement).value))
+                    }
+                  />
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <For each={skinBodyAreaOptions}>
+                    {(area) => (
+                      <button
+                        type="button"
+                        onClick={() => toggleConditionArea(condition.condition, area)}
+                        classList={{
+                          "h-8 rounded-md border px-2.5 text-xs font-medium transition": true,
+                          "border-brand bg-brand text-background": condition.bodyAreas.includes(area),
+                          "border-border-strong bg-surface text-muted-strong hover:border-muted": !condition.bodyAreas.includes(area),
+                        }}
+                      >
+                        {area}
+                      </button>
+                    )}
+                  </For>
+                </div>
+              </article>
             )}
           </For>
         </div>
-      </div>
+      ) : (
+        <>
+          <div class="grid gap-2">
+            <span class="text-sm font-medium text-muted-strong">Symptoms</span>
+            <div class="flex flex-wrap gap-2">
+              <For each={skinSymptomOptions}>
+                {(symptom) => (
+                  <button
+                    type="button"
+                    onClick={() => toggleValue(symptom, symptoms, setSymptoms)}
+                    classList={{
+                      "h-9 rounded-md border px-3 text-sm font-medium transition": true,
+                      "border-brand bg-brand text-background": symptoms().includes(symptom),
+                      "border-border-strong bg-surface text-muted-strong hover:border-muted": !symptoms().includes(symptom),
+                    }}
+                  >
+                    {symptom}
+                  </button>
+                )}
+              </For>
+            </div>
+          </div>
 
-      <div class="grid gap-2">
-        <span class="text-sm font-medium text-muted-strong">Body areas</span>
-        <div class="flex flex-wrap gap-2">
-          <For each={skinBodyAreaOptions}>
-            {(area) => (
-              <button
-                type="button"
-                onClick={() => toggleValue(area, bodyAreas, setBodyAreas)}
-                classList={{
-                  "h-9 rounded-md border px-3 text-sm font-medium transition": true,
-                  "border-brand bg-brand text-background": bodyAreas().includes(area),
-                  "border-border-strong bg-surface text-muted-strong hover:border-muted": !bodyAreas().includes(area),
-                }}
-              >
-                {area}
-              </button>
-            )}
-          </For>
-        </div>
-      </div>
+          <div class="grid gap-2">
+            <span class="text-sm font-medium text-muted-strong">Body areas</span>
+            <div class="flex flex-wrap gap-2">
+              <For each={skinBodyAreaOptions}>
+                {(area) => (
+                  <button
+                    type="button"
+                    onClick={() => toggleValue(area, bodyAreas, setBodyAreas)}
+                    classList={{
+                      "h-9 rounded-md border px-3 text-sm font-medium transition": true,
+                      "border-brand bg-brand text-background": bodyAreas().includes(area),
+                      "border-border-strong bg-surface text-muted-strong hover:border-muted": !bodyAreas().includes(area),
+                    }}
+                  >
+                    {area}
+                  </button>
+                )}
+              </For>
+            </div>
+          </div>
+        </>
+      )}
 
       <div class="grid gap-4 sm:grid-cols-2">
         {props.entry.entryType === "timed" ? (

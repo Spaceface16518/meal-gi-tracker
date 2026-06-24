@@ -55,13 +55,20 @@ export type GiEvent = {
 
 export type SkinEntryType = "daily" | "timed";
 
+export type SkinConditionAssessment = {
+  condition: string;
+  severity: number;
+  bodyAreas: string[];
+};
+
 export type SkinEntry = {
   id: string;
   uid: string;
   entryType: SkinEntryType;
-  severity: number;
+  severity?: number;
   symptoms: string[];
   bodyAreas: string[];
+  conditions: SkinConditionAssessment[];
   notes?: string;
   durationMinutes?: number;
   localDate?: string;
@@ -112,9 +119,10 @@ export type CreateGiEventPayload = {
 
 export type SaveSkinEntryPayload = {
   entryType: SkinEntryType;
-  severity: number;
-  symptoms: string[];
-  bodyAreas: string[];
+  severity?: number;
+  symptoms?: string[];
+  bodyAreas?: string[];
+  conditions?: SkinConditionAssessment[];
   notes?: string;
   durationMinutes?: number;
   localDate?: string;

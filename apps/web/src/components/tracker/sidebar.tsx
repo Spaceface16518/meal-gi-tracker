@@ -18,6 +18,12 @@ function describeEvent(event: GiEvent) {
 }
 
 function describeSkinEntry(entry: SkinEntry) {
+  if (entry.entryType === "daily") {
+    return entry.conditions.length
+      ? entry.conditions.map((condition) => `${condition.condition} ${condition.severity}/10`).join(" · ")
+      : "No condition assessments recorded";
+  }
+
   const details = [...entry.symptoms];
   if (entry.bodyAreas.length) details.push(entry.bodyAreas.join(", "));
   return details.length ? details.join(" · ") : "No skin details recorded";
@@ -288,7 +294,9 @@ export function RecentEntries(props: {
                 >
                   <div class="flex items-start justify-between gap-3">
                     <h3 class="text-sm font-semibold">
-                      {item.skinEntry.entryType === "daily" ? "Skin day" : "Skin observation"} · Severity {item.skinEntry.severity}
+                      {item.skinEntry.entryType === "daily"
+                        ? "Skin day"
+                        : `Skin observation · Severity ${item.skinEntry.severity ?? 1}`}
                     </h3>
                     <div class="flex shrink-0 items-center gap-2">
                       <button

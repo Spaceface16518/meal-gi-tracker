@@ -47,9 +47,10 @@ service cloud.firestore {
     // Fields:
     //   - uid: string (required, immutable) - owner uid
     //   - entryType: string (required) - daily or timed
-    //   - severity: number (required, 1-10) - skin severity
-    //   - symptoms: list (required, at least one item) - skin symptom tags
-    //   - bodyAreas: list (required, can be empty) - body area tags
+    //   - conditions: list (daily only, required, at least one item) - chronic condition assessments
+    //   - severity: number (timed only, required, 1-10) - observation severity
+    //   - symptoms: list (timed only, required, at least one item) - skin symptom tags
+    //   - bodyAreas: list (timed only, required, can be empty) - body area tags
     //   - notes: string (optional) - user notes
     //   - durationMinutes: number (optional, 1-1440) - observation duration
     //   - localDate: string (daily only, YYYY-MM-DD) - local calendar date
@@ -201,7 +202,32 @@ service cloud.firestore {
         isValidTimestamp('createdAt');
     }
 
-    function isValidSkinEntry(userId) {
+    function isValidDailySkinEntry(userId) {
+      return hasOnlyAllowedFields([
+        'uid',
+        'entryType',
+        'conditions',
+        'notes',
+        'localDate',
+        'sortAt',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+        hasRequiredFields(['uid', 'entryType', 'conditions', 'localDate', 'sortAt', 'createdAt', 'updatedAt']) &&
+        request.resource.data.uid == userId &&
+        request.resource.data.entryType == 'daily' &&
+        request.resource.data.conditions is list &&
+        request.resource.data.conditions.size() > 0 &&
+        request.resource.data.conditions.size() <= 12 &&
+        isOptionalString('notes', 1000) &&
+        request.resource.data.localDate is string &&
+        request.resource.data.localDate.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+        isValidTimestamp('sortAt') &&
+        isValidTimestamp('createdAt') &&
+        isValidTimestamp('updatedAt');
+    }
+
+    function isValidTimedSkinEntry(userId) {
       return hasOnlyAllowedFields([
         'uid',
         'entryType',
@@ -210,15 +236,14 @@ service cloud.firestore {
         'bodyAreas',
         'notes',
         'durationMinutes',
-        'localDate',
         'occurredAt',
         'sortAt',
         'createdAt',
         'updatedAt'
       ]) &&
-        hasRequiredFields(['uid', 'entryType', 'severity', 'symptoms', 'bodyAreas', 'sortAt', 'createdAt', 'updatedAt']) &&
+        hasRequiredFields(['uid', 'entryType', 'severity', 'symptoms', 'bodyAreas', 'occurredAt', 'sortAt', 'createdAt', 'updatedAt']) &&
         request.resource.data.uid == userId &&
-        request.resource.data.entryType in ['daily', 'timed'] &&
+        request.resource.data.entryType == 'timed' &&
         request.resource.data.severity is number &&
         request.resource.data.severity >= 1 &&
         request.resource.data.severity <= 10 &&
@@ -232,20 +257,14 @@ service cloud.firestore {
           (request.resource.data.durationMinutes is number &&
             request.resource.data.durationMinutes >= 1 &&
             request.resource.data.durationMinutes <= 1440)) &&
-        (
-          (request.resource.data.entryType == 'daily' &&
-            'localDate' in request.resource.data &&
-            !('occurredAt' in request.resource.data) &&
-            request.resource.data.localDate is string &&
-            request.resource.data.localDate.matches('^\\d{4}-\\d{2}-\\d{2}$')) ||
-          (request.resource.data.entryType == 'timed' &&
-            'occurredAt' in request.resource.data &&
-            !('localDate' in request.resource.data) &&
-            request.resource.data.occurredAt is timestamp)
-        ) &&
+        request.resource.data.occurredAt is timestamp &&
         isValidTimestamp('sortAt') &&
         isValidTimestamp('createdAt') &&
         isValidTimestamp('updatedAt');
+    }
+
+    function isValidSkinEntry(userId) {
+      return isValidDailySkinEntry(userId) || isValidTimedSkinEntry(userId);
     }
 
     match /users/{userId} {

@@ -10,7 +10,6 @@ export const symptomOptions = [
 ];
 
 export const skinSymptomOptions = [
-  "acne",
   "rash",
   "itching",
   "hives",
@@ -18,6 +17,15 @@ export const skinSymptomOptions = [
   "dryness",
   "swelling",
   "eczema flare",
+];
+
+export const skinConditionOptions = [
+  "acne",
+  "eczema",
+  "psoriasis",
+  "moles",
+  "rosacea",
+  "dryness",
 ];
 
 export const skinBodyAreaOptions = [
