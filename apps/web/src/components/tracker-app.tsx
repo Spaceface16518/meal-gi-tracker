@@ -22,7 +22,7 @@ type View = "log" | "analysis";
 
 export function TrackerApp() {
   const [user, setUser] = createSignal<User | null>(auth.currentUser);
-  const [authReady, setAuthReady] = createSignal(true);
+  const [authReady, setAuthReady] = createSignal(false);
   const [view, setView] = createSignal<View>("log");
   const [meals, setMeals] = createSignal<Meal[]>([]);
   const [events, setEvents] = createSignal<GiEvent[]>([]);
