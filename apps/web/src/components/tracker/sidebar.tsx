@@ -1,6 +1,6 @@
 import { createMemo, createSignal } from "solid-js";
 import { Activity, BarChart3, CalendarClock, FileJson, RefreshCcw, Trash2, Utensils } from "lucide-solid";
-import { useNavigate } from "@solidjs/router";
+import { useLocation, useNavigate } from "@solidjs/router";
 import { reanalyzeMeal } from "@/lib/callables";
 import { formatRelativeTime } from "@/lib/date";
 import { exportMealJson } from "@/lib/export-data";
@@ -43,6 +43,7 @@ export function StatsStrip(props: {
 }
 
 export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEvent[]; readOnly?: boolean }) {
+  const location = useLocation();
   const navigate = useNavigate();
   const [reanalyzingMealId, setReanalyzingMealId] = createSignal("");
   const [deletingEntryId, setDeletingEntryId] = createSignal("");
@@ -62,6 +63,10 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
 
   function openEntry(entry: RecentEntry) {
     navigate(entryPath(entry));
+  }
+
+  function isSelectedEntry(entry: RecentEntry) {
+    return location.pathname === entryPath(entry);
   }
 
   async function redoMealAnalysis(mealId: string) {
@@ -133,8 +138,13 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
             {combined().map((item) =>
               item.kind === "meal" ? (
                 <article
-                  class="cursor-pointer rounded-lg bg-surface-muted p-3 transition hover:bg-surface-accent"
+                  classList={{
+                    "cursor-pointer rounded-lg border p-3 transition hover:bg-surface-accent": true,
+                    "border-brand bg-brand-soft shadow-sm": isSelectedEntry(item),
+                    "border-transparent bg-surface-muted": !isSelectedEntry(item),
+                  }}
                   role="button"
+                  aria-current={isSelectedEntry(item) ? "page" : undefined}
                   tabIndex={0}
                   onClick={() => openEntry(item)}
                   onKeyDown={(event) => {
@@ -202,8 +212,13 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
               </article>
             ) : (
               <article
-                class="cursor-pointer rounded-lg bg-surface-muted p-3 transition hover:bg-surface-accent"
+                classList={{
+                  "cursor-pointer rounded-lg border p-3 transition hover:bg-surface-accent": true,
+                  "border-brand bg-brand-soft shadow-sm": isSelectedEntry(item),
+                  "border-transparent bg-surface-muted": !isSelectedEntry(item),
+                }}
                 role="button"
+                aria-current={isSelectedEntry(item) ? "page" : undefined}
                 tabIndex={0}
                 onClick={() => openEntry(item)}
                 onKeyDown={(event) => {
