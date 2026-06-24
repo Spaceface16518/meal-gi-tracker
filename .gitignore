@@ -25,6 +25,7 @@ apps/web/out/
 # production
 /build
 apps/web/build
+apps/web/dist
 
 # misc
 .DS_Store
