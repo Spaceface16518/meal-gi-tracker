@@ -11,7 +11,6 @@ import {
   serverTimestamp,
   setDoc,
   Timestamp,
-  updateDoc,
   type DocumentData,
   type FirestoreError,
   type QueryDocumentSnapshot,
@@ -92,22 +91,14 @@ function analysisFromDoc(snapshot: QueryDocumentSnapshot<DocumentData>): Correla
 export async function ensureUserProfile(user: User) {
   const profileRef = doc(db, "users", user.uid);
   const profile = await getDoc(profileRef);
-
-  if (profile.exists()) {
-    await updateDoc(profileRef, {
-      email: user.email,
-      displayName: user.displayName,
-      updatedAt: serverTimestamp(),
-    });
-    return;
-  }
+  const existingCreatedAt = profile.exists() ? profile.data().createdAt : null;
 
   await setDoc(profileRef, {
     uid: user.uid,
     email: user.email,
     displayName: user.displayName,
     updatedAt: serverTimestamp(),
-    createdAt: serverTimestamp(),
+    createdAt: existingCreatedAt instanceof Timestamp ? existingCreatedAt : serverTimestamp(),
   });
 }
 

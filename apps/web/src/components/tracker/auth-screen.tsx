@@ -4,12 +4,17 @@ import {
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   signInWithPopup,
+  type User,
 } from "firebase/auth";
 import { createSignal } from "solid-js";
 import { auth } from "@/lib/firebase";
 import { getErrorMessage } from "@/lib/errors";
 
-export function AuthScreen() {
+type AuthScreenProps = {
+  onAuthenticated?: (user: User) => void;
+};
+
+export function AuthScreen(props: AuthScreenProps) {
   const [mode, setMode] = createSignal<"signin" | "signup">("signin");
   const [email, setEmail] = createSignal("");
   const [password, setPassword] = createSignal("");
@@ -23,9 +28,11 @@ export function AuthScreen() {
 
     try {
       if (mode() === "signin") {
-        await signInWithEmailAndPassword(auth, email(), password());
+        const credential = await signInWithEmailAndPassword(auth, email(), password());
+        props.onAuthenticated?.(credential.user);
       } else {
-        await createUserWithEmailAndPassword(auth, email(), password());
+        const credential = await createUserWithEmailAndPassword(auth, email(), password());
+        props.onAuthenticated?.(credential.user);
       }
     } catch (err) {
       setError(getErrorMessage(err, "Authentication failed."));
@@ -41,7 +48,8 @@ export function AuthScreen() {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      await signInWithPopup(auth, provider);
+      const credential = await signInWithPopup(auth, provider);
+      props.onAuthenticated?.(credential.user);
     } catch (err) {
       setError(getErrorMessage(err, "Google sign-in failed."));
     } finally {
@@ -74,11 +82,11 @@ export function AuthScreen() {
               <input
                 class="h-11 w-full rounded-lg border border-border-strong bg-surface pl-10 pr-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
                 type="email"
-autocomplete="email"
-              value={email()}
-              onInput={(event) => setEmail((event.target as HTMLInputElement).value)}
-              required
-            />
+                autocomplete="email"
+                value={email()}
+                onInput={(event) => setEmail((event.target as HTMLInputElement).value)}
+                required
+              />
             </span>
           </label>
 

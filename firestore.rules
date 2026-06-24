@@ -173,9 +173,12 @@ service cloud.firestore {
       allow read: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUserProfile(userId);
       allow update: if isOwner(userId) &&
-        resource.data.uid == userId &&
-        request.resource.data.uid == resource.data.uid &&
-        request.resource.data.createdAt == resource.data.createdAt &&
+        (resource.data.uid == userId || !('uid' in resource.data)) &&
+        request.resource.data.uid == userId &&
+        (
+          request.resource.data.createdAt == resource.data.createdAt ||
+          !('createdAt' in resource.data)
+        ) &&
         isValidUserProfile(userId);
       allow delete: if false;
 
