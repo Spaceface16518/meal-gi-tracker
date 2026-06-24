@@ -56,6 +56,14 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function isDemoUser(userId) {
+      return userId == 'WiIKxxa28abvJzcfpVdmBJ0gmeJ3';
+    }
+
+    function isWritableOwner(userId) {
+      return isOwner(userId) && !isDemoUser(userId);
+    }
+
     function hasOnlyAllowedFields(fields) {
       return request.resource.data.keys().hasOnly(fields);
     }
@@ -171,8 +179,8 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidUserProfile(userId);
-      allow update: if isOwner(userId) &&
+      allow create: if isWritableOwner(userId) && isValidUserProfile(userId);
+      allow update: if isWritableOwner(userId) &&
         (resource.data.uid == userId || !('uid' in resource.data)) &&
         request.resource.data.uid == userId &&
         (
@@ -184,26 +192,26 @@ service cloud.firestore {
 
       match /meals/{mealId} {
         allow read: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidMeal(userId);
-        allow update: if isOwner(userId) &&
+        allow create: if isWritableOwner(userId) && isValidMeal(userId);
+        allow update: if isWritableOwner(userId) &&
           resource.data.uid == userId &&
           request.resource.data.uid == resource.data.uid &&
           request.resource.data.createdAt == resource.data.createdAt &&
           request.resource.data.inputMode == resource.data.inputMode &&
           request.resource.data.status == resource.data.status &&
           isValidMeal(userId);
-        allow delete: if isOwner(userId);
+        allow delete: if isWritableOwner(userId);
       }
 
       match /events/{eventId} {
         allow read: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidGiEvent(userId);
-        allow update: if isOwner(userId) &&
+        allow create: if isWritableOwner(userId) && isValidGiEvent(userId);
+        allow update: if isWritableOwner(userId) &&
           resource.data.uid == userId &&
           request.resource.data.uid == resource.data.uid &&
           request.resource.data.createdAt == resource.data.createdAt &&
           isValidGiEvent(userId);
-        allow delete: if isOwner(userId);
+        allow delete: if isWritableOwner(userId);
       }
 
       match /analyses/{analysisId} {

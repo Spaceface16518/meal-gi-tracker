@@ -1,6 +1,6 @@
 import { BarChart3, LogOut, Plus, Utensils } from "lucide-solid";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
-import { Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
+import { Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { AuthScreen } from "@/components/tracker/auth-screen";
 import { GiEventForm } from "@/components/tracker/gi-event-form";
 import { MealComposer } from "@/components/tracker/meal-composer";
@@ -8,6 +8,7 @@ import { AnalysisPanel } from "@/components/tracker/analysis-panel";
 import { RecentEntries, StatsStrip } from "@/components/tracker/sidebar";
 import { ConfigMissing, LoadingScreen, StatusMessage, TabButton } from "@/components/tracker/ui";
 import { auth, hasFirebaseConfig } from "@/lib/firebase";
+import { demoReadOnlyMessage, isDemoUser } from "@/lib/demo";
 import { getErrorMessage } from "@/lib/errors";
 import {
   ensureUserProfile,
@@ -27,6 +28,7 @@ export function TrackerApp() {
   const [events, setEvents] = createSignal<GiEvent[]>([]);
   const [analysis, setAnalysis] = createSignal<CorrelationAnalysis | null>(null);
   const [appError, setAppError] = createSignal("");
+  const readOnly = createMemo(() => isDemoUser(user()));
 
   function handleAuthenticated(currentUser: User | null) {
     setUser(currentUser);
@@ -39,6 +41,8 @@ export function TrackerApp() {
       setAnalysis(null);
       return;
     }
+
+    if (isDemoUser(currentUser)) return;
 
     void ensureUserProfile(currentUser).catch((err) => {
       setAppError(getErrorMessage(err, "Your profile could not be prepared."));
@@ -114,6 +118,11 @@ export function TrackerApp() {
                     <StatusMessage tone="error">{appError()}</StatusMessage>
                   </div>
                 ) : null}
+                {readOnly() ? (
+                  <div class="mb-4">
+                    <StatusMessage>{demoReadOnlyMessage}</StatusMessage>
+                  </div>
+                ) : null}
 
                 <div class="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-border bg-surface p-1 shadow-sm">
                   <TabButton active={view() === "log"} onClick={() => setView("log")} icon={<Plus size={17} />}>
@@ -130,8 +139,8 @@ export function TrackerApp() {
 
                 {view() === "log" ? (
                   <div class="grid gap-5">
-                    <MealComposer />
-                    <GiEventForm />
+                    <MealComposer readOnly={readOnly()} />
+                    <GiEventForm readOnly={readOnly()} />
                   </div>
                 ) : (
                   <AnalysisPanel
@@ -139,13 +148,14 @@ export function TrackerApp() {
                     analysis={analysis()}
                     mealCount={meals().length}
                     eventCount={events().length}
+                    readOnly={readOnly()}
                   />
                 )}
               </section>
 
               <aside class="grid content-start gap-5">
                 <StatsStrip meals={meals()} events={events()} analysis={analysis()} />
-                <RecentEntries uid={user()!.uid} meals={meals()} events={events()} />
+                <RecentEntries uid={user()!.uid} meals={meals()} events={events()} readOnly={readOnly()} />
               </aside>
             </div>
           </main>

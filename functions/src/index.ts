@@ -15,6 +15,7 @@ const db = getFirestore();
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const defaultMealModelName = "gemini-2.5-flash-lite";
 const defaultCorrelationModelName = "gemini-3.1-pro-preview";
+const demoUserUid = process.env.DEMO_USER_UID || "WiIKxxa28abvJzcfpVdmBJ0gmeJ3";
 
 type InputMode = "text" | "voice" | "image";
 
@@ -150,6 +151,7 @@ export const createMeal = onCall(
   { secrets: [geminiApiKey], timeoutSeconds: 120, memory: "512MiB" },
   async (request) => {
     const uid = requireUid(request.auth?.uid);
+    requireWritableUid(uid);
     const data = request.data as CreateMealData;
     const mode = data.mode;
 
@@ -220,6 +222,7 @@ export const createMeal = onCall(
 
 export const createGiEvent = onCall(async (request) => {
   const uid = requireUid(request.auth?.uid);
+  requireWritableUid(uid);
   const data = request.data as CreateEventData;
   const occurredAt = parseDate(data.occurredAt, "occurredAt");
   const severity = validateNumber(data.severity, "severity", 1, 10);
@@ -257,6 +260,7 @@ export const reanalyzeMeal = onCall(
   { secrets: [geminiApiKey], timeoutSeconds: 120, memory: "512MiB" },
   async (request) => {
     const uid = requireUid(request.auth?.uid);
+    requireWritableUid(uid);
     const data = request.data as ReanalyzeMealData;
     const mealId = requiredString(data.mealId, "mealId", 160);
 
@@ -300,6 +304,7 @@ export const analyzeCorrelations = onCall(
   { secrets: [geminiApiKey], timeoutSeconds: 180, memory: "512MiB" },
   async (request) => {
     const uid = requireUid(request.auth?.uid);
+    requireWritableUid(uid);
     const analysis = await runCorrelationForUser(uid);
     return { analysis: serializeTimestamps(analysis) };
   },
@@ -1385,6 +1390,15 @@ function safeSecretValue() {
 function requireUid(uid?: string) {
   if (!uid) throw new HttpsError("unauthenticated", "Sign in before making changes.");
   return uid;
+}
+
+function requireWritableUid(uid: string) {
+  if (uid === demoUserUid) {
+    throw new HttpsError(
+      "permission-denied",
+      "Demo mode is read-only. Sign in with your own account to save changes.",
+    );
+  }
 }
 
 async function ensureUserExists(uid: string) {

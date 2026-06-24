@@ -6,10 +6,11 @@ import { getErrorMessage } from "@/lib/errors";
 import type { InputMode } from "@/lib/types";
 import { maxMediaBytes } from "@/components/tracker/constants";
 import { MediaReady, ModeButton, SubmitRow } from "@/components/tracker/ui";
+import { demoReadOnlyMessage } from "@/lib/demo";
 
 type MessageTone = "info" | "error" | "success";
 
-export function MealComposer() {
+export function MealComposer(props: { readOnly?: boolean }) {
   const [mode, setMode] = createSignal<InputMode>("text");
   const [text, setText] = createSignal("");
   const [notes, setNotes] = createSignal("");
@@ -35,6 +36,12 @@ export function MealComposer() {
     setBusy(true);
     setMessage("");
     setMessageTone("info");
+
+    if (props.readOnly) {
+      setMessage(demoReadOnlyMessage);
+      setBusy(false);
+      return;
+    }
 
     const eatenAtDate = new Date(eatenAt());
     if (Number.isNaN(eatenAtDate.getTime())) {

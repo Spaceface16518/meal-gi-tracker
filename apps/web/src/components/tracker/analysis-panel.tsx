@@ -4,6 +4,7 @@ import { analyzeCorrelations } from "@/lib/callables";
 import { exportAnalysisHtml, exportAnalysisJson, exportMealsJson } from "@/lib/export-data";
 import { getErrorMessage } from "@/lib/errors";
 import { getAllGiEvents, getAllMeals } from "@/lib/firestore";
+import { demoReadOnlyMessage } from "@/lib/demo";
 import type { CorrelationAnalysis } from "@/lib/types";
 import { EmptyState, StatusMessage } from "@/components/tracker/ui";
 
@@ -12,6 +13,7 @@ export function AnalysisPanel(props: {
   analysis: CorrelationAnalysis | null;
   mealCount: number;
   eventCount: number;
+  readOnly?: boolean;
 }) {
   const [busy, setBusy] = createSignal(false);
   const [exporting, setExporting] = createSignal("");
@@ -22,6 +24,12 @@ export function AnalysisPanel(props: {
     setBusy(true);
     setMessage("");
     setIsError(false);
+    if (props.readOnly) {
+      setMessage(demoReadOnlyMessage);
+      setBusy(false);
+      return;
+    }
+
     try {
       await analyzeCorrelations();
       setMessage("Analysis queued.");

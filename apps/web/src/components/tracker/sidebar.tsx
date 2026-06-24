@@ -5,6 +5,7 @@ import { formatRelativeTime } from "@/lib/date";
 import { exportMealJson } from "@/lib/export-data";
 import { getErrorMessage } from "@/lib/errors";
 import { deleteGiEvent, deleteMeal } from "@/lib/firestore";
+import { demoReadOnlyMessage } from "@/lib/demo";
 import type { CorrelationAnalysis, GiEvent, Meal } from "@/lib/types";
 import { EmptyState, Stat, StatusMessage } from "@/components/tracker/ui";
 
@@ -39,7 +40,7 @@ export function StatsStrip(props: {
   );
 }
 
-export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEvent[] }) {
+export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEvent[]; readOnly?: boolean }) {
   const [reanalyzingMealId, setReanalyzingMealId] = createSignal("");
   const [deletingEntryId, setDeletingEntryId] = createSignal("");
   const [message, setMessage] = createSignal("");
@@ -58,6 +59,12 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
     setMessage("");
     setIsError(false);
 
+    if (props.readOnly) {
+      setMessage(demoReadOnlyMessage);
+      setReanalyzingMealId("");
+      return;
+    }
+
     try {
       await reanalyzeMeal(mealId);
       setMessage("Meal analysis refreshed.");
@@ -71,6 +78,12 @@ export function RecentEntries(props: { uid: string; meals: Meal[]; events: GiEve
 
   async function removeEntry(entry: { kind: "meal"; id: string } | { kind: "event"; id: string }) {
     const label = entry.kind === "meal" ? "meal" : "event";
+    if (props.readOnly) {
+      setMessage(demoReadOnlyMessage);
+      setIsError(false);
+      return;
+    }
+
     const confirmed = window.confirm(`Delete this ${label}? This cannot be undone.`);
     if (!confirmed) return;
 

@@ -5,6 +5,7 @@ import { toDatetimeLocalValue } from "@/lib/date";
 import { getErrorMessage } from "@/lib/errors";
 import { symptomOptions } from "@/components/tracker/constants";
 import { SubmitRow } from "@/components/tracker/ui";
+import { demoReadOnlyMessage } from "@/lib/demo";
 
 type MessageTone = "info" | "error" | "success";
 
@@ -98,7 +99,7 @@ function StoolTypeIcon(props: { type: StoolTypeValue | null }) {
   );
 }
 
-export function GiEventForm() {
+export function GiEventForm(props: { readOnly?: boolean }) {
   const [occurredAt, setOccurredAt] = createSignal(toDatetimeLocalValue(new Date()));
   const [severity, setSeverity] = createSignal(4);
   const [symptoms, setSymptoms] = createSignal<string[]>([]);
@@ -124,6 +125,12 @@ export function GiEventForm() {
     setBusy(true);
     setMessage("");
     setMessageTone("info");
+
+    if (props.readOnly) {
+      setMessage(demoReadOnlyMessage);
+      setBusy(false);
+      return;
+    }
 
     const occurredAtDate = new Date(occurredAt());
     if (Number.isNaN(occurredAtDate.getTime())) {

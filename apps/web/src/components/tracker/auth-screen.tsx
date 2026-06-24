@@ -1,4 +1,4 @@
-import { ChevronRight, Mail, Utensils } from "lucide-solid";
+import { ChevronRight, Eye, Mail, Utensils } from "lucide-solid";
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
@@ -8,6 +8,7 @@ import {
 } from "firebase/auth";
 import { createSignal } from "solid-js";
 import { auth } from "@/lib/firebase";
+import { demoUserEmail, demoUserPassword, hasDemoLogin } from "@/lib/demo";
 import { getErrorMessage } from "@/lib/errors";
 
 type AuthScreenProps = {
@@ -52,6 +53,20 @@ export function AuthScreen(props: AuthScreenProps) {
       props.onAuthenticated?.(credential.user);
     } catch (err) {
       setError(getErrorMessage(err, "Google sign-in failed."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function signInWithDemo() {
+    setBusy(true);
+    setError("");
+
+    try {
+      const credential = await signInWithEmailAndPassword(auth, demoUserEmail, demoUserPassword);
+      props.onAuthenticated?.(credential.user);
+    } catch (err) {
+      setError(getErrorMessage(err, "Demo sign-in failed."));
     } finally {
       setBusy(false);
     }
@@ -134,6 +149,18 @@ export function AuthScreen(props: AuthScreenProps) {
           Continue with Google
           <ChevronRight size={17} aria-hidden />
         </button>
+
+        {hasDemoLogin ? (
+          <button
+            type="button"
+            onClick={signInWithDemo}
+            disabled={busy()}
+            class="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-brand bg-brand-soft px-4 text-sm font-semibold text-brand transition hover:border-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Eye size={17} aria-hidden />
+            View demo
+          </button>
+        ) : null}
 
         <button
           type="button"
