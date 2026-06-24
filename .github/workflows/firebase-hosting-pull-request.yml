@@ -22,7 +22,10 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
-      - uses: google-github-actions/auth@v2
+      - id: auth
+        uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MEAL_TRACKER_46346 }}
-      - run: npx -y firebase-tools@15.22.2 hosting:channel:deploy pr-${{ github.event.number }} --expires 7d --project meal-tracker-46346
+      - run: npx -y firebase-tools@15.22.2 hosting:channel:deploy pr-${{ github.event.number }} --expires 7d --project meal-tracker-46346 --non-interactive --debug
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
