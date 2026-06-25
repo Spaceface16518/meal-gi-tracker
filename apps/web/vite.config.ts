@@ -1,10 +1,44 @@
 import { defineConfig } from "vite";
+import type { Plugin } from "vite";
 import solidPlugin from "vite-plugin-solid";
 import tailwindcss from "@tailwindcss/vite";
+import { execFileSync } from "node:child_process";
 import path from "path";
 
+function gitValue(args: string[]) {
+  try {
+    return execFileSync("git", args, { cwd: __dirname, encoding: "utf8" }).trim();
+  } catch {
+    return "";
+  }
+}
+
+function githubTreeUrl(remoteUrl: string, commitHash: string) {
+  const match = remoteUrl.match(/github\.com[:/](.+?)(?:\.git)?$/);
+  return match ? `https://github.com/${match[1]}/tree/${commitHash}` : "";
+}
+
+function commitInfoPlugin(): Plugin {
+  const commitHash = gitValue(["rev-parse", "HEAD"]);
+  const shortCommitHash = gitValue(["rev-parse", "--short", "HEAD"]);
+  const remoteUrl = gitValue(["remote", "get-url", "origin"]);
+  const commitUrl = commitHash ? githubTreeUrl(remoteUrl, commitHash) : "";
+
+  return {
+    name: "meal-signal-commit-info",
+    config() {
+      return {
+        define: {
+          __APP_COMMIT_HASH__: JSON.stringify(shortCommitHash),
+          __APP_COMMIT_URL__: JSON.stringify(commitUrl),
+        },
+      };
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [solidPlugin(), tailwindcss()],
+  plugins: [commitInfoPlugin(), solidPlugin(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

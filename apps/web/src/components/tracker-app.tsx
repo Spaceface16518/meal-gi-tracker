@@ -147,7 +147,20 @@ export function TrackerApp(props: { children?: JSX.Element }) {
                       <Utensils size={19} aria-hidden />
                     </div>
                     <div class="min-w-0">
-                      <h1 class="truncate text-base font-semibold">Meal Signal</h1>
+                      <div class="flex min-w-0 items-baseline gap-2">
+                        <h1 class="truncate text-base font-semibold">Meal Signal</h1>
+                        <Show when={__APP_COMMIT_HASH__ && __APP_COMMIT_URL__}>
+                          <a
+                            href={__APP_COMMIT_URL__}
+                            target="_blank"
+                            rel="noreferrer"
+                            class="shrink-0 font-mono text-xs text-muted underline-offset-2 hover:text-foreground hover:underline"
+                            title="Open this build's source on GitHub"
+                          >
+                            {__APP_COMMIT_HASH__}
+                          </a>
+                        </Show>
+                      </div>
                       <p class="truncate text-sm text-muted">{user()!.email}</p>
                     </div>
                   </div>
