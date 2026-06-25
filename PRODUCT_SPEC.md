@@ -41,13 +41,13 @@ Users can read their own profile. Users cannot delete profiles through the clien
 
 Authenticated users get two main app sections:
 
-- Log: meal logging and GI event logging.
+- Log: meal logging, GI event logging, and skin tracking.
 - Analysis: correlation analysis, analysis display, and bulk exports.
 
 The authenticated screen also includes:
 
-- A stats summary with meal count, event count, and current top signal.
-- A combined Recent list of meals and GI events.
+- A stats summary with meal count, GI event count, skin entry count, and current top signal.
+- A combined Recent list of meals, GI events, and skin entries.
 - A user identity display using the signed-in email.
 - A sign-out control.
 
@@ -59,13 +59,14 @@ The client subscribes to live per-user data:
 
 - Meals: latest 25 records ordered by `eatenAt` descending.
 - GI events: latest 25 records ordered by `occurredAt` descending.
+- Skin entries: latest 25 records ordered by `sortAt` descending.
 - Current analysis: the per-user `analyses/current` document.
 
 If a live subscription fails, the app shows a user-visible error that live updates are temporarily unavailable.
 
-The Recent list combines the currently subscribed meals and events, sorts them by their event time descending, and shows the latest 12 combined entries.
+The Recent list combines the currently subscribed meals, GI events, and skin entries, sorts them by their event time descending, and shows the latest combined entries.
 
-Exports fetch all per-user meals and GI events, not only the subscribed 25-record windows.
+Exports fetch all per-user meals, GI events, and skin entries, not only the subscribed 25-record windows.
 
 ## Date and Time Behavior
 
@@ -74,6 +75,7 @@ Exports fetch all per-user meals and GI events, not only the subscribed 25-recor
 - Submitted date/time values are converted to ISO strings by the client and stored as timestamps by the backend.
 - Invalid meal times show "Choose a valid meal time."
 - Invalid GI event times show "Choose a valid event time."
+- Invalid skin observation times show "Choose a valid observation time."
 - Recent entries display relative times:
   - Under 1 minute: `just now`.
   - Under 60 minutes: rounded minutes with `m ago`.
@@ -297,14 +299,95 @@ Stool type labels:
 - 6: Mushy pieces.
 - 7: Watery.
 
+## Skin Tracking
+
+Users can log skin state separately from GI events in two modes:
+
+- Day: one editable current skin-quality assessment for a local calendar date.
+- Time: a specific skin observation or flare at a date/time.
+
+Day-mode skin entries have:
+
+- One assessment per supported chronic skin condition.
+- A severity slider from 0 to 10 for each condition.
+- Zero or more body area tags for each condition.
+- Optional notes.
+
+Supported daily skin conditions:
+
+- acne.
+- eczema.
+- psoriasis.
+- moles.
+- rosacea.
+- dryness.
+
+Timed skin observations have:
+
+- Severity from 1 to 10.
+- One or more skin symptom tags.
+- Zero or more body area tags.
+- Optional duration in minutes.
+- Optional notes.
+
+Supported timed skin symptom tags:
+
+- rash.
+- itching.
+- hives.
+- flushing.
+- dryness.
+- swelling.
+- eczema flare.
+
+Supported body area tags:
+
+- face.
+- neck.
+- chest.
+- back.
+- arms.
+- hands.
+- legs.
+- scalp.
+- other.
+
+Day-mode skin entries use deterministic document IDs in the form `daily_YYYY-MM-DD`, so saving the same local date updates that day's skin state instead of creating a duplicate. Timed skin observations use generated document IDs and multiple timed observations can exist on the same day.
+
+The client stores the last saved day-mode condition slider values and per-condition body areas in local storage. New day-mode logs preload those values because chronic skin condition locations and severities usually change gradually.
+
+Skin entries are tracked and exported, but they do not participate in the current GI-focused correlation analysis, deterministic sensitivity scoring, or Gemini correlation prompt.
+
+### Skin Entry Validation
+
+Backend validation:
+
+- User must be authenticated.
+- `entryType` must be `daily` or `timed`.
+- Daily entries require `conditions`, an array with 1 to 12 items.
+- Each daily condition has a condition name, severity from 0 to 10, and 0 to 12 body areas.
+- Daily entries require `localDate` using `YYYY-MM-DD`.
+- Timed entries require `severity` from 1 to 10.
+- Timed entries require `symptoms`, an array with 1 to 12 items.
+- Timed entries require `bodyAreas`, an array with 0 to 12 items.
+- Timed entries require `occurredAt`, which must be a valid date.
+- Timed `durationMinutes`, when present, must be a number from 1 to 1440.
+- `notes`, when present, must be a string at most 1000 characters.
+
+Client validation:
+
+- Day-mode save is available after the date and condition assessments are present.
+- Timed save is disabled while no skin symptom is selected.
+- Daily save success message: "Skin day saved."
+- Timed save success message: "Skin observation saved."
+
 ## Recent Entries
 
-The Recent list combines meals and GI events from the live subscription windows.
+The Recent list combines meals, GI events, and skin entries from the live subscription windows.
 
 Behavior:
 
-- Sort by `eatenAt` for meals and `occurredAt` for events, newest first.
-- Show at most 12 combined entries.
+- Sort by `eatenAt` for meals, `occurredAt` for GI events, and `sortAt` for skin entries, newest first.
 - Show an empty state when no subscribed entries exist.
 - Entry actions expose pending states where applicable.
 - Action success and failure messages appear above the list.
@@ -326,30 +409,40 @@ GI event recent entry content:
 - Symptoms and stool type details.
 - Delete action.
 
+Skin recent entry content:
+
+- `Skin day` or `Skin observation`.
+- Severity.
+- Local date for daily entries or relative time for timed observations.
+- Skin symptoms and body area details.
+- Delete action.
+
 GI event detail text is a comma-separated list of symptoms plus `stool type N` when present. If no details exist, it displays "No details recorded", although current validation prevents newly created records from having no details.
 
 ## Delete Behavior
 
-Meals and GI events can be deleted from Recent.
+Meals, GI events, and skin entries can be deleted from Recent.
 
 Behavior:
 
-- Deletion asks for confirmation: "Delete this meal? This cannot be undone." or "Delete this event? This cannot be undone."
+- Deletion asks for confirmation: "Delete this meal? This cannot be undone.", "Delete this event? This cannot be undone.", or "Delete this skin entry? This cannot be undone."
 - Canceling confirmation performs no delete.
 - The pending delete state is scoped to one entry.
-- Only the authenticated owner can delete their own meal or event.
+- Only the authenticated owner can delete their own meal, GI event, or skin entry.
 - Successful meal deletion shows "Meal deleted."
 - Successful event deletion shows "Event deleted."
+- Successful skin deletion shows "Skin entry deleted."
 - Failed deletion shows an error message.
 
-Deleting a meal or event does not automatically rerun correlation analysis. The displayed current analysis remains whatever is stored until a manual or scheduled analysis run updates it.
+Deleting a meal, GI event, or skin entry does not automatically rerun correlation analysis. The displayed current analysis remains whatever is stored until a manual or scheduled analysis run updates it.
 
 ## Stats Summary
 
 The stats summary shows:
 
 - Meals: count of currently subscribed meals, up to 25.
-- Events: count of currently subscribed GI events, up to 25.
+- GI: count of currently subscribed GI events, up to 25.
+- Skin: count of currently subscribed skin entries, up to 25.
 - Signal:
   - If current analysis exists, the most frequent irritant name across subscribed meals' analyses.
   - If no irritants are present, `None`.
@@ -519,23 +612,25 @@ All meals JSON export:
 Analysis JSON export:
 
 - Available from Analysis view.
-- Fetches all meals and GI events.
+- Fetches all meals, GI events, and skin entries.
 - File name pattern: `meal-signal-analysis-{yyyy-mm-dd}.json`.
-- Payload includes `exportedAt`, `analysis`, `meals`, and `giEvents`.
+- Payload includes `exportedAt`, `analysis`, `meals`, `giEvents`, and `skinEntries`.
 - `analysis` is `null` if no analysis exists.
 - All date fields serialize as ISO strings.
 
 Analysis HTML export:
 
 - Available from Analysis view.
-- Fetches all meals and GI events.
+- Fetches all meals, GI events, and skin entries.
 - File name pattern: `meal-signal-analysis-{yyyy-mm-dd}.html`.
 - Includes export timestamp and analysis generated timestamp when present.
 - Includes summary.
+- States that the current correlation analysis remains GI-focused and skin entries are exported as tracked context only.
 - Includes all findings or "No findings available."
 - Includes data notes or "No data quality notes."
 - Includes a Recent Meals table using up to the first 50 meals from the all-meals query.
 - Includes a Recent GI Events table using up to the first 50 events from the all-events query.
+- Includes a Recent Skin Entries table using up to the first 50 skin entries from the all-skin-entries query.
 - Escapes HTML content from records before writing the file.
 - Uses a print-friendly static HTML layout.
 
@@ -586,6 +681,31 @@ Client fallback parsing:
 
 - Missing severity becomes 1.
 - Invalid or missing symptoms become an empty list.
+- Missing or invalid dates fall back to the current date on the client.
+
+### Skin Entry
+
+Fields:
+
+- `id`: document ID.
+- `uid`: owner UID.
+- `entryType`: `daily` or `timed`.
+- `conditions`: daily condition assessments.
+- `severity`: timed observation severity.
+- `symptoms`: timed observation symptom list.
+- `bodyAreas`: timed observation body area list.
+- `notes`: optional note.
+- `durationMinutes`: optional timed observation duration.
+- `localDate`: daily entry local date.
+- `occurredAt`: timed entry timestamp.
+- `sortAt`: ordering timestamp.
+- `createdAt`: creation timestamp.
+- `updatedAt`: update timestamp.
+
+Client fallback parsing:
+
+- Missing timed severity becomes unset on the client and timed edit defaults to 4.
+- Invalid or missing symptoms, body areas, and conditions become empty lists.
 - Missing or invalid dates fall back to the current date on the client.
 
 ### Correlation Analysis
@@ -657,6 +777,14 @@ All callable functions require authentication.
 - Saves event under the authenticated user's events collection.
 - Ensures a user profile exists or is updated.
 - Returns the created event with serialized timestamps.
+
+### saveSkinEntry
+
+- Validates skin entry fields.
+- Saves daily entries under the authenticated user's `skinEntries` collection using `daily_YYYY-MM-DD`.
+- Saves timed entries under the authenticated user's `skinEntries` collection using generated document IDs.
+- Ensures a user profile exists or is updated.
+- Returns the saved skin entry with serialized timestamps.
 
 ### reanalyzeMeal
 

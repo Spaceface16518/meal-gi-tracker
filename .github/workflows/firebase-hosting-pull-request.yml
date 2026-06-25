@@ -6,10 +6,10 @@ on: pull_request
 permissions:
   checks: write
   contents: read
+  issues: write
   pull-requests: write
 jobs:
   build_and_preview:
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,8 +22,41 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
-      - uses: FirebaseExtended/action-hosting-deploy@v0
+      - id: auth
+        uses: google-github-actions/auth@v2
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MEAL_TRACKER_46346 }}
-          projectId: meal-tracker-46346
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MEAL_TRACKER_46346 }}
+      - id: deploy_preview
+        run: |
+          npx -y firebase-tools@15.22.2 hosting:channel:deploy pr-${{ github.event.number }} --expires 7d --project meal-tracker-46346 --non-interactive --json > firebase-preview.json
+          node <<'EOF' >> "$GITHUB_OUTPUT"
+          const fs = require("fs");
+          const payload = JSON.parse(fs.readFileSync("firebase-preview.json", "utf8"));
+          const urls = [];
+
+          function collectUrls(value) {
+            if (!value) return;
+            if (typeof value === "string" && /^https:\/\/.*\.web\.app/.test(value)) {
+              urls.push(value);
+              return;
+            }
+            if (Array.isArray(value)) {
+              value.forEach(collectUrls);
+              return;
+            }
+            if (typeof value === "object") {
+              Object.values(value).forEach(collectUrls);
+            }
+          }
+
+          collectUrls(payload);
+          const url = urls.find((item) => item.includes("--pr-")) ?? urls[0];
+          if (!url) throw new Error("Firebase preview URL was not found in deploy output.");
+          console.log(`url=${url}`);
+          EOF
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
+      - run: |
+          gh pr comment "${{ github.event.number }}" --edit-last --create-if-none --body "Firebase Hosting preview: ${{ steps.deploy_preview.outputs.url }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

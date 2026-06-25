@@ -1,9 +1,10 @@
-import type { CorrelationAnalysis, GiEvent, Meal } from "@/lib/types";
+import type { CorrelationAnalysis, GiEvent, Meal, SkinEntry } from "@/lib/types";
 
 type AnalysisExportInput = {
   analysis: CorrelationAnalysis | null;
   meals: Meal[];
   events: GiEvent[];
+  skinEntries?: SkinEntry[];
   exportedAt?: Date;
 };
 
@@ -46,6 +47,33 @@ function serializableEvent(event: GiEvent) {
   };
 }
 
+function serializableSkinEntry(entry: SkinEntry) {
+  return {
+    ...entry,
+    occurredAt: iso(entry.occurredAt),
+    sortAt: iso(entry.sortAt),
+    createdAt: iso(entry.createdAt),
+    updatedAt: iso(entry.updatedAt),
+  };
+}
+
+function skinEntryDetails(entry: SkinEntry) {
+  if (entry.entryType === "daily") {
+    return entry.conditions.length
+      ? entry.conditions
+          .map((condition) => {
+            const areas = condition.bodyAreas.length ? ` (${condition.bodyAreas.join(", ")})` : "";
+            return `${condition.condition}: ${condition.severity}/10${areas}`;
+          })
+          .join("; ")
+      : "No condition assessments recorded";
+  }
+
+  return [...entry.symptoms, entry.bodyAreas.length ? `areas: ${entry.bodyAreas.join(", ")}` : ""]
+    .filter(Boolean)
+    .join("; ") || "No details recorded";
+}
+
 function serializableAnalysis(analysis: CorrelationAnalysis | null) {
   if (!analysis) return null;
   return {
@@ -83,7 +111,7 @@ export function exportMealsJson(meals: Meal[]) {
   );
 }
 
-export function exportAnalysisJson({ analysis, meals, events, exportedAt = new Date() }: AnalysisExportInput) {
+export function exportAnalysisJson({ analysis, meals, events, skinEntries = [], exportedAt = new Date() }: AnalysisExportInput) {
   downloadTextFile(
     `meal-signal-analysis-${exportedAt.toISOString().slice(0, 10)}.json`,
     "application/json",
@@ -93,6 +121,7 @@ export function exportAnalysisJson({ analysis, meals, events, exportedAt = new D
         analysis: serializableAnalysis(analysis),
         meals: meals.map(serializableMeal),
         giEvents: events.map(serializableEvent),
+        skinEntries: skinEntries.map(serializableSkinEntry),
       },
       null,
       2,
@@ -100,11 +129,12 @@ export function exportAnalysisJson({ analysis, meals, events, exportedAt = new D
   );
 }
 
-export function exportAnalysisHtml({ analysis, meals, events, exportedAt = new Date() }: AnalysisExportInput) {
+export function exportAnalysisHtml({ analysis, meals, events, skinEntries = [], exportedAt = new Date() }: AnalysisExportInput) {
   const findings = analysis?.findings ?? [];
   const dataNotes = analysis?.dataQualityNotes ?? [];
   const topMeals = meals.slice(0, 50);
   const topEvents = events.slice(0, 50);
+  const topSkinEntries = skinEntries.slice(0, 50);
 
   const html = `<!doctype html>
 <html lang="en">
@@ -142,7 +172,8 @@ export function exportAnalysisHtml({ analysis, meals, events, exportedAt = new D
     <div class="summary">
       <h2 style="margin-top:0;padding-top:0;border-top:0;">Summary</h2>
       <p>${escapeHtml(analysis?.summary ?? "No analysis has been generated yet.")}</p>
-      <p class="muted">${meals.length} meals and ${events.length} GI events included in this export.</p>
+      <p class="muted">${meals.length} meals, ${events.length} GI events, and ${skinEntries.length} skin entries included in this export.</p>
+      <p class="muted">Current correlation analysis remains GI-focused; skin entries are exported as tracked context only.</p>
     </div>
 
     <h2>Findings</h2>
@@ -198,6 +229,24 @@ export function exportAnalysisHtml({ analysis, meals, events, exportedAt = new D
           <td>${escapeHtml(event.severity)}</td>
           <td>${escapeHtml([...event.symptoms, event.stoolType ? `stool type ${event.stoolType}` : ""].filter(Boolean).join(", ") || "No details recorded")}</td>
           <td>${escapeHtml(event.notes ?? "")}</td>
+        </tr>`,
+          )
+          .join("")}
+      </tbody>
+    </table>
+
+    <h2>Recent Skin Entries</h2>
+    <table>
+      <thead><tr><th>When</th><th>Type</th><th>Severity</th><th>Details</th><th>Notes</th></tr></thead>
+      <tbody>
+        ${topSkinEntries
+          .map(
+            (entry) => `<tr>
+          <td>${escapeHtml(entry.entryType === "daily" ? entry.localDate ?? "" : entry.occurredAt?.toLocaleString() ?? "")}</td>
+          <td>${escapeHtml(entry.entryType === "daily" ? "Skin day" : "Skin observation")}</td>
+          <td>${escapeHtml(entry.entryType === "timed" ? entry.severity ?? "" : "")}</td>
+          <td>${escapeHtml(skinEntryDetails(entry))}</td>
+          <td>${escapeHtml(entry.notes ?? "")}</td>
         </tr>`,
           )
           .join("")}

@@ -83,6 +83,24 @@ type CreateEventData = {
   durationMinutes?: number;
 };
 
+type SaveSkinEntryData = {
+  entryType?: "daily" | "timed";
+  severity?: number;
+  symptoms?: string[];
+  bodyAreas?: string[];
+  conditions?: SkinConditionAssessment[];
+  notes?: string;
+  durationMinutes?: number;
+  localDate?: string;
+  occurredAt?: string;
+};
+
+type SkinConditionAssessment = {
+  condition?: string;
+  severity?: number;
+  bodyAreas?: string[];
+};
+
 type ReanalyzeMealData = {
   mealId?: string;
 };
@@ -121,6 +139,26 @@ type EventDocument = {
   stoolType?: number;
   durationMinutes?: number;
   createdAt: Timestamp;
+};
+
+type SkinEntryDocument = {
+  uid: string;
+  entryType: "daily" | "timed";
+  severity?: number;
+  symptoms?: string[];
+  bodyAreas?: string[];
+  conditions?: Array<{
+    condition: string;
+    severity: number;
+    bodyAreas: string[];
+  }>;
+  notes?: string;
+  durationMinutes?: number;
+  localDate?: string;
+  occurredAt?: Timestamp;
+  sortAt: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 };
 
 type SensitivityContext = {
@@ -254,6 +292,73 @@ export const createGiEvent = onCall(async (request) => {
   await ensureUserExists(uid);
 
   return { event: { id: docRef.id, ...serializeTimestamps(eventDoc) } };
+});
+
+export const saveSkinEntry = onCall(async (request) => {
+  const uid = requireUid(request.auth?.uid);
+  requireWritableUid(uid);
+  const data = request.data as SaveSkinEntryData;
+  const entryType = data.entryType;
+
+  if (entryType !== "daily" && entryType !== "timed") {
+    throw new HttpsError("invalid-argument", "A valid skin entry type is required.");
+  }
+
+  const notes = optionalString(data.notes, 1000);
+  const now = Timestamp.now();
+
+  const baseEntry = {
+    uid,
+    entryType,
+    updatedAt: now,
+    ...(notes ? { notes } : {}),
+  };
+
+  if (entryType === "daily") {
+    const localDate = validateLocalDate(data.localDate);
+    const conditions = validateSkinConditions(data.conditions);
+    const sortAt = Timestamp.fromDate(new Date(`${localDate}T12:00:00.000Z`));
+    const docRef = db.collection("users").doc(uid).collection("skinEntries").doc(`daily_${localDate}`);
+    const snapshot = await docRef.get();
+    const entryDoc: SkinEntryDocument = {
+      ...baseEntry,
+      entryType: "daily",
+      conditions,
+      localDate,
+      sortAt,
+      createdAt: snapshot.exists && snapshot.data()?.createdAt instanceof Timestamp
+        ? snapshot.data()!.createdAt
+        : now,
+    };
+
+    await docRef.set(entryDoc);
+    await ensureUserExists(uid);
+    return { entry: { id: docRef.id, ...serializeTimestamps(entryDoc) } };
+  }
+
+  const severity = validateNumber(data.severity, "severity", 1, 10);
+  const symptoms = validateStringList(data.symptoms, "symptoms", 1, 12, 40);
+  const bodyAreas = validateStringList(data.bodyAreas ?? [], "bodyAreas", 0, 12, 40);
+  const durationMinutes =
+    data.durationMinutes == null
+      ? undefined
+      : validateNumber(data.durationMinutes, "durationMinutes", 1, 1440);
+  const occurredAt = parseDate(data.occurredAt, "occurredAt");
+  const entryDoc: SkinEntryDocument = {
+    ...baseEntry,
+    entryType: "timed",
+    severity,
+    symptoms,
+    bodyAreas,
+    ...(durationMinutes ? { durationMinutes } : {}),
+    occurredAt,
+    sortAt: occurredAt,
+    createdAt: now,
+  };
+  const docRef = await db.collection("users").doc(uid).collection("skinEntries").add(entryDoc);
+  await ensureUserExists(uid);
+
+  return { entry: { id: docRef.id, ...serializeTimestamps(entryDoc) } };
 });
 
 export const reanalyzeMeal = onCall(
@@ -1475,6 +1580,33 @@ function parseDate(value: unknown, field: string) {
     throw new HttpsError("invalid-argument", `${field} must be a valid date.`);
   }
   return Timestamp.fromDate(date);
+}
+
+function validateLocalDate(value: unknown) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new HttpsError("invalid-argument", "localDate must be a valid date.");
+  }
+  const date = new Date(`${value}T12:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    throw new HttpsError("invalid-argument", "localDate must be a valid date.");
+  }
+  return value;
+}
+
+function validateSkinConditions(value: unknown) {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 12) {
+    throw new HttpsError("invalid-argument", "conditions has an invalid item count.");
+  }
+
+  return value.map((item) => {
+    if (!item || typeof item !== "object") {
+      throw new HttpsError("invalid-argument", "conditions contains an invalid item.");
+    }
+    const condition = requiredString((item as SkinConditionAssessment).condition, "condition", 40);
+    const severity = validateNumber((item as SkinConditionAssessment).severity, "condition severity", 0, 10);
+    const bodyAreas = validateStringList((item as SkinConditionAssessment).bodyAreas ?? [], "condition bodyAreas", 0, 12, 40);
+    return { condition, severity, bodyAreas };
+  });
 }
 
 function validateNumber(value: unknown, field: string, min: number, max: number) {

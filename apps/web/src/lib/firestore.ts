@@ -20,7 +20,7 @@ import {
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { db } from "@/lib/firebase";
-import type { CorrelationAnalysis, GiEvent, Meal } from "@/lib/types";
+import type { CorrelationAnalysis, GiEvent, Meal, SkinConditionAssessment, SkinEntry } from "@/lib/types";
 
 type SubscriptionErrorHandler = (error: FirestoreError) => void;
 
@@ -36,6 +36,22 @@ function asDate(value: unknown) {
 
 function asStringArray(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function asSkinConditions(value: unknown): SkinConditionAssessment[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const data = item as Record<string, unknown>;
+      if (typeof data.condition !== "string") return null;
+      return {
+        condition: data.condition,
+        severity: typeof data.severity === "number" ? data.severity : 0,
+        bodyAreas: asStringArray(data.bodyAreas),
+      };
+    })
+    .filter((item): item is SkinConditionAssessment => item !== null);
 }
 
 function mealFromDoc(snapshot: QueryDocumentSnapshot<DocumentData>): Meal {
@@ -76,6 +92,26 @@ function eventFromDoc(snapshot: QueryDocumentSnapshot<DocumentData>): GiEvent {
   };
 }
 
+function skinEntryFromDoc(snapshot: QueryDocumentSnapshot<DocumentData>): SkinEntry {
+  const data = snapshot.data();
+  return {
+    id: snapshot.id,
+    uid: data.uid,
+    entryType: data.entryType === "timed" ? "timed" : "daily",
+    severity: typeof data.severity === "number" ? data.severity : undefined,
+    symptoms: asStringArray(data.symptoms),
+    bodyAreas: asStringArray(data.bodyAreas),
+    conditions: asSkinConditions(data.conditions),
+    notes: data.notes,
+    durationMinutes: data.durationMinutes,
+    localDate: data.localDate,
+    occurredAt: data.occurredAt ? asDate(data.occurredAt) : undefined,
+    sortAt: asDate(data.sortAt),
+    createdAt: asDate(data.createdAt),
+    updatedAt: asDate(data.updatedAt),
+  };
+}
+
 function analysisFromDoc(snapshot: QueryDocumentSnapshot<DocumentData>): CorrelationAnalysis {
   const data = snapshot.data();
   return {
@@ -113,6 +149,10 @@ export async function deleteGiEvent(uid: string, eventId: string) {
   await deleteDoc(doc(db, "users", uid, "events", eventId));
 }
 
+export async function deleteSkinEntry(uid: string, entryId: string) {
+  await deleteDoc(doc(db, "users", uid, "skinEntries", entryId));
+}
+
 export async function updateMeal(
   uid: string,
   mealId: string,
@@ -146,6 +186,43 @@ export async function updateGiEvent(
   await updateDoc(doc(db, "users", uid, "events", eventId), payload);
 }
 
+export async function updateSkinEntry(
+  uid: string,
+  entryId: string,
+  entry: Pick<
+    SkinEntry,
+    "entryType" | "severity" | "symptoms" | "bodyAreas" | "conditions" | "notes" | "durationMinutes" | "localDate" | "occurredAt"
+  >,
+) {
+  const payload: Record<string, unknown> = {
+    entryType: entry.entryType,
+    notes: entry.notes ?? deleteField(),
+    durationMinutes: entry.durationMinutes ?? deleteField(),
+    updatedAt: serverTimestamp(),
+  };
+
+  if (entry.entryType === "daily") {
+    const localDate = entry.localDate ?? "";
+    payload.localDate = localDate;
+    payload.conditions = entry.conditions;
+    payload.sortAt = Timestamp.fromDate(new Date(`${localDate}T12:00:00.000Z`));
+    payload.severity = deleteField();
+    payload.symptoms = deleteField();
+    payload.bodyAreas = deleteField();
+    payload.occurredAt = deleteField();
+  } else if (entry.occurredAt) {
+    payload.severity = entry.severity;
+    payload.symptoms = entry.symptoms;
+    payload.bodyAreas = entry.bodyAreas;
+    payload.occurredAt = Timestamp.fromDate(entry.occurredAt);
+    payload.sortAt = Timestamp.fromDate(entry.occurredAt);
+    payload.conditions = deleteField();
+    payload.localDate = deleteField();
+  }
+
+  await updateDoc(doc(db, "users", uid, "skinEntries", entryId), payload);
+}
+
 export async function getAllMeals(uid: string) {
   const mealsQuery = query(collection(db, "users", uid, "meals"), orderBy("eatenAt", "desc"));
   const snapshot = await getDocs(mealsQuery);
@@ -156,6 +233,12 @@ export async function getAllGiEvents(uid: string) {
   const eventsQuery = query(collection(db, "users", uid, "events"), orderBy("occurredAt", "desc"));
   const snapshot = await getDocs(eventsQuery);
   return snapshot.docs.map(eventFromDoc);
+}
+
+export async function getAllSkinEntries(uid: string) {
+  const entriesQuery = query(collection(db, "users", uid, "skinEntries"), orderBy("sortAt", "desc"));
+  const snapshot = await getDocs(entriesQuery);
+  return snapshot.docs.map(skinEntryFromDoc);
 }
 
 export function subscribeMeals(
@@ -184,6 +267,20 @@ export function subscribeGiEvents(
   );
 
   return onSnapshot(eventsQuery, (snapshot) => onEvents(snapshot.docs.map(eventFromDoc)), onError);
+}
+
+export function subscribeSkinEntries(
+  uid: string,
+  onEntries: (entries: SkinEntry[]) => void,
+  onError: SubscriptionErrorHandler,
+) {
+  const entriesQuery = query(
+    collection(db, "users", uid, "skinEntries"),
+    orderBy("sortAt", "desc"),
+    limit(25),
+  );
+
+  return onSnapshot(entriesQuery, (snapshot) => onEntries(snapshot.docs.map(skinEntryFromDoc)), onError);
 }
 
 export function subscribeCurrentAnalysis(

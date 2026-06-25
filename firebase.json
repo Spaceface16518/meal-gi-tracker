@@ -143,12 +143,6 @@
           "https://meal.amritr.xyz"
         ]
       }
-    },
-    "authorizedDomains": [
-      "localhost",
-      "meal-tracker-46346.firebaseapp.com",
-      "meal-signal--meal-tracker-46346.us-central1.hosted.app",
-      "meal.amritr.xyz"
-    ]
+    }
   }
 }

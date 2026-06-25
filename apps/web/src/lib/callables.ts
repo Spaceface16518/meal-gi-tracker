@@ -7,6 +7,8 @@ import type {
   GiEvent,
   Meal,
   ReanalyzeMealPayload,
+  SaveSkinEntryPayload,
+  SkinEntry,
 } from "@/lib/types";
 
 const createMealFn = httpsCallable<CreateMealPayload, { meal: Meal }>(functions, "createMeal");
@@ -14,6 +16,11 @@ const createMealFn = httpsCallable<CreateMealPayload, { meal: Meal }>(functions,
 const createGiEventFn = httpsCallable<CreateGiEventPayload, { event: GiEvent }>(
   functions,
   "createGiEvent",
+);
+
+const saveSkinEntryFn = httpsCallable<SaveSkinEntryPayload, { entry: SkinEntry }>(
+  functions,
+  "saveSkinEntry",
 );
 
 const analyzeCorrelationsFn = httpsCallable<void, { analysis: CorrelationAnalysis }>(
@@ -34,6 +41,11 @@ export async function createMeal(payload: CreateMealPayload) {
 export async function createGiEvent(payload: CreateGiEventPayload) {
   const result = await createGiEventFn(payload);
   return result.data.event;
+}
+
+export async function saveSkinEntry(payload: SaveSkinEntryPayload) {
+  const result = await saveSkinEntryFn(payload);
+  return result.data.entry;
 }
 
 export async function analyzeCorrelations() {
