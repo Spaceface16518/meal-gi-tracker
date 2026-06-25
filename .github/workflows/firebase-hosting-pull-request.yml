@@ -2,8 +2,7 @@
 # https://github.com/firebase/firebase-tools
 
 name: Deploy to Firebase Hosting on PR
-on:
-  pull_request:
+on: pull_request
 permissions:
   checks: write
   contents: read
@@ -11,7 +10,6 @@ permissions:
   pull-requests: write
 jobs:
   build_and_preview:
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,7 +26,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MEAL_TRACKER_46346 }}
-      - id: deploy-preview
+      - id: deploy_preview
         run: |
           npx -y firebase-tools@15.22.2 hosting:channel:deploy pr-${{ github.event.number }} --expires 7d --project meal-tracker-46346 --non-interactive --json > firebase-preview.json
           node <<'EOF' >> "$GITHUB_OUTPUT"
@@ -58,6 +56,7 @@ jobs:
           EOF
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
-      - run: gh pr comment ${{ github.event.number }} --edit-last --create-if-none --body "Firebase Hosting preview: ${{ steps.deploy-preview.outputs.url }}"
+      - run: |
+          gh pr comment "${{ github.event.number }}" --edit-last --create-if-none --body "Firebase Hosting preview: ${{ steps.deploy_preview.outputs.url }}"
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
