@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Index } from "solid-js";
 import {
   Activity,
   ArrowLeft,
@@ -878,23 +878,23 @@ function SkinEditForm(props: {
 
       {props.entry.entryType === "daily" ? (
         <div class="grid gap-3">
-          <For each={conditions()}>
+          <Index each={conditions()}>
             {(condition) => (
               <article class="grid gap-3 rounded-lg border border-border bg-surface-muted p-3">
                 <div class="grid gap-3 sm:grid-cols-[140px_minmax(0,1fr)] sm:items-center">
                   <div>
-                    <h3 class="text-sm font-semibold capitalize">{condition.condition}</h3>
-                    <p class="text-xs font-medium text-muted">Severity {condition.severity}</p>
+                    <h3 class="text-sm font-semibold capitalize">{condition().condition}</h3>
+                    <p class="text-xs font-medium text-muted">Severity {condition().severity}</p>
                   </div>
                   <input
                     class="h-8 accent-brand"
                     type="range"
                     min="0"
                     max="10"
-                    value={condition.severity}
-                    aria-label={`${condition.condition} severity`}
+                    value={condition().severity}
+                    aria-label={`${condition().condition} severity`}
                     onInput={(event) =>
-                      updateConditionSeverity(condition.condition, Number((event.target as HTMLInputElement).value))
+                      updateConditionSeverity(condition().condition, Number((event.target as HTMLInputElement).value))
                     }
                   />
                 </div>
@@ -903,11 +903,11 @@ function SkinEditForm(props: {
                     {(area) => (
                       <button
                         type="button"
-                        onClick={() => toggleConditionArea(condition.condition, area)}
+                        onClick={() => toggleConditionArea(condition().condition, area)}
                         classList={{
                           "h-8 rounded-md border px-2.5 text-xs font-medium transition": true,
-                          "border-brand bg-brand text-background": condition.bodyAreas.includes(area),
-                          "border-border-strong bg-surface text-muted-strong hover:border-muted": !condition.bodyAreas.includes(area),
+                          "border-brand bg-brand text-background": condition().bodyAreas.includes(area),
+                          "border-border-strong bg-surface text-muted-strong hover:border-muted": !condition().bodyAreas.includes(area),
                         }}
                       >
                         {area}
@@ -917,7 +917,7 @@ function SkinEditForm(props: {
                 </div>
               </article>
             )}
-          </For>
+          </Index>
         </div>
       ) : (
         <>

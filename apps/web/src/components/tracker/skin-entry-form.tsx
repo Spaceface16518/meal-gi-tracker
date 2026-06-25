@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For } from "solid-js";
+import { createMemo, createSignal, For, Index } from "solid-js";
 import { Sparkles } from "lucide-solid";
 import { saveSkinEntry } from "@/lib/callables";
 import { toDateInputValue, toDatetimeLocalValue } from "@/lib/date";
@@ -216,33 +216,33 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
             </label>
 
             <div class="grid gap-3">
-              <For each={conditions()}>
+              <Index each={conditions()}>
                 {(condition) => (
                   <article class="grid gap-3 rounded-lg border border-border bg-surface-muted p-3">
                     <div class="grid gap-3 sm:grid-cols-[140px_minmax(0,1fr)] sm:items-center">
                       <div>
-                        <h3 class="text-sm font-semibold capitalize">{condition.condition}</h3>
-                        <p class="text-xs font-medium text-muted">Severity {condition.severity}</p>
+                        <h3 class="text-sm font-semibold capitalize">{condition().condition}</h3>
+                        <p class="text-xs font-medium text-muted">Severity {condition().severity}</p>
                       </div>
                       <input
                         class="h-8 accent-brand"
                         type="range"
                         min="0"
                         max="10"
-                        value={condition.severity}
-                        aria-label={`${condition.condition} severity`}
+                        value={condition().severity}
+                        aria-label={`${condition().condition} severity`}
                         onInput={(event) =>
-                          updateConditionSeverity(condition.condition, Number((event.target as HTMLInputElement).value))
+                          updateConditionSeverity(condition().condition, Number((event.target as HTMLInputElement).value))
                         }
                       />
                     </div>
                     <AreaChips
-                      selected={condition.bodyAreas}
-                      onToggle={(area) => toggleConditionArea(condition.condition, area)}
+                      selected={condition().bodyAreas}
+                      onToggle={(area) => toggleConditionArea(condition().condition, area)}
                     />
                   </article>
                 )}
-              </For>
+              </Index>
             </div>
           </>
         ) : (
