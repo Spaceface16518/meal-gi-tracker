@@ -467,18 +467,18 @@ function MealEditForm(props: {
           </button>
         </div>
         <div class="grid gap-2">
-          <For each={foods()}>
+          <Index each={foods()}>
             {(food, index) => (
               <div class="flex gap-2">
                 <input
                   class="h-10 min-w-0 flex-1 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-                  value={food}
+                  value={food()}
                   maxLength={80}
-                  onInput={(event) => updateFood(index(), (event.target as HTMLInputElement).value)}
+                  onInput={(event) => updateFood(index, (event.target as HTMLInputElement).value)}
                 />
                 <button
                   type="button"
-                  onClick={() => removeFood(index())}
+                  onClick={() => removeFood(index)}
                   class="grid size-10 place-items-center rounded-md border border-border-strong text-muted-strong transition hover:border-danger hover:text-danger"
                   aria-label="Remove food"
                   title="Remove food"
@@ -487,7 +487,7 @@ function MealEditForm(props: {
                 </button>
               </div>
             )}
-          </For>
+          </Index>
         </div>
       </section>
 
@@ -512,23 +512,23 @@ function MealEditForm(props: {
           </button>
         </div>
         <div class="grid gap-3">
-          <For each={irritants()}>
+          <Index each={irritants()}>
             {(irritant, index) => (
               <article class="grid gap-3 rounded-lg border border-border bg-surface-muted p-3">
                 <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px_120px_40px]">
                   <input
                     class="h-10 min-w-0 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-                    value={irritant.name}
+                    value={irritant().name}
                     maxLength={80}
                     aria-label="Irritant name"
-                    onInput={(event) => updateIrritant(index(), { name: (event.target as HTMLInputElement).value })}
+                    onInput={(event) => updateIrritant(index, { name: (event.target as HTMLInputElement).value })}
                   />
                   <select
                     class="h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-                    value={irritant.category}
+                    value={irritant().category}
                     aria-label="Irritant category"
                     onChange={(event) =>
-                      updateIrritant(index(), {
+                      updateIrritant(index, {
                         category: (event.target as HTMLSelectElement).value as IrritantSignal["category"],
                       })
                     }
@@ -545,15 +545,15 @@ function MealEditForm(props: {
                       min="0"
                       max="1"
                       step="0.05"
-                      value={irritant.confidence}
+                      value={irritant().confidence}
                       onChange={(event) =>
-                        updateIrritant(index(), { confidence: Number((event.target as HTMLInputElement).value) })
+                        updateIrritant(index, { confidence: Number((event.target as HTMLInputElement).value) })
                       }
                     />
                   </label>
                   <button
                     type="button"
-                    onClick={() => removeIrritant(index())}
+                    onClick={() => removeIrritant(index)}
                     class="grid size-10 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-danger hover:text-danger"
                     aria-label="Remove irritant"
                     title="Remove irritant"
@@ -563,14 +563,14 @@ function MealEditForm(props: {
                 </div>
                 <textarea
                   class="min-h-20 rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-                  value={irritant.evidence}
+                  value={irritant().evidence}
                   maxLength={500}
                   aria-label="Irritant evidence"
-                  onInput={(event) => updateIrritant(index(), { evidence: (event.target as HTMLTextAreaElement).value })}
+                  onInput={(event) => updateIrritant(index, { evidence: (event.target as HTMLTextAreaElement).value })}
                 />
               </article>
             )}
-          </For>
+          </Index>
         </div>
       </section>
 
