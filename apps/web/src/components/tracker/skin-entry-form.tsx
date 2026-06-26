@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, Index } from "solid-js";
+import { createMemo, createSignal, For, Index, Match, Switch } from "solid-js";
 import { Sparkles } from "lucide-solid";
 import { saveSkinEntry } from "@/lib/callables";
 import { toDateInputValue, toDatetimeLocalValue } from "@/lib/date";
@@ -6,7 +6,7 @@ import { demoReadOnlyMessage } from "@/lib/demo";
 import { getErrorMessage } from "@/lib/errors";
 import { skinBodyAreaOptions, skinConditionOptions, skinSymptomOptions } from "@/components/tracker/constants";
 import { SubmitRow } from "@/components/tracker/ui";
-import type { SkinConditionAssessment } from "@/lib/types";
+import type { SaveSkinEntryPayload, SkinConditionAssessment } from "@/lib/types";
 
 type MessageTone = "info" | "error" | "success";
 type SkinMode = "daily" | "timed";
@@ -57,6 +57,24 @@ function toggleValue(value: string, current: string[]) {
     : [...current, value];
 }
 
+function submitLabel(mode: SkinMode) {
+  switch (mode) {
+    case "daily":
+      return "Save skin day";
+    case "timed":
+      return "Save observation";
+  }
+}
+
+function successMessage(mode: SkinMode) {
+  switch (mode) {
+    case "daily":
+      return "Skin day saved.";
+    case "timed":
+      return "Skin observation saved.";
+  }
+}
+
 function AreaChips(props: { selected: string[]; onToggle: (area: string) => void }) {
   return (
     <div class="flex flex-wrap gap-2">
@@ -93,6 +111,7 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
   const [message, setMessage] = createSignal("");
   const [messageTone, setMessageTone] = createSignal<MessageTone>("info");
   const canSave = createMemo(() => !busy() && (mode() === "daily" || symptoms().length > 0));
+  const currentSubmitLabel = createMemo(() => submitLabel(mode()));
 
   function updateConditionSeverity(condition: string, value: number) {
     setConditions((current) =>
@@ -120,8 +139,8 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
       return;
     }
 
-    const isDaily = mode() === "daily";
-    if (!isDaily && symptoms().length === 0) {
+    const entryMode = mode();
+    if (entryMode === "timed" && symptoms().length === 0) {
       setMessageTone("error");
       setMessage("Choose at least one skin symptom.");
       setBusy(false);
@@ -129,7 +148,7 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
     }
 
     const occurredAtDate = new Date(occurredAt());
-    if (!isDaily && Number.isNaN(occurredAtDate.getTime())) {
+    if (entryMode === "timed" && Number.isNaN(occurredAtDate.getTime())) {
       setMessageTone("error");
       setMessage("Choose a valid observation time.");
       setBusy(false);
@@ -137,18 +156,31 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
     }
 
     try {
-      await saveSkinEntry({
-        entryType: mode(),
-        severity: isDaily ? undefined : severity(),
-        symptoms: isDaily ? undefined : symptoms(),
-        bodyAreas: isDaily ? undefined : bodyAreas(),
-        conditions: isDaily ? conditions() : undefined,
-        notes: notes().trim() || undefined,
-        durationMinutes: !isDaily && durationMinutes() ? Number(durationMinutes()) : undefined,
-        localDate: isDaily ? localDate() : undefined,
-        occurredAt: isDaily ? undefined : occurredAtDate.toISOString(),
-      });
-      if (isDaily) saveDailyConditions(conditions());
+      let payload: SaveSkinEntryPayload;
+      switch (entryMode) {
+        case "daily":
+          payload = {
+            entryType: entryMode,
+            conditions: conditions(),
+            notes: notes().trim() || undefined,
+            localDate: localDate(),
+          };
+          break;
+        case "timed":
+          payload = {
+            entryType: entryMode,
+            severity: severity(),
+            symptoms: symptoms(),
+            bodyAreas: bodyAreas(),
+            notes: notes().trim() || undefined,
+            durationMinutes: durationMinutes() ? Number(durationMinutes()) : undefined,
+            occurredAt: occurredAtDate.toISOString(),
+          };
+          break;
+      }
+
+      await saveSkinEntry(payload);
+      if (entryMode === "daily") saveDailyConditions(conditions());
       setLocalDate(toDateInputValue(new Date()));
       setOccurredAt(toDatetimeLocalValue(new Date()));
       setSeverity(4);
@@ -157,7 +189,7 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
       setDurationMinutes("");
       setNotes("");
       setMessageTone("success");
-      setMessage(isDaily ? "Skin day saved." : "Skin observation saved.");
+      setMessage(successMessage(entryMode));
     } catch (err) {
       setMessageTone("error");
       setMessage(getErrorMessage(err, "Skin entry could not be saved."));
@@ -202,8 +234,8 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
           </button>
         </div>
 
-        {mode() === "daily" ? (
-          <>
+        <Switch>
+          <Match when={mode() === "daily"}>
             <label class="grid gap-1 text-sm font-medium text-muted-strong">
               Date
               <input
@@ -244,9 +276,19 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
                 )}
               </Index>
             </div>
-          </>
-        ) : (
-          <>
+
+            <label class="grid gap-1 text-sm font-medium text-muted-strong">
+              Notes
+              <input
+                class="h-11 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                value={notes()}
+                maxLength={1000}
+                onInput={(event) => setNotes((event.target as HTMLInputElement).value)}
+              />
+            </label>
+          </Match>
+
+          <Match when={mode() === "timed"}>
             <div class="grid gap-4 sm:grid-cols-2">
               <label class="grid gap-1 text-sm font-medium text-muted-strong">
                 Observed at
@@ -320,27 +362,15 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
                 />
               </label>
             </div>
-          </>
-        )}
-
-        {mode() === "daily" ? (
-          <label class="grid gap-1 text-sm font-medium text-muted-strong">
-            Notes
-            <input
-              class="h-11 rounded-lg border border-border-strong bg-surface px-3 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-              value={notes()}
-              maxLength={1000}
-              onInput={(event) => setNotes((event.target as HTMLInputElement).value)}
-            />
-          </label>
-        ) : null}
+          </Match>
+        </Switch>
 
         <SubmitRow
           busy={busy()}
           disabled={!canSave()}
           message={message()}
           tone={messageTone()}
-          label={mode() === "daily" ? "Save skin day" : "Save observation"}
+          label={currentSubmitLabel()}
         />
       </form>
     </section>
