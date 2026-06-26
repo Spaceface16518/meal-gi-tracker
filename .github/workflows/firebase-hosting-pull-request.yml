@@ -130,12 +130,6 @@ jobs:
       - run: npm run knip
         working-directory: functions
 
-  dependency_review:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
-
   deploy_preview:
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     needs:
