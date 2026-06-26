@@ -20,7 +20,13 @@ import {
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { db } from "@/lib/firebase";
-import type { CorrelationAnalysis, GiEvent, Meal, SkinConditionAssessment, SkinEntry } from "@/lib/types";
+import type {
+  CorrelationAnalysis,
+  GiEvent,
+  Meal,
+  SkinConditionAssessment,
+  SkinEntry,
+} from "@/lib/types";
 
 type SubscriptionErrorHandler = (error: FirestoreError) => void;
 
@@ -35,7 +41,9 @@ function asDate(value: unknown) {
 }
 
 function asStringArray(value: unknown) {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function asSkinConditions(value: unknown): SkinConditionAssessment[] {
@@ -171,7 +179,10 @@ export async function updateMeal(
 export async function updateGiEvent(
   uid: string,
   eventId: string,
-  event: Pick<GiEvent, "occurredAt" | "severity" | "symptoms" | "notes" | "stoolType" | "durationMinutes">,
+  event: Pick<
+    GiEvent,
+    "occurredAt" | "severity" | "symptoms" | "notes" | "stoolType" | "durationMinutes"
+  >,
 ) {
   const payload: Record<string, string | number | string[] | Timestamp | FieldValue> = {
     occurredAt: Timestamp.fromDate(event.occurredAt),
@@ -191,7 +202,15 @@ export async function updateSkinEntry(
   entryId: string,
   entry: Pick<
     SkinEntry,
-    "entryType" | "severity" | "symptoms" | "bodyAreas" | "conditions" | "notes" | "durationMinutes" | "localDate" | "occurredAt"
+    | "entryType"
+    | "severity"
+    | "symptoms"
+    | "bodyAreas"
+    | "conditions"
+    | "notes"
+    | "durationMinutes"
+    | "localDate"
+    | "occurredAt"
   >,
 ) {
   const payload: Record<string, unknown> = {
@@ -236,7 +255,10 @@ export async function getAllGiEvents(uid: string) {
 }
 
 export async function getAllSkinEntries(uid: string) {
-  const entriesQuery = query(collection(db, "users", uid, "skinEntries"), orderBy("sortAt", "desc"));
+  const entriesQuery = query(
+    collection(db, "users", uid, "skinEntries"),
+    orderBy("sortAt", "desc"),
+  );
   const snapshot = await getDocs(entriesQuery);
   return snapshot.docs.map(skinEntryFromDoc);
 }
@@ -280,7 +302,11 @@ export function subscribeSkinEntries(
     limit(25),
   );
 
-  return onSnapshot(entriesQuery, (snapshot) => onEntries(snapshot.docs.map(skinEntryFromDoc)), onError);
+  return onSnapshot(
+    entriesQuery,
+    (snapshot) => onEntries(snapshot.docs.map(skinEntryFromDoc)),
+    onError,
+  );
 }
 
 export function subscribeCurrentAnalysis(

@@ -29,8 +29,8 @@ function getStoolType(value: string) {
 }
 
 function StoolTypeIcon(props: { type: StoolTypeValue | null }) {
-  const fill = () => props.type ? "#5f4b32" : "#d6d3d1";
-  const stroke = () => props.type ? "#3f3323" : "#a8a29e";
+  const fill = () => (props.type ? "#5f4b32" : "#d6d3d1");
+  const stroke = () => (props.type ? "#3f3323" : "#a8a29e");
 
   return (
     <svg
@@ -49,14 +49,35 @@ function StoolTypeIcon(props: { type: StoolTypeValue | null }) {
       ) : null}
       {props.type === 2 ? (
         <>
-          <ellipse cx="40" cy="25" rx="29" ry="11" fill={fill()} stroke={stroke()} stroke-width="2" />
+          <ellipse
+            cx="40"
+            cy="25"
+            rx="29"
+            ry="11"
+            fill={fill()}
+            stroke={stroke()}
+            stroke-width="2"
+          />
           <path d="M18 24c8-8 16 7 24-1s14 6 22-1" fill="none" stroke="#f3efe7" stroke-width="3" />
         </>
       ) : null}
       {props.type === 3 ? (
         <>
-          <ellipse cx="40" cy="25" rx="30" ry="10" fill={fill()} stroke={stroke()} stroke-width="2" />
-          <path d="M25 18l5 8M40 16l-3 10M53 19l-5 8" stroke="#f3efe7" stroke-width="3" stroke-linecap="round" />
+          <ellipse
+            cx="40"
+            cy="25"
+            rx="30"
+            ry="10"
+            fill={fill()}
+            stroke={stroke()}
+            stroke-width="2"
+          />
+          <path
+            d="M25 18l5 8M40 16l-3 10M53 19l-5 8"
+            stroke="#f3efe7"
+            stroke-width="3"
+            stroke-linecap="round"
+          />
         </>
       ) : null}
       {props.type === 4 ? (
@@ -69,15 +90,49 @@ function StoolTypeIcon(props: { type: StoolTypeValue | null }) {
       ) : null}
       {props.type === 5 ? (
         <>
-          <ellipse cx="24" cy="27" rx="11" ry="9" fill={fill()} stroke={stroke()} stroke-width="2" />
-          <ellipse cx="43" cy="22" rx="12" ry="9" fill={fill()} stroke={stroke()} stroke-width="2" />
-          <ellipse cx="57" cy="31" rx="10" ry="8" fill={fill()} stroke={stroke()} stroke-width="2" />
+          <ellipse
+            cx="24"
+            cy="27"
+            rx="11"
+            ry="9"
+            fill={fill()}
+            stroke={stroke()}
+            stroke-width="2"
+          />
+          <ellipse
+            cx="43"
+            cy="22"
+            rx="12"
+            ry="9"
+            fill={fill()}
+            stroke={stroke()}
+            stroke-width="2"
+          />
+          <ellipse
+            cx="57"
+            cy="31"
+            rx="10"
+            ry="8"
+            fill={fill()}
+            stroke={stroke()}
+            stroke-width="2"
+          />
         </>
       ) : null}
       {props.type === 6 ? (
         <>
-          <path d="M18 30c-5-9 8-18 17-11 8-8 23 0 18 12 8-1 12 10 4 14H21c-9-1-11-10-3-15Z" fill={fill()} stroke={stroke()} stroke-width="2" />
-          <path d="M29 22l-6 5M43 20l4 6M53 33l-7 4" stroke="#f3efe7" stroke-width="2" stroke-linecap="round" />
+          <path
+            d="M18 30c-5-9 8-18 17-11 8-8 23 0 18 12 8-1 12 10 4 14H21c-9-1-11-10-3-15Z"
+            fill={fill()}
+            stroke={stroke()}
+            stroke-width="2"
+          />
+          <path
+            d="M29 22l-6 5M43 20l4 6M53 33l-7 4"
+            stroke="#f3efe7"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
         </>
       ) : null}
       {props.type === 7 ? (
@@ -203,8 +258,8 @@ export function GiEventForm(props: { readOnly?: boolean }) {
               min="1"
               max="10"
               value={severity()}
-               onInput={(event) => setSeverity(Number((event.target as HTMLInputElement).value))}
-             />
+              onInput={(event) => setSeverity(Number((event.target as HTMLInputElement).value))}
+            />
           </label>
         </div>
 
@@ -218,7 +273,8 @@ export function GiEventForm(props: { readOnly?: boolean }) {
                 classList={{
                   "h-9 rounded-md border px-3 text-sm font-medium transition": true,
                   "border-brand bg-brand text-background": symptoms().includes(symptom),
-                  "border-border-strong bg-surface text-muted-strong hover:border-muted": !symptoms().includes(symptom),
+                  "border-border-strong bg-surface text-muted-strong hover:border-muted":
+                    !symptoms().includes(symptom),
                 }}
               >
                 {symptom}
@@ -272,7 +328,9 @@ export function GiEventForm(props: { readOnly?: boolean }) {
                 onKeyDown={(event) => {
                   if (
                     !stoolType() &&
-                    ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes((event as KeyboardEvent).key)
+                    ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(
+                      (event as KeyboardEvent).key,
+                    )
                   ) {
                     setStoolType("4");
                   }
@@ -308,7 +366,7 @@ export function GiEventForm(props: { readOnly?: boolean }) {
 
         <SubmitRow
           busy={busy()}
-          disabled={symptoms().length === 0 && !stoolType() || busy()}
+          disabled={(symptoms().length === 0 && !stoolType()) || busy()}
           message={message()}
           tone={messageTone()}
           label="Save event"

@@ -62,10 +62,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (
-    url.pathname.startsWith("/assets/") ||
-    APP_SHELL_ASSETS.includes(url.pathname)
-  ) {
+  if (url.pathname.startsWith("/assets/") || APP_SHELL_ASSETS.includes(url.pathname)) {
     event.respondWith(cacheFirst(request));
   }
 });

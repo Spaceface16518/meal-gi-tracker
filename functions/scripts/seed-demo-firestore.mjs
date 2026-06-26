@@ -19,16 +19,19 @@ if (!Array.isArray(seed.meals) || !Array.isArray(seed.events)) {
 }
 
 await upsertDemoUser();
-await db.collection("users").doc(uid).set(
-  {
-    uid,
-    email,
-    displayName: "Meal Signal Demo",
-    createdAt: Timestamp.fromDate(new Date("2026-04-13T12:00:00.000Z")),
-    updatedAt: Timestamp.now(),
-  },
-  { merge: true },
-);
+await db
+  .collection("users")
+  .doc(uid)
+  .set(
+    {
+      uid,
+      email,
+      displayName: "Meal Signal Demo",
+      createdAt: Timestamp.fromDate(new Date("2026-04-13T12:00:00.000Z")),
+      updatedAt: Timestamp.now(),
+    },
+    { merge: true },
+  );
 
 await deleteCollection(db.collection("users").doc(uid).collection("meals"));
 await deleteCollection(db.collection("users").doc(uid).collection("events"));
@@ -36,7 +39,9 @@ await deleteCollection(db.collection("users").doc(uid).collection("events"));
 await writeCollection("meals", seed.meals, convertMeal);
 await writeCollection("events", seed.events, convertEvent);
 
-console.log(`Seeded demo user ${uid} with ${seed.meals.length} meals and ${seed.events.length} events.`);
+console.log(
+  `Seeded demo user ${uid} with ${seed.meals.length} meals and ${seed.events.length} events.`,
+);
 
 async function upsertDemoUser() {
   try {

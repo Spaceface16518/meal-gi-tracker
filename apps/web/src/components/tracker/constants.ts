@@ -19,14 +19,7 @@ export const skinSymptomOptions = [
   "eczema flare",
 ];
 
-export const skinConditionOptions = [
-  "acne",
-  "eczema",
-  "psoriasis",
-  "moles",
-  "rosacea",
-  "dryness",
-];
+export const skinConditionOptions = ["acne", "eczema", "psoriasis", "moles", "rosacea", "dryness"];
 
 export const skinBodyAreaOptions = [
   "face",

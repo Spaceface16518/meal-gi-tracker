@@ -19,9 +19,20 @@ import { toDatetimeLocalValue } from "@/lib/date";
 import { demoReadOnlyMessage } from "@/lib/demo";
 import { getErrorMessage } from "@/lib/errors";
 import { updateGiEvent, updateMeal, updateSkinEntry } from "@/lib/firestore";
-import { skinBodyAreaOptions, skinConditionOptions, skinSymptomOptions, symptomOptions } from "@/components/tracker/constants";
+import {
+  skinBodyAreaOptions,
+  skinConditionOptions,
+  skinSymptomOptions,
+  symptomOptions,
+} from "@/components/tracker/constants";
 import { StatusMessage } from "@/components/tracker/ui";
-import type { GiEvent, IrritantSignal, Meal, SkinConditionAssessment, SkinEntry } from "@/lib/types";
+import type {
+  GiEvent,
+  IrritantSignal,
+  Meal,
+  SkinConditionAssessment,
+  SkinEntry,
+} from "@/lib/types";
 
 export type RecentEntry =
   | { kind: "meal"; date: Date; meal: Meal }
@@ -54,7 +65,11 @@ function detailTitle(entry: RecentEntry) {
   return `${entry.skinEntry.entryType === "daily" ? "Skin day" : "Skin observation"} · Severity ${entry.skinEntry.severity}`;
 }
 
-function DetailSection(props: { title: string; icon: "meal" | "event" | "skin" | "record"; children: JSX.Element }) {
+function DetailSection(props: {
+  title: string;
+  icon: "meal" | "event" | "skin" | "record";
+  children: JSX.Element;
+}) {
   return (
     <section class="rounded-lg border border-border bg-surface p-4">
       <div class="mb-3 flex items-center gap-2">
@@ -114,7 +129,9 @@ function MealDetailView(props: { meal: Meal }) {
 
       <DetailSection title="Analysis" icon="record">
         {props.meal.analysis.summary ? (
-          <p class="mb-3 whitespace-pre-wrap text-sm leading-6 text-muted-strong">{props.meal.analysis.summary}</p>
+          <p class="mb-3 whitespace-pre-wrap text-sm leading-6 text-muted-strong">
+            {props.meal.analysis.summary}
+          </p>
         ) : null}
         <div class="grid gap-2">
           <For each={props.meal.analysis.irritants}>
@@ -171,7 +188,10 @@ function EventDetailView(props: { event: GiEvent }) {
       <DetailSection title="Record" icon="record">
         <dl>
           <DetailField label="Severity" value={`${props.event.severity}/10`} />
-          <DetailField label="Stool type" value={props.event.stoolType ? `Type ${props.event.stoolType}` : "Not set"} />
+          <DetailField
+            label="Stool type"
+            value={props.event.stoolType ? `Type ${props.event.stoolType}` : "Not set"}
+          />
           <DetailField
             label="Duration"
             value={props.event.durationMinutes ? `${props.event.durationMinutes} min` : "Not set"}
@@ -197,7 +217,9 @@ function ConditionAssessmentList(props: { conditions: SkinConditionAssessment[] 
               </span>
             </div>
             <p class="mt-1 text-sm text-muted">
-              {condition.bodyAreas.length ? condition.bodyAreas.join(", ") : "No body areas recorded"}
+              {condition.bodyAreas.length
+                ? condition.bodyAreas.join(", ")
+                : "No body areas recorded"}
             </p>
           </article>
         )}
@@ -235,14 +257,20 @@ function SkinDetailView(props: { entry: SkinEntry }) {
 
       <DetailSection title="Record" icon="record">
         <dl>
-          <DetailField label="Type" value={props.entry.entryType === "daily" ? "Daily skin state" : "Timed observation"} />
+          <DetailField
+            label="Type"
+            value={props.entry.entryType === "daily" ? "Daily skin state" : "Timed observation"}
+          />
           {props.entry.entryType === "timed" ? (
             <DetailField label="Severity" value={`${props.entry.severity ?? 1}/10`} />
           ) : null}
           {props.entry.entryType === "daily" ? (
             <DetailField label="Date" value={props.entry.localDate ?? "Not set"} />
           ) : (
-            <DetailField label="Occurred" value={props.entry.occurredAt?.toLocaleString() ?? "Not set"} />
+            <DetailField
+              label="Occurred"
+              value={props.entry.occurredAt?.toLocaleString() ?? "Not set"}
+            />
           )}
           <DetailField
             label="Duration"
@@ -324,13 +352,19 @@ function MealEditForm(props: {
   });
 
   const canSave = createMemo(() => {
-    return !saving() && name().trim().length > 0 && description().trim().length > 2 &&
+    return (
+      !saving() &&
+      name().trim().length > 0 &&
+      description().trim().length > 2 &&
       foods().every((food) => food.trim().length > 0) &&
-      irritants().every((irritant) => irritant.name.trim().length > 0);
+      irritants().every((irritant) => irritant.name.trim().length > 0)
+    );
   });
 
   function updateFood(index: number, value: string) {
-    setFoods((current) => current.map((food, currentIndex) => currentIndex === index ? value.slice(0, 80) : food));
+    setFoods((current) =>
+      current.map((food, currentIndex) => (currentIndex === index ? value.slice(0, 80) : food)),
+    );
   }
 
   function removeFood(index: number) {
@@ -370,7 +404,9 @@ function MealEditForm(props: {
       notes: trimOrUndefined(notes()),
       analysis: {
         mealName: name().trim(),
-        foods: foods().map((food) => food.trim()).filter(Boolean),
+        foods: foods()
+          .map((food) => food.trim())
+          .filter(Boolean),
         irritants: irritants().map((irritant) => ({
           ...irritant,
           name: irritant.name.trim(),
@@ -450,7 +486,12 @@ function MealEditForm(props: {
         </label>
       </div>
 
-      <TextAreaInput label="Description" value={description()} onInput={setDescription} maxLength={8000} />
+      <TextAreaInput
+        label="Description"
+        value={description()}
+        onInput={setDescription}
+        maxLength={8000}
+      />
       <TextInput label="Notes" value={notes()} onInput={setNotes} maxLength={1000} />
 
       <section class="grid gap-2">
@@ -491,7 +532,12 @@ function MealEditForm(props: {
         </div>
       </section>
 
-      <TextAreaInput label="Analysis summary" value={summary()} onInput={setSummary} maxLength={4000} />
+      <TextAreaInput
+        label="Analysis summary"
+        value={summary()}
+        onInput={setSummary}
+        maxLength={4000}
+      />
 
       <section class="grid gap-2">
         <div class="flex items-center justify-between gap-3">
@@ -501,7 +547,12 @@ function MealEditForm(props: {
             onClick={() =>
               setIrritants((current) => [
                 ...current,
-                { name: "", category: "other", confidence: 1, evidence: "Manually edited in Meal Signal." },
+                {
+                  name: "",
+                  category: "other",
+                  confidence: 1,
+                  evidence: "Manually edited in Meal Signal.",
+                },
               ])
             }
             class="grid size-8 place-items-center rounded-md border border-border-strong text-muted-strong transition hover:border-muted"
@@ -521,7 +572,9 @@ function MealEditForm(props: {
                     value={irritant().name}
                     maxLength={80}
                     aria-label="Irritant name"
-                    onInput={(event) => updateIrritant(index, { name: (event.target as HTMLInputElement).value })}
+                    onInput={(event) =>
+                      updateIrritant(index, { name: (event.target as HTMLInputElement).value })
+                    }
                   />
                   <select
                     class="h-10 rounded-lg border border-border-strong bg-surface px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
@@ -529,7 +582,8 @@ function MealEditForm(props: {
                     aria-label="Irritant category"
                     onChange={(event) =>
                       updateIrritant(index, {
-                        category: (event.target as HTMLSelectElement).value as IrritantSignal["category"],
+                        category: (event.target as HTMLSelectElement)
+                          .value as IrritantSignal["category"],
                       })
                     }
                   >
@@ -547,7 +601,9 @@ function MealEditForm(props: {
                       step="0.05"
                       value={irritant().confidence}
                       onChange={(event) =>
-                        updateIrritant(index, { confidence: Number((event.target as HTMLInputElement).value) })
+                        updateIrritant(index, {
+                          confidence: Number((event.target as HTMLInputElement).value),
+                        })
                       }
                     />
                   </label>
@@ -566,7 +622,9 @@ function MealEditForm(props: {
                   value={irritant().evidence}
                   maxLength={500}
                   aria-label="Irritant evidence"
-                  onInput={(event) => updateIrritant(index, { evidence: (event.target as HTMLTextAreaElement).value })}
+                  onInput={(event) =>
+                    updateIrritant(index, { evidence: (event.target as HTMLTextAreaElement).value })
+                  }
                 />
               </article>
             )}
@@ -589,7 +647,11 @@ function MealEditForm(props: {
           class="flex h-11 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-background transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saving() ? "Saving..." : "Save changes"}
-          {saving() ? <RefreshCcw class="animate-spin" size={16} aria-hidden /> : <Save size={16} aria-hidden />}
+          {saving() ? (
+            <RefreshCcw class="animate-spin" size={16} aria-hidden />
+          ) : (
+            <Save size={16} aria-hidden />
+          )}
         </button>
       </div>
     </form>
@@ -699,7 +761,8 @@ function EventEditForm(props: {
                 classList={{
                   "h-9 rounded-md border px-3 text-sm font-medium transition": true,
                   "border-brand bg-brand text-background": symptoms().includes(symptom),
-                  "border-border-strong bg-surface text-muted-strong hover:border-muted": !symptoms().includes(symptom),
+                  "border-border-strong bg-surface text-muted-strong hover:border-muted":
+                    !symptoms().includes(symptom),
                 }}
               >
                 {symptom}
@@ -738,7 +801,11 @@ function EventEditForm(props: {
           class="flex h-11 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-background transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saving() ? "Saving..." : "Save changes"}
-          {saving() ? <RefreshCcw class="animate-spin" size={16} aria-hidden /> : <Save size={16} aria-hidden />}
+          {saving() ? (
+            <RefreshCcw class="animate-spin" size={16} aria-hidden />
+          ) : (
+            <Save size={16} aria-hidden />
+          )}
         </button>
       </div>
     </form>
@@ -768,16 +835,25 @@ function SkinEditForm(props: {
     setBodyAreas([...entry.bodyAreas]);
     setConditions(
       entry.conditions.length
-        ? entry.conditions.map((condition) => ({ ...condition, bodyAreas: [...condition.bodyAreas] }))
+        ? entry.conditions.map((condition) => ({
+            ...condition,
+            bodyAreas: [...condition.bodyAreas],
+          }))
         : skinConditionOptions.map((condition) => ({ condition, severity: 0, bodyAreas: [] })),
     );
     setNotes(entry.notes ?? "");
     setDurationMinutes(entry.durationMinutes?.toString() ?? "");
   });
 
-  const canSave = createMemo(() => !saving() && (props.entry.entryType === "daily" || symptoms().length > 0));
+  const canSave = createMemo(
+    () => !saving() && (props.entry.entryType === "daily" || symptoms().length > 0),
+  );
 
-  function toggleValue(value: string, current: () => string[], setCurrent: (next: string[]) => void) {
+  function toggleValue(
+    value: string,
+    current: () => string[],
+    setCurrent: (next: string[]) => void,
+  ) {
     setCurrent(
       current().includes(value)
         ? current().filter((item) => item !== value)
@@ -787,7 +863,7 @@ function SkinEditForm(props: {
 
   function updateConditionSeverity(condition: string, value: number) {
     setConditions((current) =>
-      current.map((item) => item.condition === condition ? { ...item, severity: value } : item),
+      current.map((item) => (item.condition === condition ? { ...item, severity: value } : item)),
     );
   }
 
@@ -795,7 +871,12 @@ function SkinEditForm(props: {
     setConditions((current) =>
       current.map((item) =>
         item.condition === condition
-          ? { ...item, bodyAreas: item.bodyAreas.includes(area) ? item.bodyAreas.filter((value) => value !== area) : [...item.bodyAreas, area] }
+          ? {
+              ...item,
+              bodyAreas: item.bodyAreas.includes(area)
+                ? item.bodyAreas.filter((value) => value !== area)
+                : [...item.bodyAreas, area],
+            }
           : item,
       ),
     );
@@ -810,7 +891,10 @@ function SkinEditForm(props: {
     }
 
     const occurredAtDate = props.entry.entryType === "timed" ? new Date(occurredAt()) : undefined;
-    if (props.entry.entryType === "timed" && (!occurredAtDate || Number.isNaN(occurredAtDate.getTime()))) {
+    if (
+      props.entry.entryType === "timed" &&
+      (!occurredAtDate || Number.isNaN(occurredAtDate.getTime()))
+    ) {
       props.onError("Choose a valid observation time.");
       return;
     }
@@ -894,7 +978,10 @@ function SkinEditForm(props: {
                     value={condition().severity}
                     aria-label={`${condition().condition} severity`}
                     onInput={(event) =>
-                      updateConditionSeverity(condition().condition, Number((event.target as HTMLInputElement).value))
+                      updateConditionSeverity(
+                        condition().condition,
+                        Number((event.target as HTMLInputElement).value),
+                      )
                     }
                   />
                 </div>
@@ -906,8 +993,10 @@ function SkinEditForm(props: {
                         onClick={() => toggleConditionArea(condition().condition, area)}
                         classList={{
                           "h-8 rounded-md border px-2.5 text-xs font-medium transition": true,
-                          "border-brand bg-brand text-background": condition().bodyAreas.includes(area),
-                          "border-border-strong bg-surface text-muted-strong hover:border-muted": !condition().bodyAreas.includes(area),
+                          "border-brand bg-brand text-background":
+                            condition().bodyAreas.includes(area),
+                          "border-border-strong bg-surface text-muted-strong hover:border-muted":
+                            !condition().bodyAreas.includes(area),
                         }}
                       >
                         {area}
@@ -932,7 +1021,8 @@ function SkinEditForm(props: {
                     classList={{
                       "h-9 rounded-md border px-3 text-sm font-medium transition": true,
                       "border-brand bg-brand text-background": symptoms().includes(symptom),
-                      "border-border-strong bg-surface text-muted-strong hover:border-muted": !symptoms().includes(symptom),
+                      "border-border-strong bg-surface text-muted-strong hover:border-muted":
+                        !symptoms().includes(symptom),
                     }}
                   >
                     {symptom}
@@ -953,7 +1043,8 @@ function SkinEditForm(props: {
                     classList={{
                       "h-9 rounded-md border px-3 text-sm font-medium transition": true,
                       "border-brand bg-brand text-background": bodyAreas().includes(area),
-                      "border-border-strong bg-surface text-muted-strong hover:border-muted": !bodyAreas().includes(area),
+                      "border-border-strong bg-surface text-muted-strong hover:border-muted":
+                        !bodyAreas().includes(area),
                     }}
                   >
                     {area}
@@ -979,17 +1070,18 @@ function SkinEditForm(props: {
           class="flex h-11 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-background transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saving() ? "Saving..." : "Save changes"}
-          {saving() ? <RefreshCcw class="animate-spin" size={16} aria-hidden /> : <Save size={16} aria-hidden />}
+          {saving() ? (
+            <RefreshCcw class="animate-spin" size={16} aria-hidden />
+          ) : (
+            <Save size={16} aria-hidden />
+          )}
         </button>
       </div>
     </form>
   );
 }
 
-export function EntryDetailPage(props: {
-  entry: RecentEntry;
-  readOnly?: boolean;
-}) {
+export function EntryDetailPage(props: { entry: RecentEntry; readOnly?: boolean }) {
   const [editing, setEditing] = createSignal(false);
   const [message, setMessage] = createSignal("");
   const [messageTone, setMessageTone] = createSignal<MessageTone>("info");
@@ -1006,103 +1098,109 @@ export function EntryDetailPage(props: {
   }
 
   return (
-      <section class="overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-        <header class="flex items-start justify-between gap-3 border-b border-border bg-surface px-4 py-3 sm:px-5">
-          <div class="min-w-0 flex-1">
-            <A
-              href="/"
-              class="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-muted-strong transition hover:text-brand"
-            >
-              <ArrowLeft size={15} aria-hidden />
-              Back to log
-            </A>
-            <div class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase text-muted">
-              {props.entry.kind === "meal" ? (
-                <Utensils size={14} aria-hidden />
-              ) : props.entry.kind === "event" ? (
-                <Activity size={14} aria-hidden />
-              ) : (
-                <Sparkles size={14} aria-hidden />
-              )}
-              {props.entry.kind === "meal" ? "Meal" : props.entry.kind === "event" ? "GI event" : "Skin"}
-            </div>
-            <h2 id="entry-detail-title" class="truncate text-lg font-semibold">{detailTitle(props.entry)}</h2>
-            <p class="text-sm text-muted">{props.entry.date.toLocaleString()}</p>
-          </div>
-          <div class="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setMessage("");
-                setEditing((value) => !value);
-              }}
-              class="grid size-9 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted"
-              aria-label={editing() ? "View entry" : "Edit entry"}
-              title={editing() ? "View entry" : "Edit entry"}
-            >
-              {editing() ? <Check size={17} aria-hidden /> : <Edit3 size={17} aria-hidden />}
-            </button>
-          </div>
-        </header>
-
-        <div class="p-4 sm:p-5">
-          {message() ? (
-            <div class="mb-4">
-              <StatusMessage tone={messageTone()}>{message()}</StatusMessage>
-            </div>
-          ) : null}
-          {reanalyzing() ? (
-            <div class="mb-4">
-              <StatusMessage>
-                <span class="inline-flex items-center gap-2">
-                  <RefreshCcw class="animate-spin" size={14} aria-hidden />
-                  Regenerating meal analysis...
-                </span>
-              </StatusMessage>
-            </div>
-          ) : null}
-
-          {editing() ? (
-            props.entry.kind === "meal" ? (
-              <MealEditForm
-                meal={props.entry.meal}
-                readOnly={props.readOnly}
-                onSaved={(value) => {
-                  setInfo(value);
-                  setEditing(false);
-                }}
-                onError={setError}
-                onReanalyzingChange={setReanalyzing}
-              />
+    <section class="overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+      <header class="flex items-start justify-between gap-3 border-b border-border bg-surface px-4 py-3 sm:px-5">
+        <div class="min-w-0 flex-1">
+          <A
+            href="/"
+            class="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-muted-strong transition hover:text-brand"
+          >
+            <ArrowLeft size={15} aria-hidden />
+            Back to log
+          </A>
+          <div class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase text-muted">
+            {props.entry.kind === "meal" ? (
+              <Utensils size={14} aria-hidden />
             ) : props.entry.kind === "event" ? (
-              <EventEditForm
-                event={props.entry.event}
-                readOnly={props.readOnly}
-                onSaved={(value) => {
-                  setInfo(value);
-                  setEditing(false);
-                }}
-                onError={setError}
-              />
+              <Activity size={14} aria-hidden />
             ) : (
-              <SkinEditForm
-                entry={props.entry.skinEntry}
-                readOnly={props.readOnly}
-                onSaved={(value) => {
-                  setInfo(value);
-                  setEditing(false);
-                }}
-                onError={setError}
-              />
-            )
-          ) : props.entry.kind === "meal" ? (
-            <MealDetailView meal={props.entry.meal} />
-          ) : props.entry.kind === "event" ? (
-            <EventDetailView event={props.entry.event} />
-          ) : (
-            <SkinDetailView entry={props.entry.skinEntry} />
-          )}
+              <Sparkles size={14} aria-hidden />
+            )}
+            {props.entry.kind === "meal"
+              ? "Meal"
+              : props.entry.kind === "event"
+                ? "GI event"
+                : "Skin"}
+          </div>
+          <h2 id="entry-detail-title" class="truncate text-lg font-semibold">
+            {detailTitle(props.entry)}
+          </h2>
+          <p class="text-sm text-muted">{props.entry.date.toLocaleString()}</p>
         </div>
-      </section>
+        <div class="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setMessage("");
+              setEditing((value) => !value);
+            }}
+            class="grid size-9 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted"
+            aria-label={editing() ? "View entry" : "Edit entry"}
+            title={editing() ? "View entry" : "Edit entry"}
+          >
+            {editing() ? <Check size={17} aria-hidden /> : <Edit3 size={17} aria-hidden />}
+          </button>
+        </div>
+      </header>
+
+      <div class="p-4 sm:p-5">
+        {message() ? (
+          <div class="mb-4">
+            <StatusMessage tone={messageTone()}>{message()}</StatusMessage>
+          </div>
+        ) : null}
+        {reanalyzing() ? (
+          <div class="mb-4">
+            <StatusMessage>
+              <span class="inline-flex items-center gap-2">
+                <RefreshCcw class="animate-spin" size={14} aria-hidden />
+                Regenerating meal analysis...
+              </span>
+            </StatusMessage>
+          </div>
+        ) : null}
+
+        {editing() ? (
+          props.entry.kind === "meal" ? (
+            <MealEditForm
+              meal={props.entry.meal}
+              readOnly={props.readOnly}
+              onSaved={(value) => {
+                setInfo(value);
+                setEditing(false);
+              }}
+              onError={setError}
+              onReanalyzingChange={setReanalyzing}
+            />
+          ) : props.entry.kind === "event" ? (
+            <EventEditForm
+              event={props.entry.event}
+              readOnly={props.readOnly}
+              onSaved={(value) => {
+                setInfo(value);
+                setEditing(false);
+              }}
+              onError={setError}
+            />
+          ) : (
+            <SkinEditForm
+              entry={props.entry.skinEntry}
+              readOnly={props.readOnly}
+              onSaved={(value) => {
+                setInfo(value);
+                setEditing(false);
+              }}
+              onError={setError}
+            />
+          )
+        ) : props.entry.kind === "meal" ? (
+          <MealDetailView meal={props.entry.meal} />
+        ) : props.entry.kind === "event" ? (
+          <EventDetailView event={props.entry.event} />
+        ) : (
+          <SkinDetailView entry={props.entry.skinEntry} />
+        )}
+      </div>
+    </section>
   );
 }

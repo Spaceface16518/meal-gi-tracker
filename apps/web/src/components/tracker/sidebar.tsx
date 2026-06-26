@@ -1,5 +1,14 @@
 import { createMemo, createSignal } from "solid-js";
-import { Activity, BarChart3, CalendarClock, FileJson, RefreshCcw, Sparkles, Trash2, Utensils } from "lucide-solid";
+import {
+  Activity,
+  BarChart3,
+  CalendarClock,
+  FileJson,
+  RefreshCcw,
+  Sparkles,
+  Trash2,
+  Utensils,
+} from "lucide-solid";
 import { useLocation, useNavigate } from "@solidjs/router";
 import { reanalyzeMeal } from "@/lib/callables";
 import { formatRelativeTime } from "@/lib/date";
@@ -20,7 +29,9 @@ function describeEvent(event: GiEvent) {
 function describeSkinEntry(entry: SkinEntry) {
   if (entry.entryType === "daily") {
     return entry.conditions.length
-      ? entry.conditions.map((condition) => `${condition.condition} ${condition.severity}/10`).join(" · ")
+      ? entry.conditions
+          .map((condition) => `${condition.condition} ${condition.severity}/10`)
+          .join(" · ")
       : "No condition assessments recorded";
   }
 
@@ -50,8 +61,16 @@ export function StatsStrip(props: {
     <section class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
       <Stat icon={<Utensils size={17} />} label="Meals" value={props.meals.length.toString()} />
       <Stat icon={<Activity size={17} />} label="GI" value={props.events.length.toString()} />
-      <Stat icon={<Sparkles size={17} />} label="Skin" value={props.skinEntries.length.toString()} />
-      <Stat icon={<BarChart3 size={17} />} label="Signal" value={props.analysis ? topIrritant() : "Pending"} />
+      <Stat
+        icon={<Sparkles size={17} />}
+        label="Skin"
+        value={props.skinEntries.length.toString()}
+      />
+      <Stat
+        icon={<BarChart3 size={17} />}
+        label="Signal"
+        value={props.analysis ? topIrritant() : "Pending"}
+      />
     </section>
   );
 }
@@ -73,9 +92,12 @@ export function RecentEntries(props: {
     [
       ...props.meals.map((meal) => ({ kind: "meal" as const, date: meal.eatenAt, meal })),
       ...props.events.map((event) => ({ kind: "event" as const, date: event.occurredAt, event })),
-      ...props.skinEntries.map((skinEntry) => ({ kind: "skin" as const, date: skinEntry.sortAt, skinEntry })),
-    ]
-      .sort((a, b) => b.date.getTime() - a.date.getTime()),
+      ...props.skinEntries.map((skinEntry) => ({
+        kind: "skin" as const,
+        date: skinEntry.sortAt,
+        skinEntry,
+      })),
+    ].sort((a, b) => b.date.getTime() - a.date.getTime()),
   );
 
   function entryPath(entry: RecentEntry) {
@@ -114,7 +136,12 @@ export function RecentEntries(props: {
     }
   }
 
-  async function removeEntry(entry: { kind: "meal"; id: string } | { kind: "event"; id: string } | { kind: "skin"; id: string }) {
+  async function removeEntry(
+    entry:
+      | { kind: "meal"; id: string }
+      | { kind: "event"; id: string }
+      | { kind: "skin"; id: string },
+  ) {
     const label = entry.kind === "meal" ? "meal" : entry.kind === "event" ? "event" : "skin entry";
     if (props.readOnly) {
       setMessage(demoReadOnlyMessage);
@@ -137,7 +164,9 @@ export function RecentEntries(props: {
       } else {
         await deleteSkinEntry(props.uid, entry.id);
       }
-      setMessage(`${entry.kind === "meal" ? "Meal" : entry.kind === "event" ? "Event" : "Skin entry"} deleted.`);
+      setMessage(
+        `${entry.kind === "meal" ? "Meal" : entry.kind === "event" ? "Event" : "Skin entry"} deleted.`,
+      );
     } catch (err) {
       setIsError(true);
       setMessage(getErrorMessage(err, `The ${label} could not be deleted.`));
@@ -163,118 +192,118 @@ export function RecentEntries(props: {
             {combined().map((item) => {
               if (item.kind === "meal") {
                 return (
-                <article
-                  classList={{
-                    "cursor-pointer rounded-lg border p-3 transition hover:bg-surface-accent": true,
-                    "border-brand bg-brand-soft shadow-sm": isSelectedEntry(item),
-                    "border-transparent bg-surface-muted": !isSelectedEntry(item),
-                  }}
-                  role="button"
-                  aria-current={isSelectedEntry(item) ? "page" : undefined}
-                  tabIndex={0}
-                  onClick={() => openEntry(item)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") openEntry(item);
-                  }}
-                >
-                <div class="flex items-start justify-between gap-3">
-                  <h3 class="text-sm font-semibold">{item.meal.analysis.mealName}</h3>
-                  <div class="flex shrink-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        redoMealAnalysis(item.meal.id);
-                      }}
-                      disabled={reanalyzingMealId() === item.meal.id}
-                      class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
-                      aria-label="Redo meal analysis"
-                      title="Redo meal analysis"
-                    >
-                      <RefreshCcw
-                        size={14}
-                        class={reanalyzingMealId() === item.meal.id ? "animate-spin" : ""}
-                        aria-hidden
-                      />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        exportMealJson(item.meal);
-                      }}
-                      class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
-                      aria-label="Export meal JSON"
-                      title="Export meal JSON"
-                    >
-                      <FileJson size={14} aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        removeEntry({ kind: "meal", id: item.meal.id });
-                      }}
-                      disabled={deletingEntryId() === `meal-${item.meal.id}`}
-                      class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-60"
-                      aria-label="Delete meal"
-                      title="Delete meal"
-                    >
-                      <Trash2 size={14} aria-hidden />
-                    </button>
-                    <span class="text-xs text-muted">{formatRelativeTime(item.date)}</span>
-                  </div>
-                </div>
-                <p class="mt-1 line-clamp-2 text-sm text-muted-strong">{item.meal.interpretedText}</p>
-                <div class="mt-2 flex flex-wrap gap-1">
-                  {item.meal.analysis.irritants.slice(0, 3).map((irritant) => (
-                    <span
-                      class="rounded bg-surface px-2 py-1 text-xs font-medium text-muted-strong"
-                    >
-                      {irritant.name}
-                    </span>
-                  ))}
-                </div>
-              </article>
+                  <article
+                    classList={{
+                      "cursor-pointer rounded-lg border p-3 transition hover:bg-surface-accent": true,
+                      "border-brand bg-brand-soft shadow-sm": isSelectedEntry(item),
+                      "border-transparent bg-surface-muted": !isSelectedEntry(item),
+                    }}
+                    role="button"
+                    aria-current={isSelectedEntry(item) ? "page" : undefined}
+                    tabIndex={0}
+                    onClick={() => openEntry(item)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") openEntry(item);
+                    }}
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <h3 class="text-sm font-semibold">{item.meal.analysis.mealName}</h3>
+                      <div class="flex shrink-0 items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            redoMealAnalysis(item.meal.id);
+                          }}
+                          disabled={reanalyzingMealId() === item.meal.id}
+                          class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
+                          aria-label="Redo meal analysis"
+                          title="Redo meal analysis"
+                        >
+                          <RefreshCcw
+                            size={14}
+                            class={reanalyzingMealId() === item.meal.id ? "animate-spin" : ""}
+                            aria-hidden
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            exportMealJson(item.meal);
+                          }}
+                          class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-muted disabled:cursor-not-allowed disabled:opacity-60"
+                          aria-label="Export meal JSON"
+                          title="Export meal JSON"
+                        >
+                          <FileJson size={14} aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            removeEntry({ kind: "meal", id: item.meal.id });
+                          }}
+                          disabled={deletingEntryId() === `meal-${item.meal.id}`}
+                          class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-60"
+                          aria-label="Delete meal"
+                          title="Delete meal"
+                        >
+                          <Trash2 size={14} aria-hidden />
+                        </button>
+                        <span class="text-xs text-muted">{formatRelativeTime(item.date)}</span>
+                      </div>
+                    </div>
+                    <p class="mt-1 line-clamp-2 text-sm text-muted-strong">
+                      {item.meal.interpretedText}
+                    </p>
+                    <div class="mt-2 flex flex-wrap gap-1">
+                      {item.meal.analysis.irritants.slice(0, 3).map((irritant) => (
+                        <span class="rounded bg-surface px-2 py-1 text-xs font-medium text-muted-strong">
+                          {irritant.name}
+                        </span>
+                      ))}
+                    </div>
+                  </article>
                 );
               }
               if (item.kind === "event") {
                 return (
-              <article
-                classList={{
-                  "cursor-pointer rounded-lg border p-3 transition hover:bg-surface-accent": true,
-                  "border-brand bg-brand-soft shadow-sm": isSelectedEntry(item),
-                  "border-transparent bg-surface-muted": !isSelectedEntry(item),
-                }}
-                role="button"
-                aria-current={isSelectedEntry(item) ? "page" : undefined}
-                tabIndex={0}
-                onClick={() => openEntry(item)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") openEntry(item);
-                }}
-              >
-                <div class="flex items-start justify-between gap-3">
-                  <h3 class="text-sm font-semibold">Severity {item.event.severity}</h3>
-                  <div class="flex shrink-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        removeEntry({ kind: "event", id: item.event.id });
-                      }}
-                      disabled={deletingEntryId() === `event-${item.event.id}`}
-                      class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-60"
-                      aria-label="Delete event"
-                      title="Delete event"
-                    >
-                      <Trash2 size={14} aria-hidden />
-                    </button>
-                    <span class="text-xs text-muted">{formatRelativeTime(item.date)}</span>
-                  </div>
-                </div>
-                <p class="mt-1 text-sm text-muted-strong">{describeEvent(item.event)}</p>
-              </article>
+                  <article
+                    classList={{
+                      "cursor-pointer rounded-lg border p-3 transition hover:bg-surface-accent": true,
+                      "border-brand bg-brand-soft shadow-sm": isSelectedEntry(item),
+                      "border-transparent bg-surface-muted": !isSelectedEntry(item),
+                    }}
+                    role="button"
+                    aria-current={isSelectedEntry(item) ? "page" : undefined}
+                    tabIndex={0}
+                    onClick={() => openEntry(item)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") openEntry(item);
+                    }}
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <h3 class="text-sm font-semibold">Severity {item.event.severity}</h3>
+                      <div class="flex shrink-0 items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            removeEntry({ kind: "event", id: item.event.id });
+                          }}
+                          disabled={deletingEntryId() === `event-${item.event.id}`}
+                          class="grid size-7 place-items-center rounded-md border border-border-strong bg-surface text-muted-strong transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-60"
+                          aria-label="Delete event"
+                          title="Delete event"
+                        >
+                          <Trash2 size={14} aria-hidden />
+                        </button>
+                        <span class="text-xs text-muted">{formatRelativeTime(item.date)}</span>
+                      </div>
+                    </div>
+                    <p class="mt-1 text-sm text-muted-strong">{describeEvent(item.event)}</p>
+                  </article>
                 );
               }
               return (
@@ -328,7 +357,6 @@ export function RecentEntries(props: {
           <EmptyState icon={<CalendarClock size={22} />} title="No entries yet" />
         )}
       </section>
-
     </>
   );
 }

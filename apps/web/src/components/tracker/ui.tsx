@@ -67,7 +67,11 @@ export function SubmitRow(props: {
         class="flex h-11 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-background transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
       >
         {props.busy ? "Saving..." : props.label}
-        {props.busy ? <RefreshCcw class="animate-spin" size={16} aria-hidden /> : <Check size={16} aria-hidden />}
+        {props.busy ? (
+          <RefreshCcw class="animate-spin" size={16} aria-hidden />
+        ) : (
+          <Check size={16} aria-hidden />
+        )}
       </button>
       {props.message ? (
         <p class={`text-sm ${messageClass()}`} aria-live="polite">
@@ -90,7 +94,13 @@ export function Stat(props: { icon: JSX.Element; label: string; value: string })
 
 export function MediaReady(props: { ready: boolean; label: string }) {
   return (
-    <div classList={{ "flex items-center gap-2 text-sm": true, "text-brand": props.ready, "text-muted": !props.ready }}>
+    <div
+      classList={{
+        "flex items-center gap-2 text-sm": true,
+        "text-brand": props.ready,
+        "text-muted": !props.ready,
+      }}
+    >
       {props.ready ? <Check size={16} aria-hidden /> : <CircleAlert size={16} aria-hidden />}
       {props.ready ? props.label : "No media selected"}
     </div>
@@ -106,10 +116,7 @@ export function EmptyState(props: { icon: JSX.Element; title: string }) {
   );
 }
 
-export function StatusMessage(props: {
-  children: JSX.Element;
-  tone?: "info" | "error";
-}) {
+export function StatusMessage(props: { children: JSX.Element; tone?: "info" | "error" }) {
   const className = () =>
     props.tone === "error"
       ? "border-danger/30 bg-danger-soft text-danger-strong"

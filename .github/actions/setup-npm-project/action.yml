@@ -1,0 +1,19 @@
+name: Setup npm project
+description: Install a single npm project with Node and lockfile caching.
+
+inputs:
+  working-directory:
+    description: Directory containing package.json and package-lock.json.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        cache: npm
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+    - run: npm ci
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}

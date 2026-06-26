@@ -318,7 +318,11 @@ export const saveSkinEntry = onCall(async (request) => {
     const localDate = validateLocalDate(data.localDate);
     const conditions = validateSkinConditions(data.conditions);
     const sortAt = Timestamp.fromDate(new Date(`${localDate}T12:00:00.000Z`));
-    const docRef = db.collection("users").doc(uid).collection("skinEntries").doc(`daily_${localDate}`);
+    const docRef = db
+      .collection("users")
+      .doc(uid)
+      .collection("skinEntries")
+      .doc(`daily_${localDate}`);
     const snapshot = await docRef.get();
     const entryDoc: SkinEntryDocument = {
       ...baseEntry,
@@ -326,9 +330,10 @@ export const saveSkinEntry = onCall(async (request) => {
       conditions,
       localDate,
       sortAt,
-      createdAt: snapshot.exists && snapshot.data()?.createdAt instanceof Timestamp
-        ? snapshot.data()!.createdAt
-        : now,
+      createdAt:
+        snapshot.exists && snapshot.data()?.createdAt instanceof Timestamp
+          ? snapshot.data()!.createdAt
+          : now,
     };
 
     await docRef.set(entryDoc);
@@ -378,9 +383,10 @@ export const reanalyzeMeal = onCall(
     if (!snapshot.exists) throw new HttpsError("not-found", "Meal was not found.");
 
     const meal = snapshot.data() as MealDocument;
-    const sourceText = meal.inputMode === "text"
-      ? meal.rawInput || meal.interpretedText
-      : meal.interpretedText || meal.rawInput;
+    const sourceText =
+      meal.inputMode === "text"
+        ? meal.rawInput || meal.interpretedText
+        : meal.interpretedText || meal.rawInput;
     const analysis = await analyzeMealText(uid, sourceText, { excludeMealId: mealId });
     const now = Timestamp.now();
     const update = {
@@ -463,10 +469,11 @@ async function interpretMediaMeal(
   });
 
   try {
-    const text = await generateJson(ai, [
-      { text: prompt },
-      { inlineData: { mimeType, data: mediaBase64 } },
-    ], promptConfig.mealModelName);
+    const text = await generateJson(
+      ai,
+      [{ text: prompt }, { inlineData: { mimeType, data: mediaBase64 } }],
+      promptConfig.mealModelName,
+    );
     const parsed = parseMealAnalysis(text, analysisContext);
 
     logger.info("Gemini media meal analysis succeeded", {
@@ -521,7 +528,13 @@ async function analyzeMealText(
 async function runCorrelationForUser(uid: string) {
   const [mealsSnapshot, eventsSnapshot] = await Promise.all([
     db.collection("users").doc(uid).collection("meals").orderBy("eatenAt", "desc").limit(200).get(),
-    db.collection("users").doc(uid).collection("events").orderBy("occurredAt", "desc").limit(200).get(),
+    db
+      .collection("users")
+      .doc(uid)
+      .collection("events")
+      .orderBy("occurredAt", "desc")
+      .limit(200)
+      .get(),
   ]);
 
   if (mealsSnapshot.empty || eventsSnapshot.empty) {
@@ -547,7 +560,11 @@ async function runCorrelationForUser(uid: string) {
     ? await buildCategoryNormalizationMap(meals, ai, promptConfig?.correlationModelName)
     : heuristicCategoryNormalizationMap(meals);
   const normalizedMeals = normalizeMealsForSensitivity(meals, categoryNormalization);
-  const sensitivityContext = buildSensitivityContext(normalizedMeals, events, categoryNormalization);
+  const sensitivityContext = buildSensitivityContext(
+    normalizedMeals,
+    events,
+    categoryNormalization,
+  );
 
   const analysis = ai
     ? await analyzeCorrelationsWithGemini(
@@ -573,7 +590,7 @@ async function analyzeCorrelationsWithGemini(
   promptConfig?: PromptConfig,
 ) {
   try {
-    const config = promptConfig ?? await getPromptConfig();
+    const config = promptConfig ?? (await getPromptConfig());
     const mealPayload = meals.map((meal) => ({
       id: meal.id,
       eatenAt: meal.eatenAt?.toDate?.()?.toISOString(),
@@ -599,13 +616,16 @@ async function analyzeCorrelationsWithGemini(
         sensitivityExplanation: sensitivityContext.explanation,
         sensitivityJson: JSON.stringify(sensitivityContext),
         categoryNormalizationJson: JSON.stringify(sensitivityContext.categoryNormalization),
-      }) +
-      renderSensitivityPromptBlock(sensitivityContext);
-    const json = await generateJson(ai, [
-      {
-        text: prompt,
-      },
-    ], config.correlationModelName);
+      }) + renderSensitivityPromptBlock(sensitivityContext);
+    const json = await generateJson(
+      ai,
+      [
+        {
+          text: prompt,
+        },
+      ],
+      config.correlationModelName,
+    );
 
     const parsed = parseJsonObject(json);
     return normalizeCorrelationAnalysis(uid, meals.length, events.length, parsed);
@@ -631,7 +651,11 @@ async function buildCategoryNormalizationMap(
 
   try {
     const prompt = renderCategoryNormalizationPrompt(labels);
-    const json = await generateJson(ai, [{ text: prompt }], modelName || defaultCorrelationModelName);
+    const json = await generateJson(
+      ai,
+      [{ text: prompt }],
+      modelName || defaultCorrelationModelName,
+    );
     return normalizeCategoryNormalizationMap(parseJsonObject(json), labels);
   } catch (error) {
     logger.warn("Gemini category normalization failed; using heuristic category map", { error });
@@ -713,9 +737,10 @@ function normalizeMealsForSensitivity(
 ) {
   const lookup = buildCategoryLookup(categoryNormalization);
   return meals.map((meal) => {
-    const analysis = meal.analysis && typeof meal.analysis === "object"
-      ? meal.analysis as Record<string, unknown>
-      : {};
+    const analysis =
+      meal.analysis && typeof meal.analysis === "object"
+        ? (meal.analysis as Record<string, unknown>)
+        : {};
     const irritants = Array.isArray(analysis.irritants)
       ? analysis.irritants.map((irritant) => normalizeIrritantForSensitivity(irritant, lookup))
       : analysis.irritants;
@@ -737,10 +762,7 @@ function normalizeMealsForSensitivity(
   });
 }
 
-function normalizeIrritantForSensitivity(
-  irritant: unknown,
-  lookup: Map<string, string>,
-) {
+function normalizeIrritantForSensitivity(irritant: unknown, lookup: Map<string, string>) {
   if (!irritant || typeof irritant !== "object" || Array.isArray(irritant)) return irritant;
   const record = irritant as Record<string, unknown>;
   const name = cleanGeneratedString(record.name, "", 100);
@@ -761,11 +783,22 @@ function normalizeTagFieldForSensitivity(value: unknown, lookup: Map<string, str
 
   if (!value || typeof value !== "object") return value;
   const record = value as Record<string, unknown>;
-  const rawLabel = cleanGeneratedString(record.name ?? record.tag ?? record.label ?? record.value, "", 100);
+  const rawLabel = cleanGeneratedString(
+    record.name ?? record.tag ?? record.label ?? record.value,
+    "",
+    100,
+  );
   const rawCategory = cleanGeneratedString(record.category, "", 100);
   const canonical = lookup.get(canonicalKey(rawLabel)) ?? lookup.get(canonicalKey(rawCategory));
   if (!canonical) return value;
-  return { ...record, name: canonical, tag: canonical, label: canonical, value: canonical, category: canonical };
+  return {
+    ...record,
+    name: canonical,
+    tag: canonical,
+    label: canonical,
+    value: canonical,
+    category: canonical,
+  };
 }
 
 function buildCategoryLookup(categoryNormalization: CategoryNormalizationMap) {
@@ -1100,7 +1133,10 @@ async function buildMealAnalysisContext(
   uid: string,
   options: { excludeMealId?: string } = {},
 ): Promise<MealAnalysisContext> {
-  const snapshot = await db.collection("users").doc(uid).collection("meals")
+  const snapshot = await db
+    .collection("users")
+    .doc(uid)
+    .collection("meals")
     .orderBy("updatedAt", "desc")
     .limit(120)
     .get();
@@ -1120,7 +1156,11 @@ async function buildMealAnalysisContext(
         name,
         category: normalizeCategory(irritant.category),
         examples: [],
-        evidence: cleanGeneratedString(irritant.evidence, "Previously used in this user's log.", 160),
+        evidence: cleanGeneratedString(
+          irritant.evidence,
+          "Previously used in this user's log.",
+          160,
+        ),
       });
     }
   }
@@ -1151,10 +1191,12 @@ ${needsKnownBlock ? renderKnownIrritantCatalog() : ""}`;
 
 function renderAvailableIrritants(context: MealAnalysisContext) {
   const rows = context.availableIrritants.length
-    ? context.availableIrritants.map((item) => {
-        const category = item.category ? ` (${item.category})` : "";
-        return `- ${item.name}${category}`;
-      }).join("\n")
+    ? context.availableIrritants
+        .map((item) => {
+          const category = item.category ? ` (${item.category})` : "";
+          return `- ${item.name}${category}`;
+        })
+        .join("\n")
     : "- None yet for this user.";
 
   return `Available irritants already used in this user's meal log:
@@ -1166,25 +1208,31 @@ by the available list.`;
 }
 
 function renderKnownIrritantCatalog() {
-  const rows = knownIrritantCatalog.map((item) => {
-    const examples = item.examples.length ? ` Examples: ${item.examples.join(", ")}.` : "";
-    return `- ${item.name} (${item.category}).${examples} ${item.evidence}`;
-  }).join("\n");
+  const rows = knownIrritantCatalog
+    .map((item) => {
+      const examples = item.examples.length ? ` Examples: ${item.examples.join(", ")}.` : "";
+      return `- ${item.name} (${item.category}).${examples} ${item.evidence}`;
+    })
+    .join("\n");
 
   return `Known GI irritant catalog for novel irritants:
 ${rows}`;
 }
 
 function canonicalKey(value: string) {
-  return value.trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, " ").trim();
+  return value
+    .trim()
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function heuristicCanonicalCategory(value: string) {
   const key = canonicalKey(value);
-  const matched = knownIrritantCatalog.find((item) => (
-    canonicalKey(item.name) === key ||
-    item.aliases?.some((alias) => canonicalKey(alias) === key)
-  ));
+  const matched = knownIrritantCatalog.find(
+    (item) =>
+      canonicalKey(item.name) === key || item.aliases?.some((alias) => canonicalKey(alias) === key),
+  );
   return matched?.name ?? value.trim().toLowerCase();
 }
 
@@ -1210,11 +1258,8 @@ function parseMealAnalysis(text: string, context?: MealAnalysisContext): MealAna
   };
 }
 
-function normalizeGeneratedIrritant(
-  value: unknown,
-  context?: MealAnalysisContext,
-): IrritantSignal {
-  const item = value && typeof value === "object" ? value as Record<string, unknown> : {};
+function normalizeGeneratedIrritant(value: unknown, context?: MealAnalysisContext): IrritantSignal {
+  const item = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   const generatedName = cleanGeneratedString(item.name, "unknown", 80);
   const matched = findCatalogMatch(generatedName, context);
   return {
@@ -1232,10 +1277,10 @@ function findCatalogMatch(name: string, context?: MealAnalysisContext) {
   const existing = context?.availableIrritants.find((item) => canonicalKey(item.name) === key);
   if (existing) return existing;
 
-  return knownIrritantCatalog.find((item) => (
-    canonicalKey(item.name) === key ||
-    item.aliases?.some((alias) => canonicalKey(alias) === key)
-  ));
+  return knownIrritantCatalog.find(
+    (item) =>
+      canonicalKey(item.name) === key || item.aliases?.some((alias) => canonicalKey(alias) === key),
+  );
 }
 
 function normalizeCorrelationAnalysis(
@@ -1280,13 +1325,15 @@ function buildSensitivityContext(
   events: FirebaseFirestore.DocumentData[],
   categoryNormalization: CategoryNormalizationMap = {},
 ): SensitivityContext {
-  const symptoms = [...new Set(
-    events.flatMap((event) => (
-      Array.isArray(event.symptoms)
-        ? event.symptoms.filter((symptom): symptom is string => typeof symptom === "string")
-        : []
-    )),
-  )]
+  const symptoms = [
+    ...new Set(
+      events.flatMap((event) =>
+        Array.isArray(event.symptoms)
+          ? event.symptoms.filter((symptom): symptom is string => typeof symptom === "string")
+          : [],
+      ),
+    ),
+  ]
     .map((symptom) => symptom.trim().toLowerCase())
     .filter(Boolean)
     .slice(0, 8);
@@ -1331,7 +1378,11 @@ function heuristicMealAnalysis(text: string): MealAnalysis {
       "\\bbeer\\b|\\bipa\\b|\\blager\\b|\\bale\\b|\\bstout\\b|\\bporter\\b|\\bmalt\\b",
       [
         signal("alcohol", "alcohol", "Beer or malt beverage terms were present."),
-        signal("barley/gluten", "gluten", "Most beer is brewed with barley or other gluten grains unless labeled gluten-free."),
+        signal(
+          "barley/gluten",
+          "gluten",
+          "Most beer is brewed with barley or other gluten grains unless labeled gluten-free.",
+        ),
         signal("grain fructans", "fodmap", "Barley and wheat can contribute fructans/FODMAPs."),
         signal("carbonation", "other", "Beer is typically carbonated."),
       ],
@@ -1435,23 +1486,22 @@ function heuristicCorrelationAnalysis(
   events: FirebaseFirestore.DocumentData[],
   sensitivityContext?: SensitivityContext,
 ): CorrelationAnalysis {
-  const sensitivityScores = sensitivityContext?.overall ?? computeIrritantSensitivity(meals, events);
+  const sensitivityScores =
+    sensitivityContext?.overall ?? computeIrritantSensitivity(meals, events);
 
-  const findings = sensitivityScores
-    .slice(0, 8)
-    .map((score) => {
-      const confidence = clampNumber(score.normalizedSensitivity / 10, 0.1, 0.8);
-      return {
-        irritant: score.irritant,
-        confidence: clampNumber(confidence, 0.1, 0.8),
-        direction: score.normalizedSensitivity > 0 ? "possible_trigger" : "insufficient_data",
-        windowHours: 120,
-        evidence:
-          "This irritant ranked higher in the time-weighted symptom association pass. " +
-          "That means it is associated with symptoms in the log, not that it causes symptoms.",
-        suggestedAction: "Keep logging consistently before making diet changes.",
-      } satisfies CorrelationFinding;
-    });
+  const findings = sensitivityScores.slice(0, 8).map((score) => {
+    const confidence = clampNumber(score.normalizedSensitivity / 10, 0.1, 0.8);
+    return {
+      irritant: score.irritant,
+      confidence: clampNumber(confidence, 0.1, 0.8),
+      direction: score.normalizedSensitivity > 0 ? "possible_trigger" : "insufficient_data",
+      windowHours: 120,
+      evidence:
+        "This irritant ranked higher in the time-weighted symptom association pass. " +
+        "That means it is associated with symptoms in the log, not that it causes symptoms.",
+      suggestedAction: "Keep logging consistently before making diet changes.",
+    } satisfies CorrelationFinding;
+  });
 
   return {
     uid,
@@ -1516,10 +1566,10 @@ async function ensureUserExists(uid: string) {
   }
 
   await profileRef.set({
-      uid,
-      updatedAt: Timestamp.now(),
-      createdAt: Timestamp.now(),
-    });
+    uid,
+    updatedAt: Timestamp.now(),
+    createdAt: Timestamp.now(),
+  });
 }
 
 function requiredString(value: unknown, field: string, maxLength: number) {
@@ -1603,8 +1653,19 @@ function validateSkinConditions(value: unknown) {
       throw new HttpsError("invalid-argument", "conditions contains an invalid item.");
     }
     const condition = requiredString((item as SkinConditionAssessment).condition, "condition", 40);
-    const severity = validateNumber((item as SkinConditionAssessment).severity, "condition severity", 0, 10);
-    const bodyAreas = validateStringList((item as SkinConditionAssessment).bodyAreas ?? [], "condition bodyAreas", 0, 12, 40);
+    const severity = validateNumber(
+      (item as SkinConditionAssessment).severity,
+      "condition severity",
+      0,
+      10,
+    );
+    const bodyAreas = validateStringList(
+      (item as SkinConditionAssessment).bodyAreas ?? [],
+      "condition bodyAreas",
+      0,
+      12,
+      40,
+    );
     return { condition, severity, bodyAreas };
   });
 }
@@ -1643,7 +1704,10 @@ function validateGeneratedStringList(value: unknown, maxLength: number, maxItemL
 }
 
 function parseJsonObject(text: string): Record<string, unknown> {
-  const cleaned = text.trim().replace(/^```json\s*/i, "").replace(/```$/i, "");
+  const cleaned = text
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/```$/i, "");
   const parsed = JSON.parse(cleaned) as unknown;
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("Generated response was not an object.");

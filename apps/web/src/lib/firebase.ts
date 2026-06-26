@@ -20,9 +20,9 @@ const firebaseConfig = {
 
 export const hasFirebaseConfig = Boolean(
   firebaseConfig.apiKey &&
-    firebaseConfig.authDomain &&
-    firebaseConfig.projectId &&
-    firebaseConfig.appId,
+  firebaseConfig.authDomain &&
+  firebaseConfig.projectId &&
+  firebaseConfig.appId,
 );
 
 export const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);

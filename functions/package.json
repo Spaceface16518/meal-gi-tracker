@@ -8,7 +8,14 @@
   },
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc,css,md,yml,yaml,html}\"",
+    "format:write": "prettier --write \"**/*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc,css,md,yml,yaml,html}\"",
+    "typos": "typos",
+    "test:unit": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "knip": "knip --no-config-hints",
     "serve": "npm run build && firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions"
   },
@@ -19,8 +26,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@ocular-d/typos-bin": "^1.47.2",
+    "@vitest/coverage-v8": "^4.1.9",
     "eslint": "^9.39.2",
+    "knip": "^6.20.0",
+    "prettier": "^3.8.4",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.49.0"
+    "typescript-eslint": "^8.49.0",
+    "vitest": "^4.1.9"
   }
 }

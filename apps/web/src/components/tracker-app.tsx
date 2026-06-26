@@ -1,6 +1,15 @@
 import { BarChart3, LogOut, Plus, Utensils } from "lucide-solid";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
-import { Show, createContext, createEffect, createMemo, createSignal, onCleanup, onMount, useContext } from "solid-js";
+import {
+  Show,
+  createContext,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+  useContext,
+} from "solid-js";
 import type { JSX } from "solid-js";
 import { A, useLocation, useParams } from "@solidjs/router";
 import { AuthScreen } from "@/components/tracker/auth-screen";
@@ -42,7 +51,8 @@ function useTrackerContext() {
 
 function NavLink(props: { href: string; icon: JSX.Element; children: JSX.Element }) {
   const location = useLocation();
-  const active = () => props.href === "/" ? location.pathname === "/" : location.pathname.startsWith(props.href);
+  const active = () =>
+    props.href === "/" ? location.pathname === "/" : location.pathname.startsWith(props.href);
 
   return (
     <A
@@ -105,8 +115,16 @@ export function TrackerApp(props: { children?: JSX.Element }) {
 
     const unsubscribeMeals = subscribeMeals(u.uid, setMeals, handleSubscriptionError);
     const unsubscribeEvents = subscribeGiEvents(u.uid, setEvents, handleSubscriptionError);
-    const unsubscribeSkinEntries = subscribeSkinEntries(u.uid, setSkinEntries, handleSubscriptionError);
-    const unsubscribeAnalysis = subscribeCurrentAnalysis(u.uid, setAnalysis, handleSubscriptionError);
+    const unsubscribeSkinEntries = subscribeSkinEntries(
+      u.uid,
+      setSkinEntries,
+      handleSubscriptionError,
+    );
+    const unsubscribeAnalysis = subscribeCurrentAnalysis(
+      u.uid,
+      setAnalysis,
+      handleSubscriptionError,
+    );
 
     onCleanup(() => {
       unsubscribeMeals();
@@ -202,7 +220,12 @@ export function TrackerApp(props: { children?: JSX.Element }) {
                 </section>
 
                 <aside class="grid content-start gap-5">
-                  <StatsStrip meals={meals()} events={events()} skinEntries={skinEntries()} analysis={analysis()} />
+                  <StatsStrip
+                    meals={meals()}
+                    events={events()}
+                    skinEntries={skinEntries()}
+                    analysis={analysis()}
+                  />
                   <RecentEntries
                     uid={user()!.uid}
                     meals={meals()}
