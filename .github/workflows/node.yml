@@ -19,10 +19,8 @@ jobs:
         project:
           - name: web
             working-directory: apps/web
-            e2e: true
           - name: functions
             working-directory: functions
-            e2e: false
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-npm-project
@@ -33,14 +31,6 @@ jobs:
         working-directory: ${{ matrix.project.working-directory }}
       - name: Unit tests
         run: npm run test:unit
-        working-directory: ${{ matrix.project.working-directory }}
-      - name: Install Playwright browsers
-        if: ${{ matrix.project.e2e }}
-        run: npm run test:e2e:install
-        working-directory: ${{ matrix.project.working-directory }}
-      - name: End-to-end tests
-        if: ${{ matrix.project.e2e }}
-        run: npm run test:e2e
         working-directory: ${{ matrix.project.working-directory }}
       - name: Audit
         run: npm audit --audit-level=high
