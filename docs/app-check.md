@@ -11,10 +11,10 @@ and deployed together.
 2. Open App Check, register the Web App with the reCAPTCHA Enterprise provider,
    and copy the generated reCAPTCHA Enterprise site key.
 3. Add the site key to local and deployed public env in `apps/web/.env.local`
-   and `apps/web/apphosting.yaml`:
-   `NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY=<site key>`.
+   and the Vercel project environment variables:
+   `VITE_FIREBASE_APPCHECK_SITE_KEY=<site key>`.
 4. For local development only, use the App Check debug provider:
-   set `NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG=true`, load the app, copy the debug
+   set `VITE_FIREBASE_APPCHECK_DEBUG=true`, load the app, copy the debug
    token from the browser console, and register that token in Firebase Console
    under App Check > Apps > Manage debug tokens.
 5. Initialize App Check in the Firebase client before Auth, Firestore, or
