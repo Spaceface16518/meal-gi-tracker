@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "meal-gi-tracker",
+  "compatibility_date": "2026-06-26",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "dist"
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}
