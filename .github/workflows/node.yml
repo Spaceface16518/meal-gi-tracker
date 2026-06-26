@@ -1,0 +1,76 @@
+name: Node
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.project.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - name: web
+            working-directory: apps/web
+            e2e: true
+          - name: functions
+            working-directory: functions
+            e2e: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-npm-project
+        with:
+          working-directory: ${{ matrix.project.working-directory }}
+      - name: Build
+        run: npm run build
+        working-directory: ${{ matrix.project.working-directory }}
+      - name: Unit tests
+        run: npm run test:unit
+        working-directory: ${{ matrix.project.working-directory }}
+      - name: Install Playwright browsers
+        if: ${{ matrix.project.e2e }}
+        run: npm run test:e2e:install
+        working-directory: ${{ matrix.project.working-directory }}
+      - name: End-to-end tests
+        if: ${{ matrix.project.e2e }}
+        run: npm run test:e2e
+        working-directory: ${{ matrix.project.working-directory }}
+      - name: Audit
+        run: npm audit --audit-level=high
+        working-directory: ${{ matrix.project.working-directory }}
+
+  check:
+    name: Check (${{ matrix.project.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - name: web
+            working-directory: apps/web
+          - name: functions
+            working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-npm-project
+        with:
+          working-directory: ${{ matrix.project.working-directory }}
+      - name: Lint
+        run: npm run lint
+        working-directory: ${{ matrix.project.working-directory }}
+      - name: Format
+        run: npm run format:check
+        working-directory: ${{ matrix.project.working-directory }}
+      - name: Typos
+        run: npm run typos
+        working-directory: ${{ matrix.project.working-directory }}
+      - name: Knip
+        run: npm run knip
+        working-directory: ${{ matrix.project.working-directory }}
