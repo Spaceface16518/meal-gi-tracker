@@ -162,7 +162,9 @@ export function MealComposer(props: { readOnly?: boolean }) {
   }
 
   const canSubmit = () =>
-    mode() === "text" ? text().trim().length > 2 : mediaBase64().length > 0 && mimeType().length > 0;
+    mode() === "text"
+      ? text().trim().length > 2
+      : mediaBase64().length > 0 && mimeType().length > 0;
 
   return (
     <section class="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
@@ -176,13 +178,25 @@ export function MealComposer(props: { readOnly?: boolean }) {
 
       <form class="grid gap-4" onSubmit={submit}>
         <div class="grid grid-cols-3 gap-2">
-          <ModeButton active={mode() === "text"} onClick={() => setMode("text")} icon={<Utensils size={17} />}>
+          <ModeButton
+            active={mode() === "text"}
+            onClick={() => setMode("text")}
+            icon={<Utensils size={17} />}
+          >
             Text
           </ModeButton>
-          <ModeButton active={mode() === "voice"} onClick={() => setMode("voice")} icon={<Mic size={17} />}>
+          <ModeButton
+            active={mode() === "voice"}
+            onClick={() => setMode("voice")}
+            icon={<Mic size={17} />}
+          >
             Voice
           </ModeButton>
-          <ModeButton active={mode() === "image"} onClick={() => setMode("image")} icon={<Camera size={17} />}>
+          <ModeButton
+            active={mode() === "image"}
+            onClick={() => setMode("image")}
+            icon={<Camera size={17} />}
+          >
             Image
           </ModeButton>
         </div>

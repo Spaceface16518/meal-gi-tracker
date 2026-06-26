@@ -22,11 +22,13 @@ function escapeHtml(value: unknown) {
 }
 
 function slug(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 80) || "meal";
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 80) || "meal"
+  );
 }
 
 function serializableMeal(meal: Meal) {
@@ -69,9 +71,11 @@ function skinEntryDetails(entry: SkinEntry) {
       : "No condition assessments recorded";
   }
 
-  return [...entry.symptoms, entry.bodyAreas.length ? `areas: ${entry.bodyAreas.join(", ")}` : ""]
-    .filter(Boolean)
-    .join("; ") || "No details recorded";
+  return (
+    [...entry.symptoms, entry.bodyAreas.length ? `areas: ${entry.bodyAreas.join(", ")}` : ""]
+      .filter(Boolean)
+      .join("; ") || "No details recorded"
+  );
 }
 
 function serializableAnalysis(analysis: CorrelationAnalysis | null) {
@@ -107,11 +111,25 @@ export function exportMealsJson(meals: Meal[]) {
   downloadTextFile(
     `meal-signal-meals-${new Date().toISOString().slice(0, 10)}.json`,
     "application/json",
-    JSON.stringify({ exportedAt: new Date().toISOString(), mealCount: meals.length, meals: meals.map(serializableMeal) }, null, 2),
+    JSON.stringify(
+      {
+        exportedAt: new Date().toISOString(),
+        mealCount: meals.length,
+        meals: meals.map(serializableMeal),
+      },
+      null,
+      2,
+    ),
   );
 }
 
-export function exportAnalysisJson({ analysis, meals, events, skinEntries = [], exportedAt = new Date() }: AnalysisExportInput) {
+export function exportAnalysisJson({
+  analysis,
+  meals,
+  events,
+  skinEntries = [],
+  exportedAt = new Date(),
+}: AnalysisExportInput) {
   downloadTextFile(
     `meal-signal-analysis-${exportedAt.toISOString().slice(0, 10)}.json`,
     "application/json",
@@ -129,7 +147,13 @@ export function exportAnalysisJson({ analysis, meals, events, skinEntries = [], 
   );
 }
 
-export function exportAnalysisHtml({ analysis, meals, events, skinEntries = [], exportedAt = new Date() }: AnalysisExportInput) {
+export function exportAnalysisHtml({
+  analysis,
+  meals,
+  events,
+  skinEntries = [],
+  exportedAt = new Date(),
+}: AnalysisExportInput) {
   const findings = analysis?.findings ?? [];
   const dataNotes = analysis?.dataQualityNotes ?? [];
   const topMeals = meals.slice(0, 50);
@@ -242,9 +266,9 @@ export function exportAnalysisHtml({ analysis, meals, events, skinEntries = [], 
         ${topSkinEntries
           .map(
             (entry) => `<tr>
-          <td>${escapeHtml(entry.entryType === "daily" ? entry.localDate ?? "" : entry.occurredAt?.toLocaleString() ?? "")}</td>
+          <td>${escapeHtml(entry.entryType === "daily" ? (entry.localDate ?? "") : (entry.occurredAt?.toLocaleString() ?? ""))}</td>
           <td>${escapeHtml(entry.entryType === "daily" ? "Skin day" : "Skin observation")}</td>
-          <td>${escapeHtml(entry.entryType === "timed" ? entry.severity ?? "" : "")}</td>
+          <td>${escapeHtml(entry.entryType === "timed" ? (entry.severity ?? "") : "")}</td>
           <td>${escapeHtml(skinEntryDetails(entry))}</td>
           <td>${escapeHtml(entry.notes ?? "")}</td>
         </tr>`,

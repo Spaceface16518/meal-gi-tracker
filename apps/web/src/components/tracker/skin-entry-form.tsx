@@ -4,7 +4,11 @@ import { saveSkinEntry } from "@/lib/callables";
 import { toDateInputValue, toDatetimeLocalValue } from "@/lib/date";
 import { demoReadOnlyMessage } from "@/lib/demo";
 import { getErrorMessage } from "@/lib/errors";
-import { skinBodyAreaOptions, skinConditionOptions, skinSymptomOptions } from "@/components/tracker/constants";
+import {
+  skinBodyAreaOptions,
+  skinConditionOptions,
+  skinSymptomOptions,
+} from "@/components/tracker/constants";
 import { SubmitRow } from "@/components/tracker/ui";
 import type { SaveSkinEntryPayload, SkinConditionAssessment } from "@/lib/types";
 
@@ -32,15 +36,21 @@ function loadDailyConditions() {
           item.condition!,
           {
             condition: item.condition!,
-            severity: typeof item.severity === "number" ? Math.min(10, Math.max(0, item.severity)) : 0,
+            severity:
+              typeof item.severity === "number" ? Math.min(10, Math.max(0, item.severity)) : 0,
             bodyAreas: Array.isArray(item.bodyAreas)
-              ? item.bodyAreas.filter((area): area is string => typeof area === "string" && skinBodyAreaOptions.includes(area))
+              ? item.bodyAreas.filter(
+                  (area): area is string =>
+                    typeof area === "string" && skinBodyAreaOptions.includes(area),
+                )
               : [],
           },
         ]),
     );
 
-    return skinConditionOptions.map((condition) => saved.get(condition) ?? { condition, severity: 0, bodyAreas: [] });
+    return skinConditionOptions.map(
+      (condition) => saved.get(condition) ?? { condition, severity: 0, bodyAreas: [] },
+    );
   } catch {
     return defaultDailyConditions();
   }
@@ -52,9 +62,7 @@ function saveDailyConditions(conditions: SkinConditionAssessment[]) {
 }
 
 function toggleValue(value: string, current: string[]) {
-  return current.includes(value)
-    ? current.filter((item) => item !== value)
-    : [...current, value];
+  return current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
 }
 
 function submitLabel(mode: SkinMode) {
@@ -86,7 +94,8 @@ function AreaChips(props: { selected: string[]; onToggle: (area: string) => void
             classList={{
               "h-8 rounded-md border px-2.5 text-xs font-medium transition": true,
               "border-brand bg-brand text-background": props.selected.includes(area),
-              "border-border-strong bg-surface text-muted-strong hover:border-muted": !props.selected.includes(area),
+              "border-border-strong bg-surface text-muted-strong hover:border-muted":
+                !props.selected.includes(area),
             }}
           >
             {area}
@@ -104,7 +113,8 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
   const [severity, setSeverity] = createSignal(4);
   const [symptoms, setSymptoms] = createSignal<string[]>([]);
   const [bodyAreas, setBodyAreas] = createSignal<string[]>([]);
-  const [conditions, setConditions] = createSignal<SkinConditionAssessment[]>(loadDailyConditions());
+  const [conditions, setConditions] =
+    createSignal<SkinConditionAssessment[]>(loadDailyConditions());
   const [durationMinutes, setDurationMinutes] = createSignal("");
   const [notes, setNotes] = createSignal("");
   const [busy, setBusy] = createSignal(false);
@@ -115,14 +125,16 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
 
   function updateConditionSeverity(condition: string, value: number) {
     setConditions((current) =>
-      current.map((item) => item.condition === condition ? { ...item, severity: value } : item),
+      current.map((item) => (item.condition === condition ? { ...item, severity: value } : item)),
     );
   }
 
   function toggleConditionArea(condition: string, area: string) {
     setConditions((current) =>
       current.map((item) =>
-        item.condition === condition ? { ...item, bodyAreas: toggleValue(area, item.bodyAreas) } : item,
+        item.condition === condition
+          ? { ...item, bodyAreas: toggleValue(area, item.bodyAreas) }
+          : item,
       ),
     );
   }
@@ -254,7 +266,9 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
                     <div class="grid gap-3 sm:grid-cols-[140px_minmax(0,1fr)] sm:items-center">
                       <div>
                         <h3 class="text-sm font-semibold capitalize">{condition().condition}</h3>
-                        <p class="text-xs font-medium text-muted">Severity {condition().severity}</p>
+                        <p class="text-xs font-medium text-muted">
+                          Severity {condition().severity}
+                        </p>
                       </div>
                       <input
                         class="h-8 accent-brand"
@@ -264,7 +278,10 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
                         value={condition().severity}
                         aria-label={`${condition().condition} severity`}
                         onInput={(event) =>
-                          updateConditionSeverity(condition().condition, Number((event.target as HTMLInputElement).value))
+                          updateConditionSeverity(
+                            condition().condition,
+                            Number((event.target as HTMLInputElement).value),
+                          )
                         }
                       />
                     </div>
@@ -325,7 +342,8 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
                       classList={{
                         "h-9 rounded-md border px-3 text-sm font-medium transition": true,
                         "border-brand bg-brand text-background": symptoms().includes(symptom),
-                        "border-border-strong bg-surface text-muted-strong hover:border-muted": !symptoms().includes(symptom),
+                        "border-border-strong bg-surface text-muted-strong hover:border-muted":
+                          !symptoms().includes(symptom),
                       }}
                     >
                       {symptom}
@@ -337,7 +355,10 @@ export function SkinEntryForm(props: { readOnly?: boolean }) {
 
             <div class="grid gap-2">
               <span class="text-sm font-medium text-muted-strong">Body areas</span>
-              <AreaChips selected={bodyAreas()} onToggle={(area) => setBodyAreas((current) => toggleValue(area, current))} />
+              <AreaChips
+                selected={bodyAreas()}
+                onToggle={(area) => setBodyAreas((current) => toggleValue(area, current))}
+              />
             </div>
 
             <div class="grid gap-4 sm:grid-cols-2">

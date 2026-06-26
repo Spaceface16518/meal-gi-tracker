@@ -11,11 +11,7 @@ const eslintConfig = defineConfig([
       "no-console": "off",
     },
   },
-  globalIgnores([
-    "dist/**",
-    "node_modules/**",
-    "functions/**",
-  ]),
+  globalIgnores(["dist/**", "node_modules/**", "functions/**"]),
 ]);
 
 export default eslintConfig;

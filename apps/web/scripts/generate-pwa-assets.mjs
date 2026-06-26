@@ -23,13 +23,17 @@ for (const [relativePath, size, format] of targets) {
   const output = join(root, relativePath);
   mkdirSync(dirname(output), { recursive: true });
   copyFileSync(source, output);
-  execFileSync("sips", [
-    "--resampleHeightWidth",
-    String(size),
-    String(size),
-    "--setProperty",
-    "format",
-    format,
-    output,
-  ], { stdio: "ignore" });
+  execFileSync(
+    "sips",
+    [
+      "--resampleHeightWidth",
+      String(size),
+      String(size),
+      "--setProperty",
+      "format",
+      format,
+      output,
+    ],
+    { stdio: "ignore" },
+  );
 }

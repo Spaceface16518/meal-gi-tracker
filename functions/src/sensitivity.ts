@@ -104,11 +104,12 @@ export function computeIrritantSensitivity(
       // Normalizing by exposure count keeps frequent foods from ranking high solely because they appear often.
       normalizedSensitivity: roundScore(score.weightedSymptomScore / score.exposureCount),
     }))
-    .sort((a, b) => (
-      b.normalizedSensitivity - a.normalizedSensitivity ||
-      b.weightedSymptomScore - a.weightedSymptomScore ||
-      a.irritant.localeCompare(b.irritant)
-    ));
+    .sort(
+      (a, b) =>
+        b.normalizedSensitivity - a.normalizedSensitivity ||
+        b.weightedSymptomScore - a.weightedSymptomScore ||
+        a.irritant.localeCompare(b.irritant),
+    );
 }
 
 function extractIrritants(analysis: unknown): string[] {

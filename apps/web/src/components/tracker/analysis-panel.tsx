@@ -147,9 +147,7 @@ export function AnalysisPanel(props: {
 
           <div class="grid gap-3">
             {props.analysis.findings.map((finding) => (
-              <article
-                class="rounded-lg border border-border p-4"
-              >
+              <article class="rounded-lg border border-border p-4">
                 <div class="flex items-start justify-between gap-3">
                   <div>
                     <h3 class="font-semibold">{finding.irritant}</h3>

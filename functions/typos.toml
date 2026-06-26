@@ -1,0 +1,12 @@
+[files]
+extend-exclude = [
+  "coverage",
+  "lib",
+  "node_modules",
+  "package-lock.json",
+]
+
+[default.extend-words]
+FODMAP = "FODMAP"
+FODMAPs = "FODMAPs"
+
