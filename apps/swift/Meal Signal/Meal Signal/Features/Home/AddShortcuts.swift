@@ -15,15 +15,22 @@ struct AddShortcuts: View {
     @Binding var addSheet: AddSheet?
 
     var body: some View {
-        HStack(spacing: 8) {
-            buttons
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Log")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+
+            HStack(spacing: 8) {
+                buttons
+            }
         }
     }
 
     @ViewBuilder
     private var buttons: some View {
         AddShortcutButton(
-            title: "Log meal",
+            title: "Meal",
+            accessibilityLabel: "Log meal",
             value: "\(mealCount)",
             caption: "meals",
             systemImage: "fork.knife",
@@ -31,7 +38,8 @@ struct AddShortcuts: View {
             action: addMeal
         )
         AddShortcutButton(
-            title: "Log GI event",
+            title: "GI event",
+            accessibilityLabel: "Log GI event",
             value: "\(eventCount)",
             caption: "events",
             systemImage: "waveform.path.ecg",
@@ -39,7 +47,8 @@ struct AddShortcuts: View {
             action: addEvent
         )
         AddShortcutButton(
-            title: "Track skin",
+            title: "Skin",
+            accessibilityLabel: "Track skin",
             value: "\(skinCount)",
             caption: "skin",
             systemImage: "sparkles",
@@ -63,6 +72,7 @@ struct AddShortcuts: View {
 
 private struct AddShortcutButton: View {
     let title: String
+    let accessibilityLabel: String
     let value: String
     let caption: String
     let systemImage: String
@@ -97,7 +107,7 @@ private struct AddShortcutButton: View {
                 .shadow(color: .black.opacity(0.06), radius: 12, y: 4)
         }
         .glassSurface(interactive: true)
-        .accessibilityLabel(title)
+        .accessibilityLabel(accessibilityLabel)
         .accessibilityValue("\(value) \(caption)")
         .accessibilityHint(accessibilityHint)
     }
