@@ -15,8 +15,8 @@ import {
   updateDoc,
   type FieldValue,
   type DocumentData,
+  type DocumentSnapshot,
   type FirestoreError,
-  type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { db } from "@/lib/firebase";
@@ -62,8 +62,8 @@ function asSkinConditions(value: unknown): SkinConditionAssessment[] {
     .filter((item): item is SkinConditionAssessment => item !== null);
 }
 
-function mealFromDoc(snapshot: QueryDocumentSnapshot<DocumentData>): Meal {
-  const data = snapshot.data();
+function mealFromDoc(snapshot: DocumentSnapshot<DocumentData>): Meal {
+  const data = snapshot.data()!;
   return {
     id: snapshot.id,
     uid: data.uid,
@@ -85,8 +85,8 @@ function mealFromDoc(snapshot: QueryDocumentSnapshot<DocumentData>): Meal {
   };
 }
 
-function eventFromDoc(snapshot: QueryDocumentSnapshot<DocumentData>): GiEvent {
-  const data = snapshot.data();
+function eventFromDoc(snapshot: DocumentSnapshot<DocumentData>): GiEvent {
+  const data = snapshot.data()!;
   return {
     id: snapshot.id,
     uid: data.uid,
@@ -100,8 +100,8 @@ function eventFromDoc(snapshot: QueryDocumentSnapshot<DocumentData>): GiEvent {
   };
 }
 
-function skinEntryFromDoc(snapshot: QueryDocumentSnapshot<DocumentData>): SkinEntry {
-  const data = snapshot.data();
+function skinEntryFromDoc(snapshot: DocumentSnapshot<DocumentData>): SkinEntry {
+  const data = snapshot.data()!;
   return {
     id: snapshot.id,
     uid: data.uid,
@@ -120,8 +120,8 @@ function skinEntryFromDoc(snapshot: QueryDocumentSnapshot<DocumentData>): SkinEn
   };
 }
 
-function analysisFromDoc(snapshot: QueryDocumentSnapshot<DocumentData>): CorrelationAnalysis {
-  const data = snapshot.data();
+function analysisFromDoc(snapshot: DocumentSnapshot<DocumentData>): CorrelationAnalysis {
+  const data = snapshot.data()!;
   return {
     id: snapshot.id,
     uid: data.uid,
@@ -305,6 +305,45 @@ export function subscribeSkinEntries(
   return onSnapshot(
     entriesQuery,
     (snapshot) => onEntries(snapshot.docs.map(skinEntryFromDoc)),
+    onError,
+  );
+}
+
+export function subscribeMeal(
+  uid: string,
+  mealId: string,
+  onMeal: (meal: Meal | null) => void,
+  onError: SubscriptionErrorHandler,
+) {
+  return onSnapshot(
+    doc(db, "users", uid, "meals", mealId),
+    (snapshot) => onMeal(snapshot.exists() ? mealFromDoc(snapshot) : null),
+    onError,
+  );
+}
+
+export function subscribeGiEvent(
+  uid: string,
+  eventId: string,
+  onEvent: (event: GiEvent | null) => void,
+  onError: SubscriptionErrorHandler,
+) {
+  return onSnapshot(
+    doc(db, "users", uid, "events", eventId),
+    (snapshot) => onEvent(snapshot.exists() ? eventFromDoc(snapshot) : null),
+    onError,
+  );
+}
+
+export function subscribeSkinEntry(
+  uid: string,
+  entryId: string,
+  onEntry: (entry: SkinEntry | null) => void,
+  onError: SubscriptionErrorHandler,
+) {
+  return onSnapshot(
+    doc(db, "users", uid, "skinEntries", entryId),
+    (snapshot) => onEntry(snapshot.exists() ? skinEntryFromDoc(snapshot) : null),
     onError,
   );
 }

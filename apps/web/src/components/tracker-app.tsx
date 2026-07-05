@@ -11,7 +11,7 @@ import {
   useContext,
 } from "solid-js";
 import type { JSX } from "solid-js";
-import { A, useLocation, useParams } from "@solidjs/router";
+import { A, useLocation } from "@solidjs/router";
 import { AuthScreen } from "@/components/tracker/auth-screen";
 import { GiEventForm } from "@/components/tracker/gi-event-form";
 import { MealComposer } from "@/components/tracker/meal-composer";
@@ -26,8 +26,11 @@ import { getErrorMessage } from "@/lib/errors";
 import {
   ensureUserProfile,
   subscribeCurrentAnalysis,
+  subscribeGiEvent,
   subscribeGiEvents,
+  subscribeMeal,
   subscribeMeals,
+  subscribeSkinEntry,
   subscribeSkinEntries,
 } from "@/lib/firestore";
 import type { CorrelationAnalysis, GiEvent, Meal, SkinEntry } from "@/lib/types";
@@ -270,32 +273,107 @@ export function AnalysisPage() {
 }
 
 export function EntryPage() {
-  const { readOnly, meals, events, skinEntries } = useTrackerContext();
-  const params = useParams<{ entryKind?: string; entryId?: string }>();
-  const entry = createMemo<RecentEntry | null>(() => {
-    if (params.entryKind === "meals") {
-      const meal = meals().find((item) => item.id === params.entryId);
+  const { user, readOnly, meals, events, skinEntries } = useTrackerContext();
+  const location = useLocation();
+  const route = createMemo(() => {
+    const match = location.pathname.match(/^\/entries\/(meals|events|skin)\/([^/]+)\/?$/);
+    return match ? { entryKind: match[1], entryId: decodeURIComponent(match[2]) } : null;
+  });
+  const recentEntry = createMemo<RecentEntry | null>(() => {
+    const currentRoute = route();
+    if (currentRoute?.entryKind === "meals") {
+      const meal = meals().find((item) => item.id === currentRoute.entryId);
       return meal ? { kind: "meal", date: meal.eatenAt, meal } : null;
     }
 
-    if (params.entryKind === "events") {
-      const event = events().find((item) => item.id === params.entryId);
+    if (currentRoute?.entryKind === "events") {
+      const event = events().find((item) => item.id === currentRoute.entryId);
       return event ? { kind: "event", date: event.occurredAt, event } : null;
     }
 
-    if (params.entryKind === "skin") {
-      const skinEntry = skinEntries().find((item) => item.id === params.entryId);
+    if (currentRoute?.entryKind === "skin") {
+      const skinEntry = skinEntries().find((item) => item.id === currentRoute.entryId);
       return skinEntry ? { kind: "skin", date: skinEntry.sortAt, skinEntry } : null;
     }
 
     return null;
   });
+  const [loadedEntry, setLoadedEntry] = createSignal<RecentEntry | null>(null);
+  const [entryLoading, setEntryLoading] = createSignal(true);
 
-  return entry() ? (
-    <EntryDetailPage entry={entry()!} readOnly={readOnly()} />
-  ) : (
-    <section class="rounded-lg border border-border bg-surface p-4 shadow-sm">
-      <EmptyState icon={<Utensils size={22} />} title="Entry not found" />
-    </section>
+  createEffect(() => {
+    const uid = user().uid;
+    const currentRoute = route();
+    const entryKind = currentRoute?.entryKind;
+    const entryId = currentRoute?.entryId;
+    setLoadedEntry(null);
+    setEntryLoading(true);
+
+    const handleError = () => {
+      setLoadedEntry(null);
+      setEntryLoading(false);
+    };
+    let unsubscribe: (() => void) | undefined;
+
+    if (entryId && entryKind === "meals") {
+      unsubscribe = subscribeMeal(
+        uid,
+        entryId,
+        (meal) => {
+          setLoadedEntry(meal ? { kind: "meal", date: meal.eatenAt, meal } : null);
+          setEntryLoading(false);
+        },
+        handleError,
+      );
+    } else if (entryId && entryKind === "events") {
+      unsubscribe = subscribeGiEvent(
+        uid,
+        entryId,
+        (event) => {
+          setLoadedEntry(event ? { kind: "event", date: event.occurredAt, event } : null);
+          setEntryLoading(false);
+        },
+        handleError,
+      );
+    } else if (entryId && entryKind === "skin") {
+      unsubscribe = subscribeSkinEntry(
+        uid,
+        entryId,
+        (skinEntry) => {
+          setLoadedEntry(skinEntry ? { kind: "skin", date: skinEntry.sortAt, skinEntry } : null);
+          setEntryLoading(false);
+        },
+        handleError,
+      );
+    } else {
+      setEntryLoading(false);
+    }
+
+    onCleanup(() => unsubscribe?.());
+  });
+
+  const entry = createMemo(() => loadedEntry() ?? recentEntry());
+
+  return (
+    <Show
+      when={entry()}
+      keyed
+      fallback={
+        <Show
+          when={entryLoading()}
+          fallback={
+            <section class="rounded-lg border border-border bg-surface p-4 shadow-sm">
+              <EmptyState icon={<Utensils size={22} />} title="Entry not found" />
+            </section>
+          }
+        >
+          <section class="rounded-lg border border-border bg-surface p-4 shadow-sm">
+            <p class="text-sm text-muted">Loading entry…</p>
+          </section>
+        </Show>
+      }
+    >
+      {(currentEntry) => <EntryDetailPage entry={currentEntry} readOnly={readOnly()} />}
+    </Show>
   );
 }
