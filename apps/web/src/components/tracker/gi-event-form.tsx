@@ -223,7 +223,11 @@ export function GiEventForm(props: { readOnly?: boolean }) {
         recentIllness: recentIllness(),
         medicationFlags: medicationFlags(),
         exerciseIntensity: (exerciseIntensity() || undefined) as
-          "none" | "light" | "moderate" | "vigorous" | undefined,
+          | "none"
+          | "light"
+          | "moderate"
+          | "vigorous"
+          | undefined,
         suspectedCause: suspectedCause().trim() || undefined,
       });
       setOccurredAt(toDatetimeLocalValue(new Date()));

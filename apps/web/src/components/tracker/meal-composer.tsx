@@ -68,10 +68,18 @@ export function MealComposer(props: { readOnly?: boolean }) {
         eatenAt: eatenAtDate.toISOString(),
         notes: notes().trim() || undefined,
         mealSize: (mealSize() || undefined) as
-          "snack" | "small" | "medium" | "large" | "very_large" | undefined,
+          | "snack"
+          | "small"
+          | "medium"
+          | "large"
+          | "very_large"
+          | undefined,
         portionMultiplier: portionMultiplier() ? Number(portionMultiplier()) : undefined,
         sourceType: (sourceType() || undefined) as
-          "restaurant" | "homemade" | "packaged" | undefined,
+          | "restaurant"
+          | "homemade"
+          | "packaged"
+          | undefined,
         alcoholServings: alcoholServings() ? Number(alcoholServings()) : undefined,
         caffeineAmount: caffeineAmount() ? Number(caffeineAmount()) : undefined,
         uncertainIngredientsNotes: uncertainIngredientsNotes().trim() || undefined,
