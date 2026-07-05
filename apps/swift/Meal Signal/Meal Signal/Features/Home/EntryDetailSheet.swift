@@ -778,3 +778,15 @@ private struct EmptyDetailText: View {
 #Preview("Meal") {
     EntryDetailSheet(entry: RecentEntry.meal(PreviewFixtures.meal))
 }
+
+#Preview("Meal without irritants") {
+    EntryDetailSheet(entry: RecentEntry.meal(PreviewFixtures.breakfast))
+}
+
+#Preview("Daily skin") {
+    EntryDetailSheet(entry: RecentEntry.skin(PreviewFixtures.skinEntry))
+}
+
+#Preview("Timed skin observation") {
+    EntryDetailSheet(entry: RecentEntry.skin(PreviewFixtures.skinObservation))
+}

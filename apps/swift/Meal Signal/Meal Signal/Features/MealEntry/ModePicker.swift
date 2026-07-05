@@ -14,8 +14,8 @@ struct ModePicker: View {
     }
 }
 
-#Preview {
-    @Previewable @State var mode = InputMode.text
+#Preview("Input modes") {
+    @Previewable @State var mode = InputMode.image
 
     ModePicker(mode: $mode)
         .padding()

@@ -52,13 +52,16 @@ struct LoadingStateView: View {
     }
 }
 
-#Preview {
+#Preview("Loading states") {
     VStack(spacing: 16) {
         Button {} label: {
             LoadingLabel(title: "Saving", isLoading: true)
         }
         Button {} label: {
             LoadingLabel(title: "Run", systemImage: "arrow.clockwise", isLoading: false)
+        }
+        Button {} label: {
+            LoadingLabel(title: "Save entry", isLoading: false)
         }
         LoadingStateView(title: "Loading history")
     }

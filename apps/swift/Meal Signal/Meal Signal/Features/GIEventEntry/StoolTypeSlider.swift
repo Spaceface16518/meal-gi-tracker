@@ -223,8 +223,15 @@ private struct StoolType: Equatable {
     }
 }
 
-#Preview {
+#Preview("Selected type") {
     @Previewable @State var stoolType: Int? = 4
+
+    StoolTypeSlider(stoolType: $stoolType)
+        .padding()
+}
+
+#Preview("Not set") {
+    @Previewable @State var stoolType: Int?
 
     StoolTypeSlider(stoolType: $stoolType)
         .padding()

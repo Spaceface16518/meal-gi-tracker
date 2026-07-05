@@ -22,8 +22,8 @@ struct LocalInterpretationEditor: View {
     }
 }
 
-#Preview {
-    @Previewable @State var text = "Chicken rice bowl with salsa and avocado"
+#Preview("Generated description") {
+    @Previewable @State var text = "Chicken rice bowl with black beans, roasted corn, tomato salsa, avocado, cilantro, and lime crema"
 
     LocalInterpretationEditor(title: "Description", text: $text)
         .padding()

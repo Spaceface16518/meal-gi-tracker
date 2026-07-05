@@ -114,7 +114,7 @@ private struct AddShortcutButton: View {
     }
 }
 
-#Preview {
+#Preview("Counts") {
     @Previewable @State var addSheet: AddSheet?
 
     VStack(spacing: 20) {

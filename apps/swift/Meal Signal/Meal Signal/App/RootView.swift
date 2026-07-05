@@ -135,6 +135,6 @@ private struct AppTabs: View {
     }
 }
 
-#Preview {
+#Preview("Configuration missing") {
     RootView()
 }

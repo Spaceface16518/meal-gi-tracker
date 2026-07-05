@@ -28,9 +28,14 @@ struct VoiceInput: View {
     }
 }
 
-#Preview {
+#Preview("Voice states") {
     @Previewable @State var recording = false;
-    
-    VoiceInput(isRecording: recording, hasAudio: false, hasTranscript: true, toggleRecording: {recording = !recording})
+
+    VStack(spacing: 24) {
+        VoiceInput(isRecording: recording, hasAudio: false, hasTranscript: false, toggleRecording: { recording.toggle() })
+        VoiceInput(isRecording: true, hasAudio: false, hasTranscript: false, toggleRecording: {})
+        VoiceInput(isRecording: false, hasAudio: true, hasTranscript: false, toggleRecording: {})
+        VoiceInput(isRecording: false, hasAudio: true, hasTranscript: true, toggleRecording: {})
+    }
         .padding()
 }

@@ -39,7 +39,7 @@ struct HomeContent: View {
     }
 }
 
-#Preview {
+#Preview("Loaded history") {
     @Previewable @State var addSheet: AddSheet?
     @Previewable @State var deleteConfirmation: RecentEntry?
     @Previewable @State var selectedEntry: RecentEntry?
@@ -47,12 +47,34 @@ struct HomeContent: View {
     NavigationStack {
         HomeContent(
             message: .success("Meal saved."),
-            mealCount: 8,
-            eventCount: 3,
-            skinCount: 6,
+            mealCount: 42,
+            eventCount: 16,
+            skinCount: 9,
             isLoading: false,
             entries: PreviewFixtures.recentEntries,
             deletingEntryID: nil,
+            addSheet: $addSheet,
+            deleteConfirmation: $deleteConfirmation,
+            selectedEntry: $selectedEntry
+        )
+        .navigationTitle("Meal Signal")
+    }
+}
+
+#Preview("Deleting entry") {
+    @Previewable @State var addSheet: AddSheet?
+    @Previewable @State var deleteConfirmation: RecentEntry?
+    @Previewable @State var selectedEntry: RecentEntry?
+
+    NavigationStack {
+        HomeContent(
+            message: .error("The selected entry could not be deleted."),
+            mealCount: 42,
+            eventCount: 16,
+            skinCount: 9,
+            isLoading: false,
+            entries: PreviewFixtures.recentEntries,
+            deletingEntryID: PreviewFixtures.event.id,
             addSheet: $addSheet,
             deleteConfirmation: $deleteConfirmation,
             selectedEntry: $selectedEntry

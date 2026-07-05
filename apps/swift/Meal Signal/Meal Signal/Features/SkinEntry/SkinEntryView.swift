@@ -1,13 +1,13 @@
 import SwiftUI
 
-private enum SkinEntryMode: String, CaseIterable, Identifiable {
+enum SkinEntryMode: String, CaseIterable, Identifiable {
     case daily = "Day"
     case timed = "Time"
 
     var id: String { rawValue }
 }
 
-private struct SkinEntryDraft {
+struct SkinEntryDraft {
     var mode: SkinEntryMode = .daily
     var date = Date()
     var occurredAt = Date()
@@ -40,6 +40,29 @@ private struct SkinEntryDraft {
         guard let data = try? JSONEncoder().encode(conditions) else { return }
         UserDefaults.standard.set(data, forKey: "meal-signal:daily-skin-settings:v1")
     }
+
+    static let previewDaily = SkinEntryDraft(
+        mode: .daily,
+        date: Date().addingTimeInterval(-86400),
+        conditions: [
+            SkinConditionAssessment(condition: "eczema", severity: 4, bodyAreas: ["hands", "arms"]),
+            SkinConditionAssessment(condition: "acne", severity: 2, bodyAreas: ["face"]),
+            SkinConditionAssessment(condition: "hives", severity: 0, bodyAreas: []),
+            SkinConditionAssessment(condition: "dryness", severity: 6, bodyAreas: ["face", "hands"]),
+            SkinConditionAssessment(condition: "other", severity: 0, bodyAreas: []),
+        ],
+        notes: "Dryness improved after moisturizing; mild eczema remains on both hands."
+    )
+
+    static let previewTimed = SkinEntryDraft(
+        mode: .timed,
+        occurredAt: Date().addingTimeInterval(-1800),
+        severity: 7,
+        symptoms: ["itching", "redness", "raised bumps"],
+        bodyAreas: ["neck", "chest"],
+        durationMinutes: 50,
+        notes: "Flared shortly after exercising outdoors."
+    )
 }
 
 struct SkinEntryView: View {
@@ -47,9 +70,19 @@ struct SkinEntryView: View {
     @Environment(\.dismiss) private var dismiss
 
     let readOnly: Bool
-    @State private var draft = SkinEntryDraft()
+    @State private var draft: SkinEntryDraft
     @State private var message: AppMessage?
     @State private var isSaving = false
+
+    init(readOnly: Bool) {
+        self.readOnly = readOnly
+        _draft = State(initialValue: SkinEntryDraft())
+    }
+
+    init(readOnly: Bool, draft: SkinEntryDraft) {
+        self.readOnly = readOnly
+        _draft = State(initialValue: draft)
+    }
 
     var body: some View {
         NavigationStack {
@@ -242,5 +275,13 @@ private struct SkinTagPicker: View {
 }
 
 #Preview("Daily skin") {
-    SkinEntryView(readOnly: false)
+    SkinEntryView(readOnly: false, draft: .previewDaily)
+}
+
+#Preview("Timed observation") {
+    SkinEntryView(readOnly: false, draft: .previewTimed)
+}
+
+#Preview("Read-only demo") {
+    SkinEntryView(readOnly: true, draft: .previewDaily)
 }

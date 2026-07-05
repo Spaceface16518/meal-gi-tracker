@@ -165,15 +165,19 @@ private struct EntryChips: View {
     }
 }
 
-#Preview {
+#Preview("Entry types") {
     @Previewable @State var deleteConfirmation: RecentEntry?
 
-    RecentEntryRow(
-        entry: PreviewFixtures.recentEntries[0],
-        isDeleting: false,
-        deleteConfirmation: $deleteConfirmation,
-        openDetails: {}
-    )
+    VStack(spacing: 12) {
+        ForEach(PreviewFixtures.recentEntries.prefix(4)) { entry in
+            RecentEntryRow(
+                entry: entry,
+                isDeleting: entry.id == PreviewFixtures.event.id,
+                deleteConfirmation: $deleteConfirmation,
+                openDetails: {}
+            )
+        }
+    }
     .padding()
     .background(MealSignalDesign.background)
 }

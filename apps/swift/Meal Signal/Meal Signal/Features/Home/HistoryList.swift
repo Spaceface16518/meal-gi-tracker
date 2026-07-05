@@ -57,6 +57,21 @@ struct HistoryList: View {
     .background(MealSignalDesign.background)
 }
 
+#Preview("Deleting") {
+    @Previewable @State var deleteConfirmation: RecentEntry?
+    @Previewable @State var selectedEntry: RecentEntry?
+
+    HistoryList(
+        entries: PreviewFixtures.recentEntries,
+        isLoading: false,
+        deletingEntryID: PreviewFixtures.meal.id,
+        deleteConfirmation: $deleteConfirmation,
+        selectedEntry: $selectedEntry
+    )
+    .padding()
+    .background(MealSignalDesign.background)
+}
+
 #Preview("Empty") {
     @Previewable @State var deleteConfirmation: RecentEntry?
     @Previewable @State var selectedEntry: RecentEntry?

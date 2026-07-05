@@ -161,11 +161,49 @@ struct MealEntryForm: View {
     }
 }
 
-#Preview {
-    @Previewable @State var draft = MealDraft(text: "Turkey sandwich, chips, iced coffee")
+#Preview("Text meal") {
+    @Previewable @State var draft = MealDraft(
+        text: "Turkey sandwich on sourdough, kettle chips, and a large iced coffee with oat milk",
+        notes: "Lunch at my desk.",
+        eatenAt: Date().addingTimeInterval(-1800)
+    )
 
     NavigationStack {
-        MealEntryForm(draft: $draft, message: .info("Draft preview"))
+        MealEntryForm(draft: $draft, message: .success("Meal description is ready for review."))
+            .navigationTitle("Add Meal")
+    }
+}
+
+#Preview("Voice transcript") {
+    @Previewable @State var draft = MealDraft(
+        mode: .voice,
+        text: "Spicy chicken curry with basmati rice, garlic naan, and sparkling water",
+        notes: "Restaurant meal",
+        eatenAt: Date().addingTimeInterval(-7200),
+        mediaBase64: "preview-audio",
+        mimeType: "audio/m4a",
+        processingSource: .local
+    )
+
+    NavigationStack {
+        MealEntryForm(draft: $draft, message: .info("Transcript generated on this device."))
+            .navigationTitle("Add Meal")
+    }
+}
+
+#Preview("Image description") {
+    @Previewable @State var draft = MealDraft(
+        mode: .image,
+        text: "Greek yogurt bowl with blueberries, banana, granola, chia seeds, and honey",
+        notes: "Lactose-free yogurt",
+        eatenAt: Date().addingTimeInterval(-21600),
+        mediaBase64: "preview-image",
+        mimeType: "image/jpeg",
+        processingSource: .local
+    )
+
+    NavigationStack {
+        MealEntryForm(draft: $draft, message: nil)
             .navigationTitle("Add Meal")
     }
 }
