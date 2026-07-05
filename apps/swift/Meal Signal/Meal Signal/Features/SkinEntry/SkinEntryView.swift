@@ -102,7 +102,7 @@ struct SkinEntryView: View {
                 }
             }
         }
-        .presentationDetents([.large])
+        .presentationDetents([.medium, .large])
     }
 
     private var canSave: Bool {
