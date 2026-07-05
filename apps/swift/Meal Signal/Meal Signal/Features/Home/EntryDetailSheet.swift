@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct EntryDetailSheet: View {
+    @Environment(Haptics.self) private var haptics
     @Environment(\.firebaseService) private var service
     @Environment(\.dismiss) private var dismiss
 
@@ -131,7 +132,7 @@ struct EntryDetailSheet: View {
         guard let event = entry.event else { return }
         guard !eventDraft.symptoms.isEmpty || eventDraft.stoolType != nil else {
             message = .error("Choose a symptom or stool type.")
-            Haptics.warning()
+            haptics.warning()
             return
         }
 
@@ -165,10 +166,10 @@ struct EntryDetailSheet: View {
                 eventDraft = GIEventDraft(event: updatedEvent)
                 message = .success("Event saved.")
                 isEditing = false
-                Haptics.success()
+                haptics.success()
             } catch {
                 message = .error("Event could not be saved.")
-                Haptics.error()
+                haptics.error()
             }
         }
     }
@@ -177,12 +178,12 @@ struct EntryDetailSheet: View {
         guard let meal = entry.meal else { return }
         guard !mealDraft.trimmedName.isEmpty else {
             message = .error("Enter a meal name.")
-            Haptics.warning()
+            haptics.warning()
             return
         }
         guard mealDraft.trimmedDescription.count > 2 else {
             message = .error("Enter a meal description.")
-            Haptics.warning()
+            haptics.warning()
             return
         }
 
@@ -227,10 +228,10 @@ struct EntryDetailSheet: View {
                 mealDraft = MealEditDraft(meal: updatedMeal)
                 message = .success("Meal saved.")
                 isEditing = false
-                Haptics.success()
+                haptics.success()
             } catch {
                 message = .error("Meal could not be saved.")
-                Haptics.error()
+                haptics.error()
             }
         }
     }
@@ -243,10 +244,10 @@ struct EntryDetailSheet: View {
             do {
                 try await service.reanalyzeMeal(id: meal.id)
                 message = .success("Meal analysis refreshed.")
-                Haptics.success()
+                haptics.success()
             } catch {
                 message = .error("Meal analysis could not be refreshed.")
-                Haptics.error()
+                haptics.error()
             }
         }
     }
@@ -367,6 +368,7 @@ private struct EditableIrritant: Identifiable, Hashable {
 }
 
 private struct MealEditForm: View {
+    @Environment(Haptics.self) private var haptics
     @Binding var draft: MealEditDraft
     let message: AppMessage?
 
@@ -447,12 +449,12 @@ private struct MealEditForm: View {
     }
 
     private func addFood() {
-        Haptics.impact()
+        haptics.impact()
         draft.addFood()
     }
 
     private func addIrritant() {
-        Haptics.impact()
+        haptics.impact()
         draft.addIrritant()
     }
 }
@@ -771,8 +773,10 @@ private struct EmptyDetailText: View {
 
 #Preview("GI Event") {
     EntryDetailSheet(entry: RecentEntry.event(PreviewFixtures.event))
+        .environment(Haptics())
 }
 
 #Preview("Meal") {
     EntryDetailSheet(entry: RecentEntry.meal(PreviewFixtures.meal))
+        .environment(Haptics())
 }

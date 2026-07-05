@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct StoolTypeSlider: View {
+    @Environment(Haptics.self) private var haptics
     @Binding var stoolType: Int?
 
     private var selectedType: StoolType? {
@@ -46,14 +47,14 @@ struct StoolTypeSlider: View {
                 let newValue = Int($0.rounded())
                 guard newValue != stoolType else { return }
                 stoolType = newValue
-                Haptics.selection()
+                haptics.selection()
             }
         )
     }
 
     private func clear() {
         stoolType = nil
-        Haptics.impact()
+        haptics.impact()
     }
 }
 
@@ -229,4 +230,5 @@ private struct StoolType: Equatable {
 
     StoolTypeSlider(stoolType: $stoolType)
         .padding()
+        .environment(Haptics())
 }

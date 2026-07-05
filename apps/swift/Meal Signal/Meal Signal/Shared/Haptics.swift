@@ -1,24 +1,57 @@
-import UIKit
+import Observation
+import SwiftUI
 
 @MainActor
-enum Haptics {
-    static func selection() {
-        UISelectionFeedbackGenerator().selectionChanged()
+@Observable
+final class Haptics {
+    private(set) var event = Event()
+
+    func selection() {
+        play(.selection)
     }
 
-    static func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle = .light) {
-        UIImpactFeedbackGenerator(style: style).impactOccurred()
+    func impact(_ weight: SensoryFeedback.Weight = .light) {
+        play(weight == .medium ? .mediumImpact : .lightImpact)
     }
 
-    static func success() {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    func success() {
+        play(.success)
     }
 
-    static func error() {
-        UINotificationFeedbackGenerator().notificationOccurred(.error)
+    func error() {
+        play(.error)
     }
 
-    static func warning() {
-        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    func warning() {
+        play(.warning)
+    }
+
+    private func play(_ kind: Kind) {
+        event = Event(sequence: event.sequence + 1, kind: kind)
+    }
+
+    struct Event: Equatable {
+        var sequence = 0
+        var kind: Kind?
+    }
+
+    enum Kind: Equatable {
+        case selection
+        case lightImpact
+        case mediumImpact
+        case success
+        case warning
+        case error
+
+        var feedback: SensoryFeedback {
+            switch self {
+            case .selection: .selection
+            case .lightImpact: .impact(weight: .light, intensity: 1)
+            case .mediumImpact: .impact(weight: .medium, intensity: 1)
+            case .success: .success
+            case .warning: .warning
+            case .error: .error
+            }
+        }
     }
 }

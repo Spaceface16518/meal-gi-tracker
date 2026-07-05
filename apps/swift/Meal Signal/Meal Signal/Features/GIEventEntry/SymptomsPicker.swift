@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SymptomsPicker: View {
+    @Environment(Haptics.self) private var haptics
     @Binding var symptoms: [String]
 
     var body: some View {
@@ -23,7 +24,7 @@ struct SymptomsPicker: View {
         } else {
             symptoms.append(symptom)
         }
-        Haptics.selection()
+        haptics.selection()
     }
 }
 
@@ -32,4 +33,5 @@ struct SymptomsPicker: View {
 
     SymptomsPicker(symptoms: $symptoms)
         .padding()
+        .environment(Haptics())
 }

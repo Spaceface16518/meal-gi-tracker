@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct HomeView: View {
+    @Environment(Haptics.self) private var haptics
     @Environment(\.firebaseService) private var service
 
     let history: HomeModel
@@ -44,7 +45,7 @@ struct HomeView: View {
         }
         .alert("Delete this entry?", isPresented: deleteAlertBinding) {
             Button("Cancel", role: .cancel) {
-                Haptics.impact()
+                haptics.impact()
                 deleteConfirmation = nil
             }
             Button(deletingEntryID == nil ? "Delete" : "Deleting", role: .destructive, action: confirmDeletion)
@@ -85,16 +86,16 @@ struct HomeView: View {
                     try await service.deleteSkinEntry(uid: entry.uid, id: entry.id)
                     actionMessage = .success("Skin entry deleted.")
                 }
-                Haptics.success()
+                haptics.success()
             } catch {
                 actionMessage = .error("The entry could not be deleted.")
-                Haptics.error()
+                haptics.error()
             }
         }
     }
 
     private func confirmDeletion() {
-        Haptics.impact(.medium)
+        haptics.impact(.medium)
         deleteEntry()
     }
 }

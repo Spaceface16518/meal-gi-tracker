@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RecentEntryRow: View {
+    @Environment(Haptics.self) private var haptics
     @Environment(\.firebaseService) private var service
 
     let entry: RecentEntry
@@ -43,12 +44,12 @@ struct RecentEntryRow: View {
     }
 
     private func confirmDelete() {
-        Haptics.warning()
+        haptics.warning()
         deleteConfirmation = entry
     }
 
     private func openEntryDetails() {
-        Haptics.impact()
+        haptics.impact()
         openDetails()
     }
 
@@ -59,10 +60,10 @@ struct RecentEntryRow: View {
             do {
                 try await service.reanalyzeMeal(id: entry.id)
                 message = .success("Meal analysis refreshed.")
-                Haptics.success()
+                haptics.success()
             } catch {
                 message = .error("Meal analysis could not be refreshed.")
-                Haptics.error()
+                haptics.error()
             }
         }
     }
@@ -179,4 +180,5 @@ private struct EntryChips: View {
     )
     .padding()
     .background(MealSignalDesign.background)
+    .environment(Haptics())
 }

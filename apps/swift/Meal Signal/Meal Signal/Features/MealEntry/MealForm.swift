@@ -2,6 +2,7 @@ import PhotosUI
 import SwiftUI
 
 struct MealEntryForm: View {
+    @Environment(Haptics.self) private var haptics
     @Binding var draft: MealDraft
     let message: AppMessage?
 
@@ -74,19 +75,19 @@ struct MealEntryForm: View {
             do {
                 if audioRecorder.isRecording {
                     let recording = try audioRecorder.stop()
-                    Haptics.impact(.medium)
+                    haptics.impact(.medium)
                     defer { recording.removeTemporaryFile() }
                     try setMedia(recording.media)
                     await processVoice(recording)
                 } else {
                     try await audioRecorder.start()
-                    Haptics.impact(.medium)
+                    haptics.impact(.medium)
                     draft.clearMedia()
                     mediaMessage = .info("Recording.")
                 }
             } catch {
                 mediaMessage = .error(error.localizedDescription)
-                Haptics.error()
+                haptics.error()
             }
         }
     }
@@ -171,4 +172,5 @@ struct MealEntryForm: View {
         MealEntryForm(draft: $draft, message: .info("Draft preview"))
             .navigationTitle("Add Meal")
     }
+    .environment(Haptics())
 }

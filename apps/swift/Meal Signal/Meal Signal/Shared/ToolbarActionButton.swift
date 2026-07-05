@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ToolbarActionButton: View {
+    @Environment(Haptics.self) private var haptics
     let title: String
     let systemImage: String
     var isLoading = false
@@ -19,7 +20,7 @@ struct ToolbarActionButton: View {
     }
 
     private func performAction() {
-        Haptics.impact()
+        haptics.impact()
         action()
     }
 }

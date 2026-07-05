@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct AnalysisView: View {
+    @Environment(Haptics.self) private var haptics
     @Environment(\.firebaseService) private var service
 
     let viewModel: AnalysisModel
@@ -33,10 +34,10 @@ struct AnalysisView: View {
             do {
                 try await service.analyzeCorrelations()
                 actionMessage = .info("Analysis queued.")
-                Haptics.success()
+                haptics.success()
             } catch {
                 actionMessage = .error("Analysis could not be started.")
-                Haptics.error()
+                haptics.error()
             }
         }
     }

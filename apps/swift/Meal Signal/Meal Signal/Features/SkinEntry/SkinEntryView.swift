@@ -43,6 +43,7 @@ private struct SkinEntryDraft {
 }
 
 struct SkinEntryView: View {
+    @Environment(Haptics.self) private var haptics
     @Environment(\.firebaseService) private var service
     @Environment(\.dismiss) private var dismiss
 
@@ -65,7 +66,7 @@ struct SkinEntryView: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    .onChange(of: draft.mode) { _, _ in Haptics.selection() }
+                    .onChange(of: draft.mode) { _, _ in haptics.selection() }
                 } footer: {
                     Text(draft.mode == .daily
                         ? "Record skin quality for a calendar day. Saving the same day updates it."
@@ -167,17 +168,17 @@ struct SkinEntryView: View {
     private func save() {
         if readOnly {
             message = .error(demoReadOnlyMessage)
-            Haptics.warning()
+            haptics.warning()
             return
         }
         if draft.mode == .timed, draft.symptoms.isEmpty {
             message = .error("Choose at least one skin symptom.")
-            Haptics.warning()
+            haptics.warning()
             return
         }
         if let duration = draft.durationMinutes, !(1...1440).contains(duration) {
             message = .error("Use a duration from 1 to 1440 minutes.")
-            Haptics.warning()
+            haptics.warning()
             return
         }
 
@@ -202,17 +203,18 @@ struct SkinEntryView: View {
                         durationMinutes: draft.durationMinutes
                     )
                 }
-                Haptics.success()
+                haptics.success()
                 dismiss()
             } catch {
                 message = .error("Skin entry could not be saved.")
-                Haptics.error()
+                haptics.error()
             }
         }
     }
 }
 
 private struct SkinTagPicker: View {
+    @Environment(Haptics.self) private var haptics
     let title: String
     let options: [String]
     @Binding var selection: [String]
@@ -240,10 +242,11 @@ private struct SkinTagPicker: View {
         } else {
             selection.append(option)
         }
-        Haptics.selection()
+        haptics.selection()
     }
 }
 
 #Preview("Daily skin") {
     SkinEntryView(readOnly: false)
+        .environment(Haptics())
 }
