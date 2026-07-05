@@ -7,6 +7,14 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { computeIrritantSensitivity, type SensitivityScore } from "./sensitivity.js";
+import {
+  computeWindowedAssociationStats,
+  type EvidenceGrade,
+  type LagWindow,
+  type SymptomAssociation,
+  type WindowStat,
+  type WindowedAssociationFinding,
+} from "./windowed-association.js";
 
 initializeApp();
 setGlobalOptions({ region: "us-central1", maxInstances: 10 });
@@ -50,6 +58,20 @@ type CorrelationFinding = {
   windowHours: number;
   evidence: string;
   suggestedAction: string;
+  exposureCount?: number;
+  eventCountAfterExposure?: number;
+  exposedEventRate?: number;
+  baselineEventRate?: number;
+  riskRatio?: number | null;
+  riskDifference?: number;
+  strongestWindow?: LagWindow;
+  evidenceGrade?: EvidenceGrade;
+  symptomBreakdown?: SymptomAssociation[];
+  windowStats?: WindowStat[];
+  plainLanguageExplanation?: string;
+  recentExampleMealIds?: string[];
+  followedEventIds?: string[];
+  toleratedExposureMealIds?: string[];
 };
 
 type CorrelationAnalysis = {
@@ -61,6 +83,11 @@ type CorrelationAnalysis = {
   summary: string;
   findings: CorrelationFinding[];
   dataQualityNotes: string[];
+  dataQuality?: {
+    mealsWithPortionSize: number;
+    eventsWithSeverityDuration: number;
+    topMissingFields: string[];
+  };
 };
 
 type CreateMealData = {
@@ -72,6 +99,14 @@ type CreateMealData = {
   notes?: string;
   processingSource?: "local" | "cloud";
   localProcessingWarning?: string;
+  mealSize?: "snack" | "small" | "medium" | "large" | "very_large";
+  portionMultiplier?: number;
+  sourceType?: "restaurant" | "homemade" | "packaged";
+  alcoholServings?: number;
+  caffeineAmount?: number;
+  uncertainIngredientsNotes?: string;
+  containsUnknownSauce?: boolean;
+  descriptionComplete?: boolean;
 };
 
 type CreateEventData = {
@@ -81,6 +116,13 @@ type CreateEventData = {
   notes?: string;
   stoolType?: number;
   durationMinutes?: number;
+  urgencyScore?: number;
+  stressLevel?: number;
+  sleepQuality?: number;
+  recentIllness?: boolean;
+  medicationFlags?: string[];
+  exerciseIntensity?: "none" | "light" | "moderate" | "vigorous";
+  suspectedCause?: string;
 };
 
 type SaveSkinEntryData = {
@@ -128,6 +170,14 @@ type MealDocument = {
   processingSource?: "local" | "cloud";
   localProcessingWarning?: string;
   reanalyzedAt?: Timestamp;
+  mealSize?: CreateMealData["mealSize"];
+  portionMultiplier?: number;
+  sourceType?: CreateMealData["sourceType"];
+  alcoholServings?: number;
+  caffeineAmount?: number;
+  uncertainIngredientsNotes?: string;
+  containsUnknownSauce?: boolean;
+  descriptionComplete?: boolean;
 };
 
 type EventDocument = {
@@ -139,6 +189,13 @@ type EventDocument = {
   stoolType?: number;
   durationMinutes?: number;
   createdAt: Timestamp;
+  urgencyScore?: number;
+  stressLevel?: number;
+  sleepQuality?: number;
+  recentIllness?: boolean;
+  medicationFlags?: string[];
+  exerciseIntensity?: CreateEventData["exerciseIntensity"];
+  suspectedCause?: string;
 };
 
 type SkinEntryDocument = {
@@ -203,6 +260,12 @@ export const createMeal = onCall(
     const requestedProcessingSource = optionalProcessingSource(data.processingSource);
     const localProcessingWarning = optionalString(data.localProcessingWarning, 1000);
     const now = Timestamp.now();
+    const mealSize = optionalEnum(data.mealSize, ["snack", "small", "medium", "large", "very_large"] as const, "mealSize");
+    const sourceType = optionalEnum(data.sourceType, ["restaurant", "homemade", "packaged"] as const, "sourceType");
+    const portionMultiplier = optionalNumber(data.portionMultiplier, "portionMultiplier", 0.1, 20);
+    const alcoholServings = optionalNumber(data.alcoholServings, "alcoholServings", 0, 30);
+    const caffeineAmount = optionalNumber(data.caffeineAmount, "caffeineAmount", 0, 3000);
+    const uncertainIngredientsNotes = optionalString(data.uncertainIngredientsNotes, 1000);
 
     let rawInput = "";
     let interpretedText = "";
@@ -249,6 +312,14 @@ export const createMeal = onCall(
       ...(notes ? { notes } : {}),
       ...(processingSource ? { processingSource } : {}),
       ...(localProcessingWarning ? { localProcessingWarning } : {}),
+      ...(mealSize ? { mealSize } : {}),
+      ...(sourceType ? { sourceType } : {}),
+      ...(portionMultiplier != null ? { portionMultiplier } : {}),
+      ...(alcoholServings != null ? { alcoholServings } : {}),
+      ...(caffeineAmount != null ? { caffeineAmount } : {}),
+      ...(uncertainIngredientsNotes ? { uncertainIngredientsNotes } : {}),
+      ...(typeof data.containsUnknownSauce === "boolean" ? { containsUnknownSauce: data.containsUnknownSauce } : {}),
+      ...(typeof data.descriptionComplete === "boolean" ? { descriptionComplete: data.descriptionComplete } : {}),
     };
 
     const docRef = await db.collection("users").doc(uid).collection("meals").add(meal);
@@ -272,6 +343,12 @@ export const createGiEvent = onCall(async (request) => {
     data.durationMinutes == null
       ? undefined
       : validateNumber(data.durationMinutes, "durationMinutes", 1, 1440);
+  const urgencyScore = optionalNumber(data.urgencyScore, "urgencyScore", 0, 10);
+  const stressLevel = optionalNumber(data.stressLevel, "stressLevel", 0, 10);
+  const sleepQuality = optionalNumber(data.sleepQuality, "sleepQuality", 0, 10);
+  const medicationFlags = validateStringList(data.medicationFlags ?? [], "medicationFlags", 0, 8, 40);
+  const exerciseIntensity = optionalEnum(data.exerciseIntensity, ["none", "light", "moderate", "vigorous"] as const, "exerciseIntensity");
+  const suspectedCause = optionalString(data.suspectedCause, 500);
 
   if (symptoms.length === 0 && stoolType == null) {
     throw new HttpsError("invalid-argument", "Choose a symptom or stool type.");
@@ -286,6 +363,13 @@ export const createGiEvent = onCall(async (request) => {
     ...(notes ? { notes } : {}),
     ...(stoolType ? { stoolType } : {}),
     ...(durationMinutes ? { durationMinutes } : {}),
+    ...(urgencyScore != null ? { urgencyScore } : {}),
+    ...(stressLevel != null ? { stressLevel } : {}),
+    ...(sleepQuality != null ? { sleepQuality } : {}),
+    ...(typeof data.recentIllness === "boolean" ? { recentIllness: data.recentIllness } : {}),
+    ...(medicationFlags.length ? { medicationFlags } : {}),
+    ...(exerciseIntensity ? { exerciseIntensity } : {}),
+    ...(suspectedCause ? { suspectedCause } : {}),
   };
 
   const docRef = await db.collection("users").doc(uid).collection("events").add(eventDoc);
@@ -547,6 +631,7 @@ async function runCorrelationForUser(uid: string) {
       summary: "Add meals and GI events before running correlation analysis.",
       findings: [],
       dataQualityNotes: ["At least one meal and one GI event are required."],
+      dataQuality: { mealsWithPortionSize: 0, eventsWithSeverityDuration: 0, topMissingFields: ["meals and GI events"] },
     };
     await saveAnalysis(uid, insufficient);
     return insufficient;
@@ -556,9 +641,8 @@ async function runCorrelationForUser(uid: string) {
   const events = eventsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   const ai = getGeminiClient();
   const promptConfig = ai ? await getPromptConfig() : undefined;
-  const categoryNormalization = ai
-    ? await buildCategoryNormalizationMap(meals, ai, promptConfig?.correlationModelName)
-    : heuristicCategoryNormalizationMap(meals);
+  // Catalog aliases are the source of truth. Gemini no longer controls statistical categories.
+  const categoryNormalization = heuristicCategoryNormalizationMap(meals);
   const normalizedMeals = normalizeMealsForSensitivity(meals, categoryNormalization);
   const sensitivityContext = buildSensitivityContext(
     normalizedMeals,
@@ -566,20 +650,77 @@ async function runCorrelationForUser(uid: string) {
     categoryNormalization,
   );
 
+  const deterministic = deterministicCorrelationAnalysis(uid, normalizedMeals, events);
   const analysis = ai
-    ? await analyzeCorrelationsWithGemini(
-        uid,
-        normalizedMeals,
-        events,
-        sensitivityContext,
-        ai,
-        promptConfig,
-      )
-    : heuristicCorrelationAnalysis(uid, normalizedMeals, events, sensitivityContext);
+    ? await addGeminiExplanations(deterministic, ai, promptConfig)
+    : deterministic;
 
   await saveAnalysis(uid, analysis);
   return analysis;
 }
+
+function deterministicCorrelationAnalysis(
+  uid: string,
+  meals: FirebaseFirestore.DocumentData[],
+  events: FirebaseFirestore.DocumentData[],
+): CorrelationAnalysis {
+  const stats = computeWindowedAssociationStats(meals, events);
+  const findings = stats.slice(0, 12).map(toCorrelationFinding);
+  const mealsWithPortionSize = meals.filter((meal) => meal.mealSize || meal.portionMultiplier).length;
+  const eventsWithSeverityDuration = events.filter((event) => event.severity && event.durationMinutes).length;
+  const topMissingFields = [
+    mealsWithPortionSize < meals.length ? "meal portion size" : "",
+    eventsWithSeverityDuration < events.length ? "symptom duration" : "",
+    meals.some((meal) => meal.analysis?.irritants?.some((item: IrritantSignal) => item.name === "caffeine")) && meals.some((meal) => meal.caffeineAmount == null) ? "caffeine amount" : "",
+  ].filter(Boolean);
+  const usable = findings.filter((finding) => finding.evidenceGrade !== "insufficient");
+  return {
+    uid,
+    status: usable.length ? "ready" : "insufficient_data",
+    generatedAt: Timestamp.now(), mealCount: meals.length, eventCount: events.length,
+    summary: usable.length ? "Deterministic windowed associations are ready. These are tracking signals, not diagnoses." : "Not enough repeated exposures yet. Keep logging meals and GI events to build a useful baseline.",
+    findings,
+    dataQualityNotes: topMissingFields.length ? [`Missing fields that would improve confidence: ${topMissingFields.join(", ")}.`] : [],
+    dataQuality: { mealsWithPortionSize, eventsWithSeverityDuration, topMissingFields },
+  };
+}
+
+function toCorrelationFinding(stat: WindowedAssociationFinding): CorrelationFinding {
+  const positive = stat.riskDifference >= 0.1;
+  const direction = stat.evidenceGrade === "insufficient" ? "insufficient_data" : positive ? "possible_trigger" : "unlikely_trigger";
+  const needed = Math.max(0, 6 - Math.ceil(stat.exposureCount));
+  const explanation = stat.evidenceGrade === "insufficient"
+    ? `Not enough ${stat.irritant} exposures are logged for a reliable comparison.`
+    : `${stat.irritant} had a ${percent(stat.exposedEventRate)} event rate after exposure versus ${percent(stat.baselineEventRate)} at baseline; the strongest signal was ${stat.strongestWindow}.`;
+  return {
+    ...stat,
+    confidence: stat.evidenceGrade === "stronger" ? 0.8 : stat.evidenceGrade === "moderate" ? 0.6 : stat.evidenceGrade === "weak" ? 0.35 : 0.15,
+    direction,
+    windowHours: Number(stat.strongestWindow.split("-")[1].replace("h", "")),
+    evidence: explanation,
+    plainLanguageExplanation: explanation,
+    suggestedAction: needed ? `Log ${needed} more meals containing ${stat.irritant}.` : `Keep tracking portion size and symptoms after ${stat.irritant}.`,
+  };
+}
+
+async function addGeminiExplanations(analysis: CorrelationAnalysis, ai: GoogleGenAI, promptConfig?: PromptConfig) {
+  try {
+    const config = promptConfig ?? await getPromptConfig();
+    const prompt = renderTemplate(config.correlationAnalysisPromptTemplate, { statsJson: JSON.stringify(analysis.findings) });
+    const parsed = parseJsonObject(await generateJson(ai, [{ text: prompt }], config.correlationModelName));
+    const explanations = Array.isArray(parsed.explanations) ? parsed.explanations : [];
+    return { ...analysis, findings: analysis.findings.map((finding) => {
+      const match = explanations.find((item) => item && typeof item === "object" && canonicalKey(String((item as Record<string, unknown>).irritant ?? "")) === canonicalKey(finding.irritant)) as Record<string, unknown> | undefined;
+      const text = cleanGeneratedString(match?.plainLanguageExplanation, finding.plainLanguageExplanation ?? finding.evidence, 500);
+      return { ...finding, plainLanguageExplanation: text, evidence: text };
+    }) };
+  } catch (error) {
+    logger.warn("Gemini explanation generation failed; keeping deterministic explanations", { error });
+    return analysis;
+  }
+}
+
+function percent(value: number) { return `${Math.round(value * 100)}%`; }
 
 async function analyzeCorrelationsWithGemini(
   uid: string,
@@ -899,36 +1040,24 @@ trigger not covered by the available list.
 Input:
 {{input}}`;
 
-const defaultCorrelationAnalysisPromptTemplate = `Analyze meal irritant correlation with GI events.
+const defaultCorrelationAnalysisPromptTemplate = `Explain deterministic meal irritant association statistics in plain language.
 
 Return only JSON with this shape:
 {
-  "status": "ready" | "insufficient_data",
-  "summary": "brief useful summary",
-  "findings": [
+  "explanations": [
     {
       "irritant": "string",
-      "confidence": 0.0,
-      "direction": "possible_trigger" | "unlikely_trigger" | "insufficient_data",
-      "windowHours": 24,
-      "evidence": "string",
-      "suggestedAction": "string"
+      "plainLanguageExplanation": "string"
     }
-  ],
-  "dataQualityNotes": ["string"]
+  ]
 }
 
-Use conservative language. Do not make medical claims. Look for repeated GI events within 2, 6, 12, 24, 48, and 120 hour windows after meals.
-Meal irritant labels have been normalized into canonical categories before statistical scoring.
+The supplied rankings and statistics were computed deterministically. Do not calculate,
+invent, omit, reorder, or override findings or numbers. Only explain them. Use conservative
+phrases such as "associated with", "possible trigger", and "not enough data". Do not diagnose.
 
-Meals:
-{{mealsJson}}
-
-GI events:
-{{eventsJson}}
-
-Category normalization map:
-{{categoryNormalizationJson}}`;
+Deterministic ranked statistics:
+{{statsJson}}`;
 
 let promptConfigCache: { expiresAt: number; values: PromptConfig } | null = null;
 
@@ -1588,6 +1717,18 @@ function optionalString(value: unknown, maxLength: number) {
     throw new HttpsError("invalid-argument", "Invalid text value.");
   }
   return value.trim();
+}
+
+function optionalNumber(value: unknown, field: string, min: number, max: number) {
+  return value == null ? undefined : validateNumber(value, field, min, max);
+}
+
+function optionalEnum<const T extends readonly string[]>(value: unknown, values: T, field: string): T[number] | undefined {
+  if (value == null || value === "") return undefined;
+  if (typeof value !== "string" || !values.includes(value)) {
+    throw new HttpsError("invalid-argument", `${field} is invalid.`);
+  }
+  return value as T[number];
 }
 
 function optionalProcessingSource(value: unknown) {

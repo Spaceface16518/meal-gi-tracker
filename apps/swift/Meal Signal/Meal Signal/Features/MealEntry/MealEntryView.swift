@@ -9,6 +9,14 @@ struct MealDraft {
     var mimeType = ""
     var processingSource: MealProcessingSource?
     var localProcessingWarning = ""
+    var mealSize = ""
+    var portionMultiplier: Double?
+    var sourceType = ""
+    var alcoholServings: Double?
+    var caffeineAmount: Double?
+    var uncertainIngredientsNotes = ""
+    var containsUnknownSauce = false
+    var descriptionComplete = false
 
     var trimmedText: String {
         text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -124,6 +132,12 @@ struct MealEntryView: View {
                     notes: draft.trimmedNotes,
                     processingSource: draft.processingSourcePayload,
                     localProcessingWarning: draft.localProcessingWarningPayload
+                    , mealSize: draft.mealSize.nilIfEmpty, portionMultiplier: draft.portionMultiplier,
+                    sourceType: draft.sourceType.nilIfEmpty, alcoholServings: draft.alcoholServings,
+                    caffeineAmount: draft.caffeineAmount,
+                    uncertainIngredientsNotes: draft.uncertainIngredientsNotes.nilIfEmpty,
+                    containsUnknownSauce: draft.containsUnknownSauce,
+                    descriptionComplete: draft.descriptionComplete
                 )
                 isSaving = false
                 dismiss()

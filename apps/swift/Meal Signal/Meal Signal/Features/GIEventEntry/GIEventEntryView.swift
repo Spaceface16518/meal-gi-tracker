@@ -7,6 +7,13 @@ struct GIEventDraft {
     var notes = ""
     var stoolType: Int?
     var durationMinutes: Int?
+    var urgencyScore: Int?
+    var stressLevel: Int?
+    var sleepQuality: Int?
+    var recentIllness = false
+    var medicationFlags: [String] = []
+    var exerciseIntensity = ""
+    var suspectedCause = ""
 
     var trimmedNotes: String? {
         notes.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
@@ -96,6 +103,11 @@ struct GIEventEntryView: View {
                     notes: draft.trimmedNotes,
                     stoolType: draft.stoolType,
                     durationMinutes: draft.durationMinutes
+                    , urgencyScore: draft.urgencyScore, stressLevel: draft.stressLevel,
+                    sleepQuality: draft.sleepQuality, recentIllness: draft.recentIllness,
+                    medicationFlags: draft.medicationFlags,
+                    exerciseIntensity: draft.exerciseIntensity.nilIfEmpty,
+                    suspectedCause: draft.suspectedCause.nilIfEmpty
                 )
                 isSaving = false
                 dismiss()

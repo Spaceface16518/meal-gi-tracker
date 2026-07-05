@@ -161,6 +161,13 @@ export function GiEventForm(props: { readOnly?: boolean }) {
   const [notes, setNotes] = createSignal("");
   const [stoolType, setStoolType] = createSignal("");
   const [durationMinutes, setDurationMinutes] = createSignal("");
+  const [urgencyScore, setUrgencyScore] = createSignal("");
+  const [stressLevel, setStressLevel] = createSignal("");
+  const [sleepQuality, setSleepQuality] = createSignal("");
+  const [recentIllness, setRecentIllness] = createSignal(false);
+  const [medicationFlags, setMedicationFlags] = createSignal<string[]>([]);
+  const [exerciseIntensity, setExerciseIntensity] = createSignal("");
+  const [suspectedCause, setSuspectedCause] = createSignal("");
   const [busy, setBusy] = createSignal(false);
   const [message, setMessage] = createSignal("");
   const [messageTone, setMessageTone] = createSignal<MessageTone>("info");
@@ -210,6 +217,12 @@ export function GiEventForm(props: { readOnly?: boolean }) {
         notes: notes().trim() || undefined,
         stoolType: stoolType() ? Number(stoolType()) : undefined,
         durationMinutes: durationMinutes() ? Number(durationMinutes()) : undefined,
+        urgencyScore: urgencyScore() ? Number(urgencyScore()) : undefined,
+        stressLevel: stressLevel() ? Number(stressLevel()) : undefined,
+        sleepQuality: sleepQuality() ? Number(sleepQuality()) : undefined,
+        recentIllness: recentIllness(), medicationFlags: medicationFlags(),
+        exerciseIntensity: (exerciseIntensity() || undefined) as "none" | "light" | "moderate" | "vigorous" | undefined,
+        suspectedCause: suspectedCause().trim() || undefined,
       });
       setOccurredAt(toDatetimeLocalValue(new Date()));
       setSeverity(4);
@@ -217,6 +230,7 @@ export function GiEventForm(props: { readOnly?: boolean }) {
       setNotes("");
       setStoolType("");
       setDurationMinutes("");
+      setUrgencyScore(""); setStressLevel(""); setSleepQuality(""); setRecentIllness(false); setMedicationFlags([]); setExerciseIntensity(""); setSuspectedCause("");
       setMessageTone("success");
       setMessage("Event saved.");
     } catch (err) {
@@ -363,6 +377,17 @@ export function GiEventForm(props: { readOnly?: boolean }) {
             />
           </label>
         </div>
+
+        <details class="rounded-lg border border-border p-3">
+          <summary class="cursor-pointer text-sm font-semibold text-muted-strong">Optional context</summary>
+          <div class="mt-3 grid gap-3 sm:grid-cols-3">
+            {[{ label: "Urgency", value: urgencyScore, set: setUrgencyScore }, { label: "Stress", value: stressLevel, set: setStressLevel }, { label: "Previous night sleep", value: sleepQuality, set: setSleepQuality }].map((field) => <label class="grid gap-1 text-sm">{field.label} (0–10)<input class="h-11 rounded-lg border border-border-strong px-3" type="number" min="0" max="10" value={field.value()} onInput={(e) => field.set(e.currentTarget.value)} /></label>)}
+            <label class="grid gap-1 text-sm">Exercise in prior 24h<select class="h-11 rounded-lg border border-border-strong bg-surface px-3" value={exerciseIntensity()} onInput={(e) => setExerciseIntensity(e.currentTarget.value)}><option value="">Not set</option><option value="none">None</option><option value="light">Light</option><option value="moderate">Moderate</option><option value="vigorous">Vigorous</option></select></label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" checked={recentIllness()} onChange={(e) => setRecentIllness(e.currentTarget.checked)} /> Recent illness</label>
+            <label class="grid gap-1 text-sm sm:col-span-3">Suspected cause<input class="h-11 rounded-lg border border-border-strong px-3" value={suspectedCause()} onInput={(e) => setSuspectedCause(e.currentTarget.value)} /></label>
+            <div class="flex flex-wrap gap-2 sm:col-span-3">{["NSAIDs", "antibiotics", "antacids", "laxatives"].map((med) => <label class="flex items-center gap-2 text-sm"><input type="checkbox" checked={medicationFlags().includes(med)} onChange={(e) => setMedicationFlags((items) => e.currentTarget.checked ? [...items, med] : items.filter((item) => item !== med))} /> {med}</label>)}</div>
+          </div>
+        </details>
 
         <SubmitRow
           busy={busy()}

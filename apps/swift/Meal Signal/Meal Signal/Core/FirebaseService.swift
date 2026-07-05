@@ -53,6 +53,10 @@ final class FirebaseService {
         notes: String?,
         processingSource: String? = nil,
         localProcessingWarning: String? = nil
+        , mealSize: String? = nil, portionMultiplier: Double? = nil, sourceType: String? = nil,
+        alcoholServings: Double? = nil, caffeineAmount: Double? = nil,
+        uncertainIngredientsNotes: String? = nil, containsUnknownSauce: Bool? = nil,
+        descriptionComplete: Bool? = nil
     ) async throws {
         var payload: [String: Any] = [
             "mode": mode.rawValue,
@@ -64,6 +68,10 @@ final class FirebaseService {
         if let notes { payload["notes"] = notes }
         if let processingSource { payload["processingSource"] = processingSource }
         if let localProcessingWarning { payload["localProcessingWarning"] = localProcessingWarning }
+        if let mealSize { payload["mealSize"] = mealSize }; if let portionMultiplier { payload["portionMultiplier"] = portionMultiplier }
+        if let sourceType { payload["sourceType"] = sourceType }; if let alcoholServings { payload["alcoholServings"] = alcoholServings }
+        if let caffeineAmount { payload["caffeineAmount"] = caffeineAmount }; if let uncertainIngredientsNotes { payload["uncertainIngredientsNotes"] = uncertainIngredientsNotes }
+        if let containsUnknownSauce { payload["containsUnknownSauce"] = containsUnknownSauce }; if let descriptionComplete { payload["descriptionComplete"] = descriptionComplete }
         _ = try await functions.httpsCallable("createMeal").call(payload)
     }
 
@@ -112,6 +120,9 @@ final class FirebaseService {
         notes: String?,
         stoolType: Int?,
         durationMinutes: Int?
+        , urgencyScore: Int? = nil, stressLevel: Int? = nil, sleepQuality: Int? = nil,
+        recentIllness: Bool? = nil, medicationFlags: [String] = [],
+        exerciseIntensity: String? = nil, suspectedCause: String? = nil
     ) async throws {
         var payload: [String: Any] = [
             "occurredAt": ISO8601DateFormatter().string(from: occurredAt),
@@ -121,6 +132,10 @@ final class FirebaseService {
         if let notes { payload["notes"] = notes }
         if let stoolType { payload["stoolType"] = stoolType }
         if let durationMinutes { payload["durationMinutes"] = durationMinutes }
+        if let urgencyScore { payload["urgencyScore"] = urgencyScore }; if let stressLevel { payload["stressLevel"] = stressLevel }
+        if let sleepQuality { payload["sleepQuality"] = sleepQuality }; if let recentIllness { payload["recentIllness"] = recentIllness }
+        if !medicationFlags.isEmpty { payload["medicationFlags"] = medicationFlags }; if let exerciseIntensity { payload["exerciseIntensity"] = exerciseIntensity }
+        if let suspectedCause { payload["suspectedCause"] = suspectedCause }
         _ = try await functions.httpsCallable("createGiEvent").call(payload)
     }
 
