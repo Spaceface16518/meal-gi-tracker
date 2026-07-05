@@ -34,8 +34,23 @@ struct GIEventEntryForm: View {
     }
 }
 
-#Preview {
-    @Previewable @State var draft = GIEventDraft(symptoms: ["bloating", "reflux"], stoolType: 4)
+#Preview("Completed event") {
+    @Previewable @State var draft = GIEventDraft(
+        severity: 7,
+        symptoms: ["bloating", "reflux", "nausea"],
+        notes: "Symptoms started after lunch and eased after drinking water.",
+        stoolType: 4,
+        durationMinutes: 35
+    )
+
+    NavigationStack {
+        GIEventEntryForm(draft: $draft, message: .success("Event is ready to save."))
+            .navigationTitle("Add GI Event")
+    }
+}
+
+#Preview("Validation error") {
+    @Previewable @State var draft = GIEventDraft()
 
     NavigationStack {
         GIEventEntryForm(draft: $draft, message: .error("Choose a symptom or stool type."))

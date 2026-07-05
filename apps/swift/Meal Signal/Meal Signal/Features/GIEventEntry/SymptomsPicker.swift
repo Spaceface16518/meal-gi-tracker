@@ -27,8 +27,15 @@ struct SymptomsPicker: View {
     }
 }
 
-#Preview {
+#Preview("Selected symptoms") {
     @Previewable @State var symptoms = ["bloating", "reflux"]
+
+    SymptomsPicker(symptoms: $symptoms)
+        .padding()
+}
+
+#Preview("No symptoms") {
+    @Previewable @State var symptoms: [String] = []
 
     SymptomsPicker(symptoms: $symptoms)
         .padding()

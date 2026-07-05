@@ -17,7 +17,14 @@ struct TextInput: View {
     }
 }
 
-#Preview {
+#Preview("Meal description") {
+    @Previewable @State var text = "Grilled salmon with roasted potatoes, asparagus, lemon butter, and sparkling water"
+
+    TextInput(text: $text)
+        .padding()
+}
+
+#Preview("Empty") {
     @Previewable @State var text = ""
 
     TextInput(text: $text)

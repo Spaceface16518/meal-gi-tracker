@@ -12,7 +12,11 @@ struct MediaReadyRow: View {
     }
 }
 
-#Preview {
-    MediaReadyRow(isReady: true, label: "Image ready")
+#Preview("Media states") {
+    VStack(spacing: 12) {
+        MediaReadyRow(isReady: false, label: "Image ready")
+        MediaReadyRow(isReady: true, label: "Image ready")
+        MediaReadyRow(isReady: true, label: "Transcript ready")
+    }
         .padding()
 }

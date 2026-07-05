@@ -138,10 +138,25 @@ private struct AnalysisResults: View {
         AnalysisContent(
             message: .info("Analysis queued."),
             analysis: PreviewFixtures.analysis,
-            mealCount: 14,
-            eventCount: 5,
+            mealCount: 42,
+            eventCount: 16,
             isLoading: false,
             isRunning: false,
+            runAnalysis: {}
+        )
+        .navigationTitle("Analysis")
+    }
+}
+
+#Preview("Running") {
+    NavigationStack {
+        AnalysisContent(
+            message: .info("Analysis queued. New findings will appear here when ready."),
+            analysis: PreviewFixtures.analysis,
+            mealCount: 42,
+            eventCount: 16,
+            isLoading: false,
+            isRunning: true,
             runAnalysis: {}
         )
         .navigationTitle("Analysis")
@@ -155,8 +170,23 @@ private struct AnalysisResults: View {
             analysis: nil,
             mealCount: 2,
             eventCount: 0,
+            isLoading: false,
+            isRunning: false,
+            runAnalysis: {}
+        )
+        .navigationTitle("Analysis")
+    }
+}
+
+#Preview("Loading") {
+    NavigationStack {
+        AnalysisContent(
+            message: nil,
+            analysis: nil,
+            mealCount: 0,
+            eventCount: 0,
             isLoading: true,
-            isRunning: true,
+            isRunning: false,
             runAnalysis: {}
         )
         .navigationTitle("Analysis")

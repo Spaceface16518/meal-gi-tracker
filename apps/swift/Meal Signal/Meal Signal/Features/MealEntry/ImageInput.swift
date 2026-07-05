@@ -34,9 +34,13 @@ struct ImageInput: View {
     }
 }
 
-#Preview {
+#Preview("Image states") {
     @Previewable @State var item: PhotosPickerItem?
 
-    ImageInput(selectedImage: $item, hasImage: true, hasDescription: true, takePhoto: {})
+    VStack(spacing: 24) {
+        ImageInput(selectedImage: $item, hasImage: false, hasDescription: false, takePhoto: {})
+        ImageInput(selectedImage: $item, hasImage: true, hasDescription: false, takePhoto: {})
+        ImageInput(selectedImage: $item, hasImage: true, hasDescription: true, takePhoto: {})
+    }
         .padding()
 }
