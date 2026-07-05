@@ -31,6 +31,16 @@ service cloud.firestore {
     //   - createdAt: timestamp (required) - creation time
     //   - updatedAt: timestamp (required) - update time
     //   - reanalyzedAt: timestamp (optional, immutable by clients) - last backend reanalysis time
+    //   - processingSource: string (optional, immutable by clients) - local or cloud processing
+    //   - localProcessingWarning: string (optional, immutable by clients) - local processing note
+    //   - mealSize: string (optional, immutable by clients) - normalized meal size
+    //   - portionMultiplier: number (optional, immutable by clients) - relative portion size
+    //   - sourceType: string (optional, immutable by clients) - restaurant, homemade, or packaged
+    //   - alcoholServings: number (optional, immutable by clients) - estimated servings
+    //   - caffeineAmount: number (optional, immutable by clients) - estimated milligrams
+    //   - uncertainIngredientsNotes: string (optional, immutable by clients) - ingredient uncertainty
+    //   - containsUnknownSauce: bool (optional, immutable by clients) - unknown sauce indicator
+    //   - descriptionComplete: bool (optional, immutable by clients) - description completeness
     //
     // Collection: users/{uid}/events
     // Fields:
@@ -105,6 +115,17 @@ service cloud.firestore {
         request.resource.data[field] is timestamp;
     }
 
+    function isOptionalNumberInRange(field, minValue, maxValue) {
+      return !(field in request.resource.data) ||
+        (request.resource.data[field] is number &&
+          request.resource.data[field] >= minValue &&
+          request.resource.data[field] <= maxValue);
+    }
+
+    function isOptionalBool(field) {
+      return !(field in request.resource.data) || request.resource.data[field] is bool;
+    }
+
     function isValidUserProfile(userId) {
       return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'createdAt', 'updatedAt']) &&
         hasRequiredFields(['uid', 'createdAt', 'updatedAt']) &&
@@ -142,7 +163,17 @@ service cloud.firestore {
         'analysis',
         'createdAt',
         'updatedAt',
-        'reanalyzedAt'
+        'reanalyzedAt',
+        'processingSource',
+        'localProcessingWarning',
+        'mealSize',
+        'portionMultiplier',
+        'sourceType',
+        'alcoholServings',
+        'caffeineAmount',
+        'uncertainIngredientsNotes',
+        'containsUnknownSauce',
+        'descriptionComplete'
       ]) &&
         hasRequiredFields([
           'uid',
@@ -165,6 +196,19 @@ service cloud.firestore {
         isValidMealAnalysis() &&
         isOptionalString('notes', 1000) &&
         isOptionalTimestamp('reanalyzedAt') &&
+        (!('processingSource' in request.resource.data) ||
+          request.resource.data.processingSource in ['local', 'cloud']) &&
+        isOptionalString('localProcessingWarning', 1000) &&
+        (!('mealSize' in request.resource.data) ||
+          request.resource.data.mealSize in ['snack', 'small', 'medium', 'large', 'very_large']) &&
+        isOptionalNumberInRange('portionMultiplier', 0.1, 20) &&
+        (!('sourceType' in request.resource.data) ||
+          request.resource.data.sourceType in ['restaurant', 'homemade', 'packaged']) &&
+        isOptionalNumberInRange('alcoholServings', 0, 30) &&
+        isOptionalNumberInRange('caffeineAmount', 0, 3000) &&
+        isOptionalString('uncertainIngredientsNotes', 1000) &&
+        isOptionalBool('containsUnknownSauce') &&
+        isOptionalBool('descriptionComplete') &&
         isValidTimestamp('eatenAt') &&
         isValidTimestamp('createdAt') &&
         isValidTimestamp('updatedAt');
@@ -291,7 +335,19 @@ service cloud.firestore {
           request.resource.data.createdAt == resource.data.createdAt &&
           request.resource.data.inputMode == resource.data.inputMode &&
           request.resource.data.status == resource.data.status &&
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['reanalyzedAt']) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'reanalyzedAt',
+            'processingSource',
+            'localProcessingWarning',
+            'mealSize',
+            'portionMultiplier',
+            'sourceType',
+            'alcoholServings',
+            'caffeineAmount',
+            'uncertainIngredientsNotes',
+            'containsUnknownSauce',
+            'descriptionComplete'
+          ]) &&
           isValidMeal(userId);
         allow delete: if isWritableOwner(userId);
       }
