@@ -88,13 +88,16 @@ struct MealEntryView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel", action: cancel)
+                        ToolbarActionButton(title: "Cancel", systemImage: "xmark", action: cancel)
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button(action: save) {
-                            LoadingLabel(title: isSaving ? "Saving" : "Save", isLoading: isSaving)
-                        }
-                            .disabled(!canSave)
+                        ToolbarActionButton(
+                            title: isSaving ? "Saving meal" : "Save meal",
+                            systemImage: "checkmark",
+                            isLoading: isSaving,
+                            action: save
+                        )
+                        .disabled(!canSave)
                     }
                 }
         }
