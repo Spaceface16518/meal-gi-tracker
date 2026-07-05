@@ -50,15 +50,22 @@ struct EntryDetailSheet: View {
             .navigationTitle(entry.kind == .meal ? "Meal Details" : "Event Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(isEditing ? "View" : "Edit", action: toggleEditing)
+                ToolbarItem(placement: isEditing ? .cancellationAction : .topBarLeading) {
+                    ToolbarActionButton(
+                        title: isEditing ? "Cancel editing" : "Edit",
+                        systemImage: isEditing ? "xmark" : "pencil",
+                        action: toggleEditing
+                    )
                         .disabled(isSaving)
                 }
                 if isEditing {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button(action: saveEntry) {
-                            LoadingLabel(title: isSaving ? "Saving" : "Save", isLoading: isSaving)
-                        }
+                        ToolbarActionButton(
+                            title: isSaving ? "Saving changes" : "Save changes",
+                            systemImage: "checkmark",
+                            isLoading: isSaving,
+                            action: saveEntry
+                        )
                         .disabled(!canSave)
                     }
                 } else {
@@ -70,7 +77,7 @@ struct EntryDetailSheet: View {
                             .accessibilityLabel(isReanalyzing ? "Reanalyzing meal" : "Reanalyze meal")
                             .disabled(isReanalyzing)
                         }
-                        Button("Done") { dismiss() }
+                        ToolbarActionButton(title: "Close", systemImage: "xmark") { dismiss() }
                             .disabled(isSaving || isReanalyzing)
                     }
                 }
