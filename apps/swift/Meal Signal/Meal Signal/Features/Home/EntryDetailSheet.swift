@@ -407,7 +407,7 @@ private struct MealEditForm: View {
                     draft.foods.remove(atOffsets: offsets)
                 }
 
-                Button(action: { draft.addFood() }) {
+                Button(action: addFood) {
                     Label("Add Food", systemImage: "plus")
                 }
             }
@@ -438,12 +438,22 @@ private struct MealEditForm: View {
                     draft.irritants.remove(atOffsets: offsets)
                 }
 
-                Button(action: { draft.addIrritant() }) {
+                Button(action: addIrritant) {
                     Label("Add Irritant", systemImage: "plus")
                 }
             }
         }
         .scrollContentBackground(.hidden)
+    }
+
+    private func addFood() {
+        Haptics.impact()
+        draft.addFood()
+    }
+
+    private func addIrritant() {
+        Haptics.impact()
+        draft.addIrritant()
     }
 }
 

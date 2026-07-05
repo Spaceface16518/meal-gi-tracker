@@ -13,7 +13,7 @@ struct RecentEntryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 12) {
-                Button(action: openDetails) {
+                Button(action: openEntryDetails) {
                     HStack(spacing: 12) {
                         EntryIcon(kind: entry.kind)
                         EntrySummary(entry: entry)
@@ -45,6 +45,11 @@ struct RecentEntryRow: View {
     private func confirmDelete() {
         Haptics.warning()
         deleteConfirmation = entry
+    }
+
+    private func openEntryDetails() {
+        Haptics.impact()
+        openDetails()
     }
 
     private func reanalyzeEntry() {

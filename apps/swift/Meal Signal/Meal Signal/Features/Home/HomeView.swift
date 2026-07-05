@@ -44,9 +44,10 @@ struct HomeView: View {
         }
         .alert("Delete this entry?", isPresented: deleteAlertBinding) {
             Button("Cancel", role: .cancel) {
+                Haptics.impact()
                 deleteConfirmation = nil
             }
-            Button(deletingEntryID == nil ? "Delete" : "Deleting", role: .destructive, action: deleteEntry)
+            Button(deletingEntryID == nil ? "Delete" : "Deleting", role: .destructive, action: confirmDeletion)
                 .disabled(deletingEntryID != nil)
         } message: {
             Text("This cannot be undone.")
@@ -90,5 +91,10 @@ struct HomeView: View {
                 Haptics.error()
             }
         }
+    }
+
+    private func confirmDeletion() {
+        Haptics.impact(.medium)
+        deleteEntry()
     }
 }

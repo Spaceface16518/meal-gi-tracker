@@ -110,22 +110,26 @@ private enum AppTab: String, CaseIterable, Identifiable {
 
 private struct AppTabs: View {
     @State private var viewModel: TabsModel
+    @State private var selectedTab = AppTab.history
 
     init(uid: String, session: AuthSession) {
         _viewModel = State(initialValue: TabsModel(uid: uid, session: session))
     }
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             HomeView(
                 history: viewModel.history,
                 session: viewModel.session
             )
                 .tabItem { Label(AppTab.history.rawValue, systemImage: AppTab.history.icon) }
+                .tag(AppTab.history)
 
             AnalysisView(viewModel: viewModel.analysis, session: viewModel.session)
                 .tabItem { Label(AppTab.analysis.rawValue, systemImage: AppTab.analysis.icon) }
+                .tag(AppTab.analysis)
         }
+        .onChange(of: selectedTab) { _, _ in Haptics.selection() }
     }
 }
 

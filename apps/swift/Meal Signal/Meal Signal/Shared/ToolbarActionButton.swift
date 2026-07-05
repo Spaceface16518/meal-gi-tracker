@@ -7,7 +7,7 @@ struct ToolbarActionButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button(action: performAction) {
             if isLoading {
                 ProgressView()
                     .controlSize(.small)
@@ -16,5 +16,10 @@ struct ToolbarActionButton: View {
             }
         }
         .accessibilityLabel(title)
+    }
+
+    private func performAction() {
+        Haptics.impact()
+        action()
     }
 }
