@@ -964,3 +964,13 @@ A future Swift app should preserve these behavioral contracts:
 - Export semantics if export is implemented on the native client.
 - No local caching of private tracking records unless this privacy/product decision changes.
 - Cautious, non-medical analysis language.
+
+## Deterministic Correlation Analysis
+
+- Backend code, not Gemini, ranks irritant associations across 0–2, 2–6, 6–12, 12–24, 24–48, and 48–120 hour windows.
+- Irritant confidence weights exposures. Results include exposed and baseline event rates, risk ratio/difference, evidence grade, symptom-specific breakdowns, examples, and tolerated exposures.
+- Fewer than 3 weighted exposures is insufficient; 3–5 is weak; 6–9 is moderate; 10 or more can be stronger only when association statistics support it.
+- Gemini may explain deterministic results but cannot change rankings or invent statistics.
+- Meal entries may optionally record size, portion multiplier, source, alcohol, caffeine, uncertain ingredients, unknown sauce/seasoning, and description completeness.
+- GI events may optionally record urgency, stress, sleep quality, recent illness, medications, recent exercise, and a suspected cause.
+- Analysis clients show cautious signal labels, lag windows, symptom filters, data quality, tracking recommendations, and tolerated irritants.

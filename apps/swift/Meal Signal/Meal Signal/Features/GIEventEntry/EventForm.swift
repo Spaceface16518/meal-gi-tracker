@@ -30,6 +30,17 @@ struct GIEventEntryForm: View {
                         draft.notes = String(value.prefix(1000))
                     }
             }
+            Section("Optional context") {
+                TextField("Urgency (0–10)", value: $draft.urgencyScore, format: .number).keyboardType(.numberPad)
+                TextField("Stress (0–10)", value: $draft.stressLevel, format: .number).keyboardType(.numberPad)
+                TextField("Previous night sleep (0–10)", value: $draft.sleepQuality, format: .number).keyboardType(.numberPad)
+                Toggle("Recent illness", isOn: $draft.recentIllness)
+                Picker("Exercise in prior 24 hours", selection: $draft.exerciseIntensity) { Text("Not set").tag(""); ForEach(["none", "light", "moderate", "vigorous"], id: \.self) { Text($0.capitalized).tag($0) } }
+                TextField("Suspected cause", text: $draft.suspectedCause)
+                ForEach(["NSAIDs", "antibiotics", "antacids", "laxatives"], id: \.self) { medication in
+                    Toggle(medication, isOn: Binding(get: { draft.medicationFlags.contains(medication) }, set: { enabled in if enabled { draft.medicationFlags.append(medication) } else { draft.medicationFlags.removeAll { $0 == medication } } }))
+                }
+            }
         }
     }
 }

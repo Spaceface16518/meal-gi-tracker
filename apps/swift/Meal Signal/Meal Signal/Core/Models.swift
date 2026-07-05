@@ -86,7 +86,26 @@ struct CorrelationFinding: Identifiable, Hashable {
     let windowHours: Int
     let evidence: String
     let suggestedAction: String
+    let exposureCount: Double
+    let eventCountAfterExposure: Int
+    let exposedEventRate: Double
+    let baselineEventRate: Double
+    let riskRatio: Double?
+    let riskDifference: Double
+    let strongestWindow: String
+    let evidenceGrade: String
+    let symptomBreakdown: [SymptomAssociation]
+    let windowStats: [WindowAssociation]
+    let plainLanguageExplanation: String
+
+    init(irritant: String, confidence: Double, direction: String, windowHours: Int, evidence: String, suggestedAction: String, exposureCount: Double = 0, eventCountAfterExposure: Int = 0, exposedEventRate: Double = 0, baselineEventRate: Double = 0, riskRatio: Double? = nil, riskDifference: Double = 0, strongestWindow: String = "48-120h", evidenceGrade: String = "insufficient", symptomBreakdown: [SymptomAssociation] = [], windowStats: [WindowAssociation] = [], plainLanguageExplanation: String? = nil) {
+        self.irritant = irritant; self.confidence = confidence; self.direction = direction; self.windowHours = windowHours; self.evidence = evidence; self.suggestedAction = suggestedAction
+        self.exposureCount = exposureCount; self.eventCountAfterExposure = eventCountAfterExposure; self.exposedEventRate = exposedEventRate; self.baselineEventRate = baselineEventRate; self.riskRatio = riskRatio; self.riskDifference = riskDifference; self.strongestWindow = strongestWindow; self.evidenceGrade = evidenceGrade; self.symptomBreakdown = symptomBreakdown; self.windowStats = windowStats; self.plainLanguageExplanation = plainLanguageExplanation ?? evidence
+    }
 }
+
+struct SymptomAssociation: Hashable { let symptom: String; let riskDifference: Double }
+struct WindowAssociation: Hashable { let window: String; let riskDifference: Double }
 
 struct CorrelationAnalysis: Identifiable, Hashable {
     let id: String
@@ -211,7 +230,18 @@ func correlationAnalysis(from document: DocumentSnapshot) -> CorrelationAnalysis
             direction: $0["direction"] as? String ?? "insufficient_data",
             windowHours: intValue($0["windowHours"], default: 120),
             evidence: $0["evidence"] as? String ?? "",
-            suggestedAction: $0["suggestedAction"] as? String ?? ""
+            suggestedAction: $0["suggestedAction"] as? String ?? "",
+            exposureCount: doubleValue($0["exposureCount"]),
+            eventCountAfterExposure: intValue($0["eventCountAfterExposure"]),
+            exposedEventRate: doubleValue($0["exposedEventRate"]),
+            baselineEventRate: doubleValue($0["baselineEventRate"]),
+            riskRatio: ($0["riskRatio"] as? NSNumber)?.doubleValue,
+            riskDifference: doubleValue($0["riskDifference"]),
+            strongestWindow: $0["strongestWindow"] as? String ?? "48-120h",
+            evidenceGrade: $0["evidenceGrade"] as? String ?? "insufficient",
+            symptomBreakdown: ($0["symptomBreakdown"] as? [[String: Any]] ?? []).map { SymptomAssociation(symptom: $0["symptom"] as? String ?? "symptom", riskDifference: doubleValue($0["riskDifference"])) },
+            windowStats: ($0["windowStats"] as? [[String: Any]] ?? []).map { WindowAssociation(window: $0["window"] as? String ?? "", riskDifference: doubleValue($0["riskDifference"])) },
+            plainLanguageExplanation: $0["plainLanguageExplanation"] as? String ?? $0["evidence"] as? String ?? ""
         )
     }
 

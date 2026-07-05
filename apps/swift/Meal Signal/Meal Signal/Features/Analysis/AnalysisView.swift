@@ -219,18 +219,31 @@ private struct FindingRow: View {
             HStack {
                 VStack(alignment: .leading) {
                     Text(finding.irritant).font(.headline)
-                    Text("\(direction) within \(finding.windowHours)h")
+                    Text("\(signalLabel) · \(finding.strongestWindow)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Text("\(Int((finding.confidence * 100).rounded()))%")
+                Text(finding.evidenceGrade.capitalized)
                     .font(.caption.weight(.bold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 7))
             }
-            Text(finding.evidence).font(.footnote).foregroundStyle(.secondary)
+            Text(finding.plainLanguageExplanation).font(.footnote).foregroundStyle(.secondary)
+            HStack {
+                Text("\(finding.exposureCount.formatted()) exposures")
+                Spacer()
+                Text("\(finding.exposedEventRate.formatted(.percent.precision(.fractionLength(0)))) vs \(finding.baselineEventRate.formatted(.percent.precision(.fractionLength(0)))) baseline")
+            }.font(.caption).foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                ForEach(finding.windowStats, id: \.window) { window in
+                    Capsule().fill(window.window == finding.strongestWindow ? MealSignalDesign.brand : Color.secondary.opacity(0.2)).frame(height: 6).accessibilityLabel(window.window)
+                }
+            }
+            if !finding.symptomBreakdown.isEmpty {
+                Text("Main symptoms: " + finding.symptomBreakdown.prefix(3).map(\.symptom).joined(separator: ", ")).font(.caption).foregroundStyle(.secondary)
+            }
             Text(finding.suggestedAction).font(.footnote.weight(.medium)).foregroundStyle(MealSignalDesign.brand)
         }
         .padding(12)
@@ -239,6 +252,13 @@ private struct FindingRow: View {
 
     private var direction: String {
         finding.direction == "possible_trigger" ? "possible sensitivity" : finding.direction.replacingOccurrences(of: "_", with: " ")
+    }
+
+    private var signalLabel: String {
+        if finding.evidenceGrade == "insufficient" { return "Not enough data" }
+        if finding.evidenceGrade == "weak" { return "Weak signal" }
+        if finding.direction == "unlikely_trigger" { return "Likely tolerated" }
+        return "Possible signal"
     }
 }
 

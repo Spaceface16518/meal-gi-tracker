@@ -39,6 +39,14 @@ export type Meal = {
   createdAt: Date;
   updatedAt: Date;
   reanalyzedAt?: Date;
+  mealSize?: "snack" | "small" | "medium" | "large" | "very_large";
+  portionMultiplier?: number;
+  sourceType?: "restaurant" | "homemade" | "packaged";
+  alcoholServings?: number;
+  caffeineAmount?: number;
+  uncertainIngredientsNotes?: string;
+  containsUnknownSauce?: boolean;
+  descriptionComplete?: boolean;
 };
 
 export type GiEvent = {
@@ -50,6 +58,13 @@ export type GiEvent = {
   notes?: string;
   stoolType?: number;
   durationMinutes?: number;
+  urgencyScore?: number;
+  stressLevel?: number;
+  sleepQuality?: number;
+  recentIllness?: boolean;
+  medicationFlags?: string[];
+  exerciseIntensity?: "none" | "light" | "moderate" | "vigorous";
+  suspectedCause?: string;
   createdAt: Date;
 };
 
@@ -85,6 +100,33 @@ export type CorrelationFinding = {
   windowHours: number;
   evidence: string;
   suggestedAction: string;
+  exposureCount: number;
+  eventCountAfterExposure: number;
+  exposedEventRate: number;
+  baselineEventRate: number;
+  riskRatio: number | null;
+  riskDifference: number;
+  strongestWindow: "0-2h" | "2-6h" | "6-12h" | "12-24h" | "24-48h" | "48-120h";
+  evidenceGrade: "insufficient" | "weak" | "moderate" | "stronger";
+  symptomBreakdown: Array<{
+    symptom: string;
+    exposedEventRate: number;
+    baselineEventRate: number;
+    riskRatio: number | null;
+    riskDifference: number;
+    eventCountAfterExposure: number;
+  }>;
+  windowStats: Array<{
+    window: CorrelationFinding["strongestWindow"];
+    exposedEventRate: number;
+    baselineEventRate: number;
+    riskRatio: number | null;
+    riskDifference: number;
+  }>;
+  plainLanguageExplanation: string;
+  recentExampleMealIds: string[];
+  followedEventIds: string[];
+  toleratedExposureMealIds: string[];
 };
 
 export type CorrelationAnalysis = {
@@ -97,6 +139,11 @@ export type CorrelationAnalysis = {
   summary: string;
   findings: CorrelationFinding[];
   dataQualityNotes: string[];
+  dataQuality?: {
+    mealsWithPortionSize: number;
+    eventsWithSeverityDuration: number;
+    topMissingFields: string[];
+  };
 };
 
 export type CreateMealPayload = {
@@ -106,6 +153,14 @@ export type CreateMealPayload = {
   mimeType?: string;
   eatenAt: string;
   notes?: string;
+  mealSize?: Meal["mealSize"];
+  portionMultiplier?: number;
+  sourceType?: Meal["sourceType"];
+  alcoholServings?: number;
+  caffeineAmount?: number;
+  uncertainIngredientsNotes?: string;
+  containsUnknownSauce?: boolean;
+  descriptionComplete?: boolean;
 };
 
 export type CreateGiEventPayload = {
@@ -115,6 +170,13 @@ export type CreateGiEventPayload = {
   notes?: string;
   stoolType?: number;
   durationMinutes?: number;
+  urgencyScore?: number;
+  stressLevel?: number;
+  sleepQuality?: number;
+  recentIllness?: boolean;
+  medicationFlags?: string[];
+  exerciseIntensity?: GiEvent["exerciseIntensity"];
+  suspectedCause?: string;
 };
 
 export type SaveSkinEntryPayload = {

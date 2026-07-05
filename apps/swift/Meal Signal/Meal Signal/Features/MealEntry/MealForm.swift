@@ -59,6 +59,16 @@ struct MealEntryForm: View {
                         draft.notes = String(value.prefix(1000))
                     }
             }
+            Section("Optional meal details") {
+                Picker("Meal size", selection: $draft.mealSize) { Text("Not set").tag(""); ForEach(["snack", "small", "medium", "large", "very_large"], id: \.self) { Text($0.replacingOccurrences(of: "_", with: " ").capitalized).tag($0) } }
+                Picker("Source", selection: $draft.sourceType) { Text("Not set").tag(""); ForEach(["homemade", "restaurant", "packaged"], id: \.self) { Text($0.capitalized).tag($0) } }
+                TextField("Portion multiplier", value: $draft.portionMultiplier, format: .number).keyboardType(.decimalPad)
+                TextField("Alcohol servings", value: $draft.alcoholServings, format: .number).keyboardType(.decimalPad)
+                TextField("Caffeine (mg)", value: $draft.caffeineAmount, format: .number).keyboardType(.decimalPad)
+                TextField("Uncertain ingredients", text: $draft.uncertainIngredientsNotes, axis: .vertical)
+                Toggle("Contains unknown sauce or seasoning", isOn: $draft.containsUnknownSauce)
+                Toggle("Description is complete", isOn: $draft.descriptionComplete)
+            }
         }
         .onChange(of: selectedImage) { _, item in
             Task { await loadImage(item) }
