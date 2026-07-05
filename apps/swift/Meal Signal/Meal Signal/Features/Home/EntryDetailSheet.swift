@@ -36,7 +36,9 @@ struct EntryDetailSheet: View {
                             }
                             EntryDetailHeader(entry: entry)
 
-                            if let event = entry.event {
+                            if let skin = entry.skin {
+                                SkinDetailContent(skin: skin)
+                            } else if let event = entry.event {
                                 GIEventDetailContent(event: event)
                             } else if let meal = entry.meal {
                                 MealDetailContent(meal: meal)
@@ -47,16 +49,18 @@ struct EntryDetailSheet: View {
                 }
             }
             .background(MealSignalDesign.background.ignoresSafeArea())
-            .navigationTitle(entry.kind == .meal ? "Meal Details" : "Event Details")
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: isEditing ? .cancellationAction : .topBarLeading) {
-                    ToolbarActionButton(
-                        title: isEditing ? "Cancel editing" : "Edit",
-                        systemImage: isEditing ? "xmark" : "pencil",
-                        action: toggleEditing
-                    )
-                        .disabled(isSaving)
+                if entry.skin == nil {
+                    ToolbarItem(placement: isEditing ? .cancellationAction : .topBarLeading) {
+                        ToolbarActionButton(
+                            title: isEditing ? "Cancel editing" : "Edit",
+                            systemImage: isEditing ? "xmark" : "pencil",
+                            action: toggleEditing
+                        )
+                            .disabled(isSaving)
+                    }
                 }
                 if isEditing {
                     ToolbarItem(placement: .confirmationAction) {
@@ -82,6 +86,14 @@ struct EntryDetailSheet: View {
                     }
                 }
             }
+        }
+    }
+
+    private var navigationTitle: String {
+        switch entry.kind {
+        case .meal: "Meal Details"
+        case .event: "Event Details"
+        case .skin: "Skin Details"
         }
     }
 
@@ -431,9 +443,9 @@ private struct EntryDetailHeader: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            Image(systemName: entry.kind == .meal ? "fork.knife" : "waveform.path.ecg")
+            Image(systemName: systemImage)
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(entry.kind == .meal ? MealSignalDesign.brand : .orange)
+                .foregroundStyle(tint)
                 .frame(width: 44, height: 44)
                 .background(.secondary.opacity(0.12), in: Circle())
 
@@ -443,13 +455,105 @@ private struct EntryDetailHeader: View {
                 Text(entry.date.formatted(date: .abbreviated, time: .shortened))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Text(entry.kind == .meal ? "Meal" : "GI event")
+                Text(kindLabel)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var systemImage: String {
+        switch entry.kind {
+        case .meal: "fork.knife"
+        case .event: "waveform.path.ecg"
+        case .skin: "sparkles"
+        }
+    }
+
+    private var tint: Color {
+        switch entry.kind {
+        case .meal: MealSignalDesign.brand
+        case .event: .orange
+        case .skin: .purple
+        }
+    }
+
+    private var kindLabel: String {
+        switch entry.kind {
+        case .meal: "Meal"
+        case .event: "GI event"
+        case .skin: "Skin"
+        }
+    }
+}
+
+private struct SkinDetailContent: View {
+    let skin: SkinEntry
+
+    var body: some View {
+        VStack(spacing: 12) {
+            if skin.entryType == .daily {
+                ForEach(skin.conditions) { condition in
+                    DetailSection(title: condition.condition.capitalized, systemImage: "sparkles") {
+                        DetailField(label: "Severity", value: "\(condition.severity)/10")
+                        DetailField(
+                            label: "Body areas",
+                            value: condition.bodyAreas.isEmpty ? "Not set" : condition.bodyAreas.joined(separator: ", ").capitalized
+                        )
+                    }
+                }
+            } else {
+                DetailMetricGrid(items: [
+                    DetailMetric(title: "Severity", value: "\(skin.severity ?? 0)/10", icon: "gauge.with.dots.needle.bottom.100percent"),
+                    DetailMetric(title: "Duration", value: durationText, icon: "timer"),
+                ])
+                DetailSection(title: "Symptoms", systemImage: "list.bullet.clipboard") {
+                    tagList(skin.symptoms, empty: "No symptoms recorded")
+                }
+                DetailSection(title: "Body areas", systemImage: "figure.stand") {
+                    tagList(skin.bodyAreas, empty: "No body areas recorded")
+                }
+            }
+
+            DetailSection(title: "Notes", systemImage: "note.text") {
+                if let notes = skin.notes, !notes.isBlank {
+                    Text(notes)
+                } else {
+                    EmptyDetailText("No notes recorded")
+                }
+            }
+
+            DetailSection(title: "Record", systemImage: "calendar.badge.clock") {
+                if let localDate = skin.localDate { DetailField(label: "Skin day", value: localDate) }
+                if let occurredAt = skin.occurredAt {
+                    DetailField(label: "Observed", value: occurredAt.formatted(date: .abbreviated, time: .shortened))
+                }
+                DetailField(label: "Updated", value: skin.updatedAt.formatted(date: .abbreviated, time: .shortened))
+            }
+        }
+    }
+
+    private var durationText: String {
+        skin.durationMinutes.map { "\($0) min" } ?? "Not set"
+    }
+
+    @ViewBuilder
+    private func tagList(_ values: [String], empty: String) -> some View {
+        if values.isEmpty {
+            EmptyDetailText(empty)
+        } else {
+            FlowLayout(spacing: 8) {
+                ForEach(values, id: \.self) { value in
+                    Text(value.capitalized)
+                        .font(.subheadline.weight(.medium))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(.secondary.opacity(0.12), in: Capsule())
+                }
+            }
+        }
     }
 }
 

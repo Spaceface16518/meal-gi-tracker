@@ -3,6 +3,7 @@ import SwiftUI
 enum AddSheet: String, Identifiable {
     case meal
     case event
+    case skin
 
     var id: String { rawValue }
 }
@@ -10,6 +11,7 @@ enum AddSheet: String, Identifiable {
 struct AddShortcuts: View {
     let mealCount: Int
     let eventCount: Int
+    let skinCount: Int
     @Binding var addSheet: AddSheet?
 
     var body: some View {
@@ -41,6 +43,14 @@ struct AddShortcuts: View {
             systemImage: "waveform.path.ecg",
             action: addEvent
         )
+        AddShortcutButton(
+            title: "Track skin",
+            subtitle: "Daily state or timed observation",
+            value: "\(skinCount)",
+            caption: "skin",
+            systemImage: "sparkles",
+            action: addSkin
+        )
     }
 
     private func addMeal() {
@@ -49,6 +59,10 @@ struct AddShortcuts: View {
 
     private func addEvent() {
         addSheet = .event
+    }
+
+    private func addSkin() {
+        addSheet = .skin
     }
 }
 
@@ -127,8 +141,8 @@ private struct CountBadge: View {
     @Previewable @State var addSheet: AddSheet?
 
     VStack(spacing: 20) {
-        AddShortcuts(mealCount: 12, eventCount: 4, addSheet: $addSheet)
-        AddShortcuts(mealCount: 128, eventCount: 42, addSheet: $addSheet)
+        AddShortcuts(mealCount: 12, eventCount: 4, skinCount: 6, addSheet: $addSheet)
+        AddShortcuts(mealCount: 128, eventCount: 42, skinCount: 25, addSheet: $addSheet)
             .frame(width: 330)
     }
     .padding()
