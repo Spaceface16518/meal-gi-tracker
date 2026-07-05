@@ -50,6 +50,34 @@ struct GIEvent: Identifiable, Hashable {
     let createdAt: Date
 }
 
+enum SkinEntryType: String, Hashable {
+    case daily, timed
+}
+
+struct SkinConditionAssessment: Hashable, Codable, Identifiable {
+    var id: String { condition }
+    let condition: String
+    var severity: Int
+    var bodyAreas: [String]
+}
+
+struct SkinEntry: Identifiable, Hashable {
+    let id: String
+    let uid: String
+    let entryType: SkinEntryType
+    let severity: Int?
+    let symptoms: [String]
+    let bodyAreas: [String]
+    let conditions: [SkinConditionAssessment]
+    let notes: String?
+    let durationMinutes: Int?
+    let localDate: String?
+    let occurredAt: Date?
+    let sortAt: Date
+    let createdAt: Date
+    let updatedAt: Date
+}
+
 struct CorrelationFinding: Identifiable, Hashable {
     var id: String { "\(irritant)-\(windowHours)-\(direction)" }
     let irritant: String
@@ -144,6 +172,33 @@ func giEvent(from document: QueryDocumentSnapshot) -> GIEvent {
         stoolType: (data["stoolType"] as? NSNumber)?.intValue,
         durationMinutes: (data["durationMinutes"] as? NSNumber)?.intValue,
         createdAt: dateValue(data["createdAt"])
+    )
+}
+
+func skinEntry(from document: QueryDocumentSnapshot) -> SkinEntry {
+    let data = document.data()
+    let conditions = (data["conditions"] as? [[String: Any]] ?? []).map {
+        SkinConditionAssessment(
+            condition: $0["condition"] as? String ?? "condition",
+            severity: intValue($0["severity"]),
+            bodyAreas: stringArray($0["bodyAreas"])
+        )
+    }
+    return SkinEntry(
+        id: document.documentID,
+        uid: data["uid"] as? String ?? "",
+        entryType: SkinEntryType(rawValue: data["entryType"] as? String ?? "") ?? .timed,
+        severity: (data["severity"] as? NSNumber)?.intValue,
+        symptoms: stringArray(data["symptoms"]),
+        bodyAreas: stringArray(data["bodyAreas"]),
+        conditions: conditions,
+        notes: data["notes"] as? String,
+        durationMinutes: (data["durationMinutes"] as? NSNumber)?.intValue,
+        localDate: data["localDate"] as? String,
+        occurredAt: data["occurredAt"].map(dateValue),
+        sortAt: dateValue(data["sortAt"]),
+        createdAt: dateValue(data["createdAt"]),
+        updatedAt: dateValue(data["updatedAt"])
     )
 }
 

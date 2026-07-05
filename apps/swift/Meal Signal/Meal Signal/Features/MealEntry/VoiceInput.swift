@@ -15,6 +15,7 @@ struct VoiceInput: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(isRecording ? .red : MealSignalDesign.brand)
+            .sensoryFeedback(.impact(weight: .medium, intensity: 1), trigger: isRecording)
 
             MediaReadyRow(isReady: hasAudio || hasTranscript, label: hasTranscript ? "Transcript ready" : "Audio ready")
         }

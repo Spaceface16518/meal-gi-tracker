@@ -15,6 +15,7 @@ struct SymptomsPicker: View {
                 }
             }
         }
+        .sensoryFeedback(.selection, trigger: symptoms)
     }
 
     private func toggle(_ symptom: String) {

@@ -3,6 +3,7 @@ import SwiftUI
 enum AddSheet: String, Identifiable {
     case meal
     case event
+    case skin
 
     var id: String { rawValue }
 }
@@ -10,36 +11,50 @@ enum AddSheet: String, Identifiable {
 struct AddShortcuts: View {
     let mealCount: Int
     let eventCount: Int
+    let skinCount: Int
     @Binding var addSheet: AddSheet?
 
     var body: some View {
-        ViewThatFits {
-            HStack(spacing: 12) {
-                buttons
-            }
-            VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Log")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+
+            HStack(spacing: 8) {
                 buttons
             }
         }
+        .sensoryFeedback(.impact, trigger: addSheet) { old, new in old == nil && new != nil }
     }
 
     @ViewBuilder
     private var buttons: some View {
         AddShortcutButton(
-            title: "Log meal",
-            subtitle: "Food, notes, voice, or photo",
+            title: "Meal",
+            accessibilityLabel: "Log meal",
             value: "\(mealCount)",
             caption: "meals",
             systemImage: "fork.knife",
+            accessibilityHint: "Opens the meal logging form",
             action: addMeal
         )
         AddShortcutButton(
-            title: "Log GI event",
-            subtitle: "Symptoms, severity, stool type",
+            title: "GI event",
+            accessibilityLabel: "Log GI event",
             value: "\(eventCount)",
             caption: "events",
             systemImage: "waveform.path.ecg",
+            accessibilityHint: "Opens the GI event logging form",
             action: addEvent
+        )
+        AddShortcutButton(
+            title: "Skin",
+            accessibilityLabel: "Track skin",
+            value: "\(skinCount)",
+            caption: "skin",
+            systemImage: "sparkles",
+            accessibilityHint: "Opens the skin tracking form",
+            action: addSkin
         )
     }
 
@@ -50,43 +65,37 @@ struct AddShortcuts: View {
     private func addEvent() {
         addSheet = .event
     }
+
+    private func addSkin() {
+        addSheet = .skin
+    }
 }
 
 private struct AddShortcutButton: View {
     let title: String
-    let subtitle: String
+    let accessibilityLabel: String
     let value: String
     let caption: String
     let systemImage: String
+    let accessibilityHint: String
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .center, spacing: 14) {
+            HStack(spacing: 7) {
                 Image(systemName: systemImage)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(MealSignalDesign.brand, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(MealSignalDesign.brand)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 8)
-
-                CountBadge(value: value, caption: caption)
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
-            .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
-            .padding(14)
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .padding(.horizontal, 8)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .background {
@@ -99,27 +108,9 @@ private struct AddShortcutButton: View {
                 .shadow(color: .black.opacity(0.06), radius: 12, y: 4)
         }
         .glassSurface(interactive: true)
-    }
-}
-
-private struct CountBadge: View {
-    let value: String
-    let caption: String
-
-    var body: some View {
-        VStack(spacing: 1) {
-            Text(value)
-                .font(.headline.weight(.bold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-            Text(caption)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
-        }
-        .frame(minWidth: 46)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 7)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue("\(value) \(caption)")
+        .accessibilityHint(accessibilityHint)
     }
 }
 
@@ -127,8 +118,8 @@ private struct CountBadge: View {
     @Previewable @State var addSheet: AddSheet?
 
     VStack(spacing: 20) {
-        AddShortcuts(mealCount: 12, eventCount: 4, addSheet: $addSheet)
-        AddShortcuts(mealCount: 128, eventCount: 42, addSheet: $addSheet)
+        AddShortcuts(mealCount: 12, eventCount: 4, skinCount: 6, addSheet: $addSheet)
+        AddShortcuts(mealCount: 128, eventCount: 42, skinCount: 25, addSheet: $addSheet)
             .frame(width: 330)
     }
     .padding()

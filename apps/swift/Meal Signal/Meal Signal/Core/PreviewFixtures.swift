@@ -46,9 +46,30 @@ enum PreviewFixtures {
         createdAt: Date().addingTimeInterval(-850)
     )
 
+    static let skinEntry = SkinEntry(
+        id: "daily-1",
+        uid: "preview-user",
+        entryType: .daily,
+        severity: nil,
+        symptoms: [],
+        bodyAreas: [],
+        conditions: [
+            SkinConditionAssessment(condition: "eczema", severity: 3, bodyAreas: ["hands", "arms"]),
+            SkinConditionAssessment(condition: "dryness", severity: 5, bodyAreas: ["face"]),
+        ],
+        notes: "Improving today",
+        durationMinutes: nil,
+        localDate: "2026-07-04",
+        occurredAt: nil,
+        sortAt: Date().addingTimeInterval(-1800),
+        createdAt: Date().addingTimeInterval(-1800),
+        updatedAt: Date().addingTimeInterval(-1800)
+    )
+
     static let recentEntries = [
         RecentEntry.meal(meal),
         RecentEntry.event(event),
+        RecentEntry.skin(skinEntry),
     ]
 
     static let analysis = CorrelationAnalysis(

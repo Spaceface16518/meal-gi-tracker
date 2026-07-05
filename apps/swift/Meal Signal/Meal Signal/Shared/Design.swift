@@ -84,6 +84,11 @@ extension Date {
 
 let symptomOptions = ["cramping", "bloating", "reflux", "nausea", "diarrhea", "constipation", "gas", "pain"]
 
+let skinSymptomOptions = ["rash", "itching", "hives", "flushing", "dryness", "swelling", "eczema flare"]
+let skinConditionOptions = ["acne", "eczema", "psoriasis", "moles", "rosacea", "dryness"]
+let skinBodyAreaOptions = ["face", "neck", "chest", "back", "arms", "hands", "legs", "scalp", "other"]
+let demoReadOnlyMessage = "Demo mode is read-only. Sign out and create or use your own account to save changes."
+
 let stoolTypeLabels = [
     1: "Separate hard lumps",
     2: "Lumpy sausage",

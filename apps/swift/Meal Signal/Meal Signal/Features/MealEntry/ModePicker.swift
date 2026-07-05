@@ -10,6 +10,7 @@ struct ModePicker: View {
             Label("Image", systemImage: "camera").tag(InputMode.image)
         }
         .pickerStyle(.segmented)
+        .sensoryFeedback(.selection, trigger: mode)
     }
 }
 

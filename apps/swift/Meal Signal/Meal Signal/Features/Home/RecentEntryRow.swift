@@ -13,7 +13,7 @@ struct RecentEntryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 12) {
-                Button(action: openDetails) {
+                Button(action: openEntryDetails) {
                     HStack(spacing: 12) {
                         EntryIcon(kind: entry.kind)
                         EntrySummary(entry: entry)
@@ -40,10 +40,15 @@ struct RecentEntryRow: View {
             }
         }
         .padding(.vertical, 10)
+        .sensoryFeedback(.impact, trigger: isReanalyzing)
     }
 
     private func confirmDelete() {
         deleteConfirmation = entry
+    }
+
+    private func openEntryDetails() {
+        openDetails()
     }
 
     private func reanalyzeEntry() {
@@ -89,11 +94,27 @@ private struct EntryIcon: View {
     let kind: RecentEntry.Kind
 
     var body: some View {
-        Image(systemName: kind == .meal ? "fork.knife" : "waveform.path.ecg")
+        Image(systemName: systemImage)
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(kind == .meal ? MealSignalDesign.brand : .orange)
+            .foregroundStyle(tint)
             .frame(width: 32, height: 32)
             .background(.secondary.opacity(0.12), in: Circle())
+    }
+
+    private var systemImage: String {
+        switch kind {
+        case .meal: "fork.knife"
+        case .event: "waveform.path.ecg"
+        case .skin: "sparkles"
+        }
+    }
+
+    private var tint: Color {
+        switch kind {
+        case .meal: MealSignalDesign.brand
+        case .event: .orange
+        case .skin: .purple
+        }
     }
 }
 

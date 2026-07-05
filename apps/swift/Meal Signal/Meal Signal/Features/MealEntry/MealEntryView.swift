@@ -102,6 +102,7 @@ struct MealEntryView: View {
                 }
         }
         .presentationDetents([.medium, .large])
+        .sensoryFeedback(.impact, trigger: isSaving)
     }
 
     private func cancel() {
@@ -124,6 +125,7 @@ struct MealEntryView: View {
                     processingSource: draft.processingSourcePayload,
                     localProcessingWarning: draft.localProcessingWarningPayload
                 )
+                isSaving = false
                 dismiss()
             } catch {
                 message = .error("Meal could not be saved.")

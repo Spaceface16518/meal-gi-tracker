@@ -4,6 +4,7 @@ struct HomeContent: View {
     let message: AppMessage?
     let mealCount: Int
     let eventCount: Int
+    let skinCount: Int
     let isLoading: Bool
     let entries: [RecentEntry]
     let deletingEntryID: String?
@@ -21,6 +22,7 @@ struct HomeContent: View {
                 AddShortcuts(
                     mealCount: mealCount,
                     eventCount: eventCount,
+                    skinCount: skinCount,
                     addSheet: $addSheet
                 )
                 HistoryList(
@@ -47,6 +49,7 @@ struct HomeContent: View {
             message: .success("Meal saved."),
             mealCount: 8,
             eventCount: 3,
+            skinCount: 6,
             isLoading: false,
             entries: PreviewFixtures.recentEntries,
             deletingEntryID: nil,

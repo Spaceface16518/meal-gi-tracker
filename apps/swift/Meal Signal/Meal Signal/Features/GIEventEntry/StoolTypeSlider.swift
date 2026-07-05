@@ -26,6 +26,7 @@ struct StoolTypeSlider: View {
             .padding(12)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
         }
+        .sensoryFeedback(.selection, trigger: stoolType)
     }
 
     private var header: some View {
@@ -42,7 +43,11 @@ struct StoolTypeSlider: View {
     private var sliderValue: Binding<Double> {
         Binding(
             get: { Double(stoolType ?? 4) },
-            set: { stoolType = Int($0.rounded()) }
+            set: {
+                let newValue = Int($0.rounded())
+                guard newValue != stoolType else { return }
+                stoolType = newValue
+            }
         )
     }
 

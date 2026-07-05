@@ -23,6 +23,7 @@ struct AnalysisView: View {
             .navigationTitle("Analysis")
             .toolbar { AccountToolbar(session: session) }
         }
+        .sensoryFeedback(.impact, trigger: isRunning)
     }
 
     private func runAnalysis() {

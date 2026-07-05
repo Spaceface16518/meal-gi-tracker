@@ -7,6 +7,7 @@ import Observation
 final class HomeModel {
     var meals: [Meal] = []
     var events: [GIEvent] = []
+    var skinEntries: [SkinEntry] = []
     var message: AppMessage?
     var isLoading = true
 
@@ -15,9 +16,10 @@ final class HomeModel {
     private var listeners: [ListenerRegistration] = []
     private var mealsLoaded = false
     private var eventsLoaded = false
+    private var skinEntriesLoaded = false
 
     var entries: [RecentEntry] {
-        (meals.map(RecentEntry.meal) + events.map(RecentEntry.event))
+        (meals.map(RecentEntry.meal) + events.map(RecentEntry.event) + skinEntries.map(RecentEntry.skin))
             .sorted { $0.date > $1.date }
             .prefix(12)
             .map { $0 }
@@ -48,10 +50,18 @@ final class HomeModel {
                     self?.refreshLoadingState()
                 }
             },
+            service.skinEntriesQuery(uid: uid).addSnapshotListener { [weak self] snapshot, error in
+                Task { @MainActor in
+                    if error != nil { self?.message = .error("Skin history is temporarily unavailable.") }
+                    self?.skinEntries = snapshot?.documents.map(skinEntry(from:)) ?? []
+                    self?.skinEntriesLoaded = true
+                    self?.refreshLoadingState()
+                }
+            },
         ]
     }
 
     private func refreshLoadingState() {
-        isLoading = !(mealsLoaded && eventsLoaded)
+        isLoading = !(mealsLoaded && eventsLoaded && skinEntriesLoaded)
     }
 }

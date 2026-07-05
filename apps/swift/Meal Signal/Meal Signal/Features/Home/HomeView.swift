@@ -18,6 +18,7 @@ struct HomeView: View {
                 message: actionMessage ?? history.message,
                 mealCount: history.meals.count,
                 eventCount: history.events.count,
+                skinCount: history.skinEntries.count,
                 isLoading: history.isLoading,
                 entries: history.entries,
                 deletingEntryID: deletingEntryID,
@@ -34,6 +35,8 @@ struct HomeView: View {
                 MealEntryView()
             case .event:
                 GIEventEntryView()
+            case .skin:
+                SkinEntryView(readOnly: session.userID == "WiIKxxa28abvJzcfpVdmBJ0gmeJ3")
             }
         }
         .sheet(item: $selectedEntry) { entry in
@@ -43,11 +46,12 @@ struct HomeView: View {
             Button("Cancel", role: .cancel) {
                 deleteConfirmation = nil
             }
-            Button(deletingEntryID == nil ? "Delete" : "Deleting", role: .destructive, action: deleteEntry)
+            Button(deletingEntryID == nil ? "Delete" : "Deleting", role: .destructive, action: confirmDeletion)
                 .disabled(deletingEntryID != nil)
         } message: {
             Text("This cannot be undone.")
         }
+        .sensoryFeedback(.warning, trigger: deleteConfirmation?.id) { old, new in old == nil && new != nil }
     }
 
     private var deleteAlertBinding: Binding<Bool> {
@@ -73,10 +77,21 @@ struct HomeView: View {
                 case .event:
                     try await service.deleteEvent(uid: entry.uid, id: entry.id)
                     actionMessage = .success("Event deleted.")
+                case .skin:
+                    if session.userID == "WiIKxxa28abvJzcfpVdmBJ0gmeJ3" {
+                        actionMessage = .error(demoReadOnlyMessage)
+                        return
+                    }
+                    try await service.deleteSkinEntry(uid: entry.uid, id: entry.id)
+                    actionMessage = .success("Skin entry deleted.")
                 }
             } catch {
                 actionMessage = .error("The entry could not be deleted.")
             }
         }
+    }
+
+    private func confirmDeletion() {
+        deleteEntry()
     }
 }

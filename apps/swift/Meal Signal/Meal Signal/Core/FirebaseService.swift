@@ -124,6 +124,38 @@ final class FirebaseService {
         _ = try await functions.httpsCallable("createGiEvent").call(payload)
     }
 
+    func saveDailySkinEntry(localDate: String, conditions: [SkinConditionAssessment], notes: String?) async throws {
+        var payload: [String: Any] = [
+            "entryType": SkinEntryType.daily.rawValue,
+            "localDate": localDate,
+            "conditions": conditions.map {
+                ["condition": $0.condition, "severity": $0.severity, "bodyAreas": $0.bodyAreas]
+            },
+        ]
+        if let notes { payload["notes"] = notes }
+        _ = try await functions.httpsCallable("saveSkinEntry").call(payload)
+    }
+
+    func saveTimedSkinEntry(
+        occurredAt: Date,
+        severity: Int,
+        symptoms: [String],
+        bodyAreas: [String],
+        notes: String?,
+        durationMinutes: Int?
+    ) async throws {
+        var payload: [String: Any] = [
+            "entryType": SkinEntryType.timed.rawValue,
+            "occurredAt": ISO8601DateFormatter().string(from: occurredAt),
+            "severity": severity,
+            "symptoms": symptoms,
+            "bodyAreas": bodyAreas,
+        ]
+        if let notes { payload["notes"] = notes }
+        if let durationMinutes { payload["durationMinutes"] = durationMinutes }
+        _ = try await functions.httpsCallable("saveSkinEntry").call(payload)
+    }
+
     func updateEvent(
         uid: String,
         id: String,
@@ -174,6 +206,10 @@ final class FirebaseService {
         try await db.collection("users").document(uid).collection("events").document(id).delete()
     }
 
+    func deleteSkinEntry(uid: String, id: String) async throws {
+        try await db.collection("users").document(uid).collection("skinEntries").document(id).delete()
+    }
+
     func mealsQuery(uid: String) -> Query {
         db.collection("users").document(uid).collection("meals")
             .order(by: "eatenAt", descending: true)
@@ -183,6 +219,12 @@ final class FirebaseService {
     func eventsQuery(uid: String) -> Query {
         db.collection("users").document(uid).collection("events")
             .order(by: "occurredAt", descending: true)
+            .limit(to: 25)
+    }
+
+    func skinEntriesQuery(uid: String) -> Query {
+        db.collection("users").document(uid).collection("skinEntries")
+            .order(by: "sortAt", descending: true)
             .limit(to: 25)
     }
 

@@ -71,6 +71,7 @@ struct GIEventEntryView: View {
                 }
         }
         .presentationDetents([.medium, .large])
+        .sensoryFeedback(.impact, trigger: isSaving)
     }
 
     private func cancel() {
@@ -96,6 +97,7 @@ struct GIEventEntryView: View {
                     stoolType: draft.stoolType,
                     durationMinutes: draft.durationMinutes
                 )
+                isSaving = false
                 dismiss()
             } catch {
                 message = .error("Event could not be saved.")
