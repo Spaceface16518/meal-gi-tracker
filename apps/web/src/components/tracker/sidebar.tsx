@@ -138,9 +138,7 @@ export function RecentEntries(props: {
 
   async function removeEntry(
     entry:
-      | { kind: "meal"; id: string }
-      | { kind: "event"; id: string }
-      | { kind: "skin"; id: string },
+      { kind: "meal"; id: string } | { kind: "event"; id: string } | { kind: "skin"; id: string },
   ) {
     const label = entry.kind === "meal" ? "meal" : entry.kind === "event" ? "event" : "skin entry";
     if (props.readOnly) {

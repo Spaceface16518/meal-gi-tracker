@@ -147,33 +147,105 @@ export function AnalysisPanel(props: {
           </div>
 
           <div class="flex gap-2 overflow-x-auto pb-1">
-            {["overall", "gas", "bloating", "diarrhea", "constipation", "pain", "urgency", "reflux", "nausea"].map((symptom) => (
-              <button type="button" onClick={() => setSymptomFilter(symptom)} classList={{ "rounded-full border px-3 py-1.5 text-xs font-semibold": true, "border-brand bg-brand text-background": symptomFilter() === symptom, "border-border-strong": symptomFilter() !== symptom }}>{symptom}</button>
+            {[
+              "overall",
+              "gas",
+              "bloating",
+              "diarrhea",
+              "constipation",
+              "pain",
+              "urgency",
+              "reflux",
+              "nausea",
+            ].map((symptom) => (
+              <button
+                type="button"
+                onClick={() => setSymptomFilter(symptom)}
+                classList={{
+                  "rounded-full border px-3 py-1.5 text-xs font-semibold": true,
+                  "border-brand bg-brand text-background": symptomFilter() === symptom,
+                  "border-border-strong": symptomFilter() !== symptom,
+                }}
+              >
+                {symptom}
+              </button>
             ))}
           </div>
 
           <div class="grid gap-3">
-            {props.analysis.findings.filter((finding) => symptomFilter() === "overall" || finding.symptomBreakdown?.some((row) => row.symptom === symptomFilter())).map((finding) => (
-              <article class="rounded-lg border border-border p-4">
-                <div class="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 class="font-semibold">{finding.irritant}</h3>
-                    <p class="text-sm text-muted">
-                      {finding.evidenceGrade === "insufficient" ? "Not enough data" : finding.evidenceGrade === "weak" ? "Weak signal" : finding.direction === "unlikely_trigger" ? "Likely tolerated" : "Possible signal"} · {finding.strongestWindow}
-                    </p>
+            {props.analysis.findings
+              .filter(
+                (finding) =>
+                  symptomFilter() === "overall" ||
+                  finding.symptomBreakdown?.some((row) => row.symptom === symptomFilter()),
+              )
+              .map((finding) => (
+                <article class="rounded-lg border border-border p-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 class="font-semibold">{finding.irritant}</h3>
+                      <p class="text-sm text-muted">
+                        {finding.evidenceGrade === "insufficient"
+                          ? "Not enough data"
+                          : finding.evidenceGrade === "weak"
+                            ? "Weak signal"
+                            : finding.direction === "unlikely_trigger"
+                              ? "Likely tolerated"
+                              : "Possible signal"}{" "}
+                        · {finding.strongestWindow}
+                      </p>
+                    </div>
+                    <span class="rounded-md bg-surface-muted px-2 py-1 text-xs font-semibold text-muted-strong">
+                      {finding.evidenceGrade}
+                    </span>
                   </div>
-                  <span class="rounded-md bg-surface-muted px-2 py-1 text-xs font-semibold text-muted-strong">
-                    {finding.evidenceGrade}
-                  </span>
-                </div>
-                <p class="mt-3 text-sm text-muted-strong">{finding.plainLanguageExplanation ?? finding.evidence}</p>
-                <p class="mt-2 text-xs text-muted">{finding.exposureCount} weighted exposures · {Math.round(finding.exposedEventRate * 100)}% after exposure · {Math.round(finding.baselineEventRate * 100)}% baseline · strongest at {finding.strongestWindow}</p>
-                <div class="mt-3 grid grid-cols-6 gap-1">{finding.windowStats?.map((row) => <div class="grid gap-1 text-center"><div classList={{ "h-2 rounded-full": true, "bg-brand": row.window === finding.strongestWindow, "bg-surface-muted": row.window !== finding.strongestWindow }} /><span class="text-[10px] text-muted">{row.window}</span></div>)}</div>
-                {finding.symptomBreakdown?.length ? <p class="mt-2 text-xs text-muted">Main symptoms: {finding.symptomBreakdown.slice(0, 3).map((row) => row.symptom).join(", ")}</p> : null}
-                <p class="mt-2 text-sm font-medium text-brand">{finding.suggestedAction}</p>
-                <details class="mt-3 text-xs text-muted"><summary class="cursor-pointer font-semibold">Trigger details</summary><p class="mt-2">Risk ratio: {finding.riskRatio?.toFixed(2) ?? "not available"}; risk difference: {Math.round(finding.riskDifference * 100)} points; followed events: {finding.eventCountAfterExposure}.</p><p>Example meals: {finding.recentExampleMealIds?.join(", ") || "none"}</p><p>Tolerated exposures: {finding.toleratedExposureMealIds?.join(", ") || "none"}</p></details>
-              </article>
-            ))}
+                  <p class="mt-3 text-sm text-muted-strong">
+                    {finding.plainLanguageExplanation ?? finding.evidence}
+                  </p>
+                  <p class="mt-2 text-xs text-muted">
+                    {finding.exposureCount} weighted exposures ·{" "}
+                    {Math.round(finding.exposedEventRate * 100)}% after exposure ·{" "}
+                    {Math.round(finding.baselineEventRate * 100)}% baseline · strongest at{" "}
+                    {finding.strongestWindow}
+                  </p>
+                  <div class="mt-3 grid grid-cols-6 gap-1">
+                    {finding.windowStats?.map((row) => (
+                      <div class="grid gap-1 text-center">
+                        <div
+                          classList={{
+                            "h-2 rounded-full": true,
+                            "bg-brand": row.window === finding.strongestWindow,
+                            "bg-surface-muted": row.window !== finding.strongestWindow,
+                          }}
+                        />
+                        <span class="text-[10px] text-muted">{row.window}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {finding.symptomBreakdown?.length ? (
+                    <p class="mt-2 text-xs text-muted">
+                      Main symptoms:{" "}
+                      {finding.symptomBreakdown
+                        .slice(0, 3)
+                        .map((row) => row.symptom)
+                        .join(", ")}
+                    </p>
+                  ) : null}
+                  <p class="mt-2 text-sm font-medium text-brand">{finding.suggestedAction}</p>
+                  <details class="mt-3 text-xs text-muted">
+                    <summary class="cursor-pointer font-semibold">Trigger details</summary>
+                    <p class="mt-2">
+                      Risk ratio: {finding.riskRatio?.toFixed(2) ?? "not available"}; risk
+                      difference: {Math.round(finding.riskDifference * 100)} points; followed
+                      events: {finding.eventCountAfterExposure}.
+                    </p>
+                    <p>Example meals: {finding.recentExampleMealIds?.join(", ") || "none"}</p>
+                    <p>
+                      Tolerated exposures: {finding.toleratedExposureMealIds?.join(", ") || "none"}
+                    </p>
+                  </details>
+                </article>
+              ))}
           </div>
 
           {props.analysis.dataQualityNotes.length ? (

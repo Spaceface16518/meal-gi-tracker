@@ -108,8 +108,21 @@ export type CorrelationFinding = {
   riskDifference: number;
   strongestWindow: "0-2h" | "2-6h" | "6-12h" | "12-24h" | "24-48h" | "48-120h";
   evidenceGrade: "insufficient" | "weak" | "moderate" | "stronger";
-  symptomBreakdown: Array<{ symptom: string; exposedEventRate: number; baselineEventRate: number; riskRatio: number | null; riskDifference: number; eventCountAfterExposure: number }>;
-  windowStats: Array<{ window: CorrelationFinding["strongestWindow"]; exposedEventRate: number; baselineEventRate: number; riskRatio: number | null; riskDifference: number }>;
+  symptomBreakdown: Array<{
+    symptom: string;
+    exposedEventRate: number;
+    baselineEventRate: number;
+    riskRatio: number | null;
+    riskDifference: number;
+    eventCountAfterExposure: number;
+  }>;
+  windowStats: Array<{
+    window: CorrelationFinding["strongestWindow"];
+    exposedEventRate: number;
+    baselineEventRate: number;
+    riskRatio: number | null;
+    riskDifference: number;
+  }>;
   plainLanguageExplanation: string;
   recentExampleMealIds: string[];
   followedEventIds: string[];
@@ -126,7 +139,11 @@ export type CorrelationAnalysis = {
   summary: string;
   findings: CorrelationFinding[];
   dataQualityNotes: string[];
-  dataQuality?: { mealsWithPortionSize: number; eventsWithSeverityDuration: number; topMissingFields: string[] };
+  dataQuality?: {
+    mealsWithPortionSize: number;
+    eventsWithSeverityDuration: number;
+    topMissingFields: string[];
+  };
 };
 
 export type CreateMealPayload = {

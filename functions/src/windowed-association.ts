@@ -66,56 +66,85 @@ export function computeWindowedAssociationStats(
   const irritants = [...new Set(exposures.flatMap((meal) => [...meal.irritants.keys()]))];
   const symptoms = [...new Set(timedEvents.flatMap((event) => event.symptoms))].sort();
 
-  return irritants.map((irritant) => {
-    const weightedExposureCount = exposures.reduce(
-      (sum, meal) => sum + (meal.irritants.get(irritant) ?? 0), 0,
-    );
-    const windowStats = lagWindows.map((window) =>
-      computeWindow(exposures, timedEvents, irritant, window),
-    );
-    const strongest = [...windowStats].sort(
-      (a, b) => b.riskDifference - a.riskDifference || b.exposedEventRate - a.exposedEventRate,
-    )[0];
-    const associatedEvents = eventsAfter(exposures, timedEvents, irritant, strongest.window);
-    const exposedMeals = exposures.filter((meal) => meal.irritants.has(irritant));
-    const followedIds = new Set(associatedEvents.map((event) => event.id).filter(Boolean));
-    const tolerated = exposedMeals.filter(
-      (meal) => eventsInWindow(meal.at, timedEvents, strongest.window).length === 0,
-    );
-    const symptomBreakdown = symptoms
-      .map((symptom) => {
-        const stat = computeWindow(
-          exposures,
-          timedEvents.filter((event) => event.symptoms.includes(symptom)),
-          irritant,
-          lagWindows.find((item) => item.key === strongest.window)!,
-        );
-        return { symptom, ...stat, eventCountAfterExposure: round(eventsAfter(exposures, timedEvents.filter((event) => event.symptoms.includes(symptom)), irritant, strongest.window).length) };
-      })
-      .filter((item) => item.exposedEventRate > 0 || item.baselineEventRate > 0)
-      .sort((a, b) => b.riskDifference - a.riskDifference);
+  return irritants
+    .map((irritant) => {
+      const weightedExposureCount = exposures.reduce(
+        (sum, meal) => sum + (meal.irritants.get(irritant) ?? 0),
+        0,
+      );
+      const windowStats = lagWindows.map((window) =>
+        computeWindow(exposures, timedEvents, irritant, window),
+      );
+      const strongest = [...windowStats].sort(
+        (a, b) => b.riskDifference - a.riskDifference || b.exposedEventRate - a.exposedEventRate,
+      )[0];
+      const associatedEvents = eventsAfter(exposures, timedEvents, irritant, strongest.window);
+      const exposedMeals = exposures.filter((meal) => meal.irritants.has(irritant));
+      const followedIds = new Set(associatedEvents.map((event) => event.id).filter(Boolean));
+      const tolerated = exposedMeals.filter(
+        (meal) => eventsInWindow(meal.at, timedEvents, strongest.window).length === 0,
+      );
+      const symptomBreakdown = symptoms
+        .map((symptom) => {
+          const stat = computeWindow(
+            exposures,
+            timedEvents.filter((event) => event.symptoms.includes(symptom)),
+            irritant,
+            lagWindows.find((item) => item.key === strongest.window)!,
+          );
+          return {
+            symptom,
+            ...stat,
+            eventCountAfterExposure: round(
+              eventsAfter(
+                exposures,
+                timedEvents.filter((event) => event.symptoms.includes(symptom)),
+                irritant,
+                strongest.window,
+              ).length,
+            ),
+          };
+        })
+        .filter((item) => item.exposedEventRate > 0 || item.baselineEventRate > 0)
+        .sort((a, b) => b.riskDifference - a.riskDifference);
 
-    return {
-      irritant,
-      exposureCount: round(weightedExposureCount),
-      eventCountAfterExposure: associatedEvents.length,
-      exposedEventRate: strongest.exposedEventRate,
-      baselineEventRate: strongest.baselineEventRate,
-      riskRatio: strongest.riskRatio,
-      riskDifference: strongest.riskDifference,
-      strongestWindow: strongest.window,
-      window: strongest.window,
-      evidenceGrade: grade(weightedExposureCount, strongest.riskDifference, strongest.riskRatio),
-      symptomBreakdown,
-      windowStats,
-      recentExampleMealIds: exposedMeals.slice(0, 5).flatMap((meal) => meal.id ? [meal.id] : []),
-      followedEventIds: [...followedIds].slice(0, 8) as string[],
-      toleratedExposureMealIds: tolerated.slice(0, 5).flatMap((meal) => meal.id ? [meal.id] : []),
-    };
-  }).sort((a, b) => gradeRank(b.evidenceGrade) - gradeRank(a.evidenceGrade) || b.riskDifference - a.riskDifference || b.exposureCount - a.exposureCount || a.irritant.localeCompare(b.irritant));
+      return {
+        irritant,
+        exposureCount: round(weightedExposureCount),
+        eventCountAfterExposure: associatedEvents.length,
+        exposedEventRate: strongest.exposedEventRate,
+        baselineEventRate: strongest.baselineEventRate,
+        riskRatio: strongest.riskRatio,
+        riskDifference: strongest.riskDifference,
+        strongestWindow: strongest.window,
+        window: strongest.window,
+        evidenceGrade: grade(weightedExposureCount, strongest.riskDifference, strongest.riskRatio),
+        symptomBreakdown,
+        windowStats,
+        recentExampleMealIds: exposedMeals
+          .slice(0, 5)
+          .flatMap((meal) => (meal.id ? [meal.id] : [])),
+        followedEventIds: [...followedIds].slice(0, 8) as string[],
+        toleratedExposureMealIds: tolerated
+          .slice(0, 5)
+          .flatMap((meal) => (meal.id ? [meal.id] : [])),
+      };
+    })
+    .sort(
+      (a, b) =>
+        gradeRank(b.evidenceGrade) - gradeRank(a.evidenceGrade) ||
+        b.riskDifference - a.riskDifference ||
+        b.exposureCount - a.exposureCount ||
+        a.irritant.localeCompare(b.irritant),
+    );
 }
 
-function computeWindow(exposures: Exposure[], events: TimedEvent[], irritant: string, window: (typeof lagWindows)[number]): WindowStat {
+function computeWindow(
+  exposures: Exposure[],
+  events: TimedEvent[],
+  irritant: string,
+  window: (typeof lagWindows)[number],
+): WindowStat {
   let exposedWeight = 0;
   let exposedEvents = 0;
   let baselineCount = 0;
@@ -142,10 +171,16 @@ function computeWindow(exposures: Exposure[], events: TimedEvent[], irritant: st
   };
 }
 
-function eventsAfter(exposures: Exposure[], events: TimedEvent[], irritant: string, window: LagWindow) {
+function eventsAfter(
+  exposures: Exposure[],
+  events: TimedEvent[],
+  irritant: string,
+  window: LagWindow,
+) {
   const found = new Map<string, TimedEvent>();
   for (const meal of exposures.filter((item) => item.irritants.has(irritant))) {
-    for (const event of eventsInWindow(meal.at, events, window)) found.set(event.id ?? `${event.at}`, event);
+    for (const event of eventsInWindow(meal.at, events, window))
+      found.set(event.id ?? `${event.at}`, event);
   }
   return [...found.values()];
 }
@@ -163,34 +198,50 @@ function toExposure(meal: AssociationMeal): Exposure | null {
   if (at == null) return null;
   const irritants = new Map<string, number>();
   const rows = (meal.analysis as { irritants?: unknown[] } | undefined)?.irritants;
-  if (Array.isArray(rows)) for (const row of rows) {
-    if (!row || typeof row !== "object") continue;
-    const item = row as Record<string, unknown>;
-    const name = typeof item.name === "string" ? item.name.trim().toLowerCase() : "";
-    if (name) irritants.set(name, Math.max(irritants.get(name) ?? 0, clamp(item.confidence)));
-  }
+  if (Array.isArray(rows))
+    for (const row of rows) {
+      if (!row || typeof row !== "object") continue;
+      const item = row as Record<string, unknown>;
+      const name = typeof item.name === "string" ? item.name.trim().toLowerCase() : "";
+      if (name) irritants.set(name, Math.max(irritants.get(name) ?? 0, clamp(item.confidence)));
+    }
   return { id: meal.id, at, weight: 1, irritants };
 }
 
 function toEvent(event: AssociationEvent): TimedEvent | null {
   const at = toMillis(event.occurredAt);
   if (at == null) return null;
-  return { id: event.id, at, symptoms: (event.symptoms ?? []).map((s) => s.trim().toLowerCase()).filter(Boolean) };
+  return {
+    id: event.id,
+    at,
+    symptoms: (event.symptoms ?? []).map((s) => s.trim().toLowerCase()).filter(Boolean),
+  };
 }
 
 function toMillis(value: DateLike | undefined) {
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.getTime();
-  if (typeof value === "string" || typeof value === "number") { const n = new Date(value).getTime(); return Number.isNaN(n) ? null : n; }
+  if (typeof value === "string" || typeof value === "number") {
+    const n = new Date(value).getTime();
+    return Number.isNaN(n) ? null : n;
+  }
   if (value?.toDate) return value.toDate().getTime();
   return typeof value?.seconds === "number" ? value.seconds * 1000 : null;
 }
 
-function clamp(value: unknown) { return typeof value === "number" && Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0.5; }
-function round(value: number) { return Math.round(value * 1000) / 1000; }
+function clamp(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.min(1, Math.max(0, value))
+    : 0.5;
+}
+function round(value: number) {
+  return Math.round(value * 1000) / 1000;
+}
 function grade(count: number, difference: number, ratio: number | null): EvidenceGrade {
   if (count < 3) return "insufficient";
   if (count < 6) return "weak";
   if (count < 10) return "moderate";
   return difference >= 0.1 && (ratio == null || ratio >= 1.2) ? "stronger" : "moderate";
 }
-function gradeRank(value: EvidenceGrade) { return ({ insufficient: 0, weak: 1, moderate: 2, stronger: 3 })[value]; }
+function gradeRank(value: EvidenceGrade) {
+  return { insufficient: 0, weak: 1, moderate: 2, stronger: 3 }[value];
+}

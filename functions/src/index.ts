@@ -257,8 +257,16 @@ export const createMeal = onCall(
     const requestedProcessingSource = optionalProcessingSource(data.processingSource);
     const localProcessingWarning = optionalString(data.localProcessingWarning, 1000);
     const now = Timestamp.now();
-    const mealSize = optionalEnum(data.mealSize, ["snack", "small", "medium", "large", "very_large"] as const, "mealSize");
-    const sourceType = optionalEnum(data.sourceType, ["restaurant", "homemade", "packaged"] as const, "sourceType");
+    const mealSize = optionalEnum(
+      data.mealSize,
+      ["snack", "small", "medium", "large", "very_large"] as const,
+      "mealSize",
+    );
+    const sourceType = optionalEnum(
+      data.sourceType,
+      ["restaurant", "homemade", "packaged"] as const,
+      "sourceType",
+    );
     const portionMultiplier = optionalNumber(data.portionMultiplier, "portionMultiplier", 0.1, 20);
     const alcoholServings = optionalNumber(data.alcoholServings, "alcoholServings", 0, 30);
     const caffeineAmount = optionalNumber(data.caffeineAmount, "caffeineAmount", 0, 3000);
@@ -315,8 +323,12 @@ export const createMeal = onCall(
       ...(alcoholServings != null ? { alcoholServings } : {}),
       ...(caffeineAmount != null ? { caffeineAmount } : {}),
       ...(uncertainIngredientsNotes ? { uncertainIngredientsNotes } : {}),
-      ...(typeof data.containsUnknownSauce === "boolean" ? { containsUnknownSauce: data.containsUnknownSauce } : {}),
-      ...(typeof data.descriptionComplete === "boolean" ? { descriptionComplete: data.descriptionComplete } : {}),
+      ...(typeof data.containsUnknownSauce === "boolean"
+        ? { containsUnknownSauce: data.containsUnknownSauce }
+        : {}),
+      ...(typeof data.descriptionComplete === "boolean"
+        ? { descriptionComplete: data.descriptionComplete }
+        : {}),
     };
 
     const docRef = await db.collection("users").doc(uid).collection("meals").add(meal);
@@ -343,8 +355,18 @@ export const createGiEvent = onCall(async (request) => {
   const urgencyScore = optionalNumber(data.urgencyScore, "urgencyScore", 0, 10);
   const stressLevel = optionalNumber(data.stressLevel, "stressLevel", 0, 10);
   const sleepQuality = optionalNumber(data.sleepQuality, "sleepQuality", 0, 10);
-  const medicationFlags = validateStringList(data.medicationFlags ?? [], "medicationFlags", 0, 8, 40);
-  const exerciseIntensity = optionalEnum(data.exerciseIntensity, ["none", "light", "moderate", "vigorous"] as const, "exerciseIntensity");
+  const medicationFlags = validateStringList(
+    data.medicationFlags ?? [],
+    "medicationFlags",
+    0,
+    8,
+    40,
+  );
+  const exerciseIntensity = optionalEnum(
+    data.exerciseIntensity,
+    ["none", "light", "moderate", "vigorous"] as const,
+    "exerciseIntensity",
+  );
   const suspectedCause = optionalString(data.suspectedCause, 500);
 
   if (symptoms.length === 0 && stoolType == null) {
@@ -628,7 +650,11 @@ async function runCorrelationForUser(uid: string) {
       summary: "Add meals and GI events before running correlation analysis.",
       findings: [],
       dataQualityNotes: ["At least one meal and one GI event are required."],
-      dataQuality: { mealsWithPortionSize: 0, eventsWithSeverityDuration: 0, topMissingFields: ["meals and GI events"] },
+      dataQuality: {
+        mealsWithPortionSize: 0,
+        eventsWithSeverityDuration: 0,
+        topMissingFields: ["meals and GI events"],
+      },
     };
     await saveAnalysis(uid, insufficient);
     return insufficient;
@@ -657,61 +683,115 @@ function deterministicCorrelationAnalysis(
 ): CorrelationAnalysis {
   const stats = computeWindowedAssociationStats(meals, events);
   const findings = stats.slice(0, 12).map(toCorrelationFinding);
-  const mealsWithPortionSize = meals.filter((meal) => meal.mealSize || meal.portionMultiplier).length;
-  const eventsWithSeverityDuration = events.filter((event) => event.severity && event.durationMinutes).length;
+  const mealsWithPortionSize = meals.filter(
+    (meal) => meal.mealSize || meal.portionMultiplier,
+  ).length;
+  const eventsWithSeverityDuration = events.filter(
+    (event) => event.severity && event.durationMinutes,
+  ).length;
   const topMissingFields = [
     mealsWithPortionSize < meals.length ? "meal portion size" : "",
     eventsWithSeverityDuration < events.length ? "symptom duration" : "",
-    meals.some((meal) => meal.analysis?.irritants?.some((item: IrritantSignal) => item.name === "caffeine")) && meals.some((meal) => meal.caffeineAmount == null) ? "caffeine amount" : "",
+    meals.some((meal) =>
+      meal.analysis?.irritants?.some((item: IrritantSignal) => item.name === "caffeine"),
+    ) && meals.some((meal) => meal.caffeineAmount == null)
+      ? "caffeine amount"
+      : "",
   ].filter(Boolean);
   const usable = findings.filter((finding) => finding.evidenceGrade !== "insufficient");
   return {
     uid,
     status: usable.length ? "ready" : "insufficient_data",
-    generatedAt: Timestamp.now(), mealCount: meals.length, eventCount: events.length,
-    summary: usable.length ? "Deterministic windowed associations are ready. These are tracking signals, not diagnoses." : "Not enough repeated exposures yet. Keep logging meals and GI events to build a useful baseline.",
+    generatedAt: Timestamp.now(),
+    mealCount: meals.length,
+    eventCount: events.length,
+    summary: usable.length
+      ? "Deterministic windowed associations are ready. These are tracking signals, not diagnoses."
+      : "Not enough repeated exposures yet. Keep logging meals and GI events to build a useful baseline.",
     findings,
-    dataQualityNotes: topMissingFields.length ? [`Missing fields that would improve confidence: ${topMissingFields.join(", ")}.`] : [],
+    dataQualityNotes: topMissingFields.length
+      ? [`Missing fields that would improve confidence: ${topMissingFields.join(", ")}.`]
+      : [],
     dataQuality: { mealsWithPortionSize, eventsWithSeverityDuration, topMissingFields },
   };
 }
 
 function toCorrelationFinding(stat: WindowedAssociationFinding): CorrelationFinding {
   const positive = stat.riskDifference >= 0.1;
-  const direction = stat.evidenceGrade === "insufficient" ? "insufficient_data" : positive ? "possible_trigger" : "unlikely_trigger";
+  const direction =
+    stat.evidenceGrade === "insufficient"
+      ? "insufficient_data"
+      : positive
+        ? "possible_trigger"
+        : "unlikely_trigger";
   const needed = Math.max(0, 6 - Math.ceil(stat.exposureCount));
-  const explanation = stat.evidenceGrade === "insufficient"
-    ? `Not enough ${stat.irritant} exposures are logged for a reliable comparison.`
-    : `${stat.irritant} had a ${percent(stat.exposedEventRate)} event rate after exposure versus ${percent(stat.baselineEventRate)} at baseline; the strongest signal was ${stat.strongestWindow}.`;
+  const explanation =
+    stat.evidenceGrade === "insufficient"
+      ? `Not enough ${stat.irritant} exposures are logged for a reliable comparison.`
+      : `${stat.irritant} had a ${percent(stat.exposedEventRate)} event rate after exposure versus ${percent(stat.baselineEventRate)} at baseline; the strongest signal was ${stat.strongestWindow}.`;
   return {
     ...stat,
-    confidence: stat.evidenceGrade === "stronger" ? 0.8 : stat.evidenceGrade === "moderate" ? 0.6 : stat.evidenceGrade === "weak" ? 0.35 : 0.15,
+    confidence:
+      stat.evidenceGrade === "stronger"
+        ? 0.8
+        : stat.evidenceGrade === "moderate"
+          ? 0.6
+          : stat.evidenceGrade === "weak"
+            ? 0.35
+            : 0.15,
     direction,
     windowHours: Number(stat.strongestWindow.split("-")[1].replace("h", "")),
     evidence: explanation,
     plainLanguageExplanation: explanation,
-    suggestedAction: needed ? `Log ${needed} more meals containing ${stat.irritant}.` : `Keep tracking portion size and symptoms after ${stat.irritant}.`,
+    suggestedAction: needed
+      ? `Log ${needed} more meals containing ${stat.irritant}.`
+      : `Keep tracking portion size and symptoms after ${stat.irritant}.`,
   };
 }
 
-async function addGeminiExplanations(analysis: CorrelationAnalysis, ai: GoogleGenAI, promptConfig?: PromptConfig) {
+async function addGeminiExplanations(
+  analysis: CorrelationAnalysis,
+  ai: GoogleGenAI,
+  promptConfig?: PromptConfig,
+) {
   try {
-    const config = promptConfig ?? await getPromptConfig();
-    const prompt = renderTemplate(config.correlationAnalysisPromptTemplate, { statsJson: JSON.stringify(analysis.findings) });
-    const parsed = parseJsonObject(await generateJson(ai, [{ text: prompt }], config.correlationModelName));
+    const config = promptConfig ?? (await getPromptConfig());
+    const prompt = renderTemplate(config.correlationAnalysisPromptTemplate, {
+      statsJson: JSON.stringify(analysis.findings),
+    });
+    const parsed = parseJsonObject(
+      await generateJson(ai, [{ text: prompt }], config.correlationModelName),
+    );
     const explanations = Array.isArray(parsed.explanations) ? parsed.explanations : [];
-    return { ...analysis, findings: analysis.findings.map((finding) => {
-      const match = explanations.find((item) => item && typeof item === "object" && canonicalKey(String((item as Record<string, unknown>).irritant ?? "")) === canonicalKey(finding.irritant)) as Record<string, unknown> | undefined;
-      const text = cleanGeneratedString(match?.plainLanguageExplanation, finding.plainLanguageExplanation ?? finding.evidence, 500);
-      return { ...finding, plainLanguageExplanation: text, evidence: text };
-    }) };
+    return {
+      ...analysis,
+      findings: analysis.findings.map((finding) => {
+        const match = explanations.find(
+          (item) =>
+            item &&
+            typeof item === "object" &&
+            canonicalKey(String((item as Record<string, unknown>).irritant ?? "")) ===
+              canonicalKey(finding.irritant),
+        ) as Record<string, unknown> | undefined;
+        const text = cleanGeneratedString(
+          match?.plainLanguageExplanation,
+          finding.plainLanguageExplanation ?? finding.evidence,
+          500,
+        );
+        return { ...finding, plainLanguageExplanation: text, evidence: text };
+      }),
+    };
   } catch (error) {
-    logger.warn("Gemini explanation generation failed; keeping deterministic explanations", { error });
+    logger.warn("Gemini explanation generation failed; keeping deterministic explanations", {
+      error,
+    });
     return analysis;
   }
 }
 
-function percent(value: number) { return `${Math.round(value * 100)}%`; }
+function percent(value: number) {
+  return `${Math.round(value * 100)}%`;
+}
 
 // Kept temporarily for compatibility with older stored prompt templates.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1720,7 +1800,11 @@ function optionalNumber(value: unknown, field: string, min: number, max: number)
   return value == null ? undefined : validateNumber(value, field, min, max);
 }
 
-function optionalEnum<const T extends readonly string[]>(value: unknown, values: T, field: string): T[number] | undefined {
+function optionalEnum<const T extends readonly string[]>(
+  value: unknown,
+  values: T,
+  field: string,
+): T[number] | undefined {
   if (value == null || value === "") return undefined;
   if (typeof value !== "string" || !values.includes(value)) {
     throw new HttpsError("invalid-argument", `${field} is invalid.`);

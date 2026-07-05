@@ -67,9 +67,11 @@ export function MealComposer(props: { readOnly?: boolean }) {
         mimeType: mode() === "text" ? undefined : mimeType(),
         eatenAt: eatenAtDate.toISOString(),
         notes: notes().trim() || undefined,
-        mealSize: (mealSize() || undefined) as "snack" | "small" | "medium" | "large" | "very_large" | undefined,
+        mealSize: (mealSize() || undefined) as
+          "snack" | "small" | "medium" | "large" | "very_large" | undefined,
         portionMultiplier: portionMultiplier() ? Number(portionMultiplier()) : undefined,
-        sourceType: (sourceType() || undefined) as "restaurant" | "homemade" | "packaged" | undefined,
+        sourceType: (sourceType() || undefined) as
+          "restaurant" | "homemade" | "packaged" | undefined,
         alcoholServings: alcoholServings() ? Number(alcoholServings()) : undefined,
         caffeineAmount: caffeineAmount() ? Number(caffeineAmount()) : undefined,
         uncertainIngredientsNotes: uncertainIngredientsNotes().trim() || undefined,
@@ -78,7 +80,14 @@ export function MealComposer(props: { readOnly?: boolean }) {
       });
       setText("");
       setNotes("");
-      setMealSize(""); setPortionMultiplier(""); setSourceType(""); setAlcoholServings(""); setCaffeineAmount(""); setUncertainIngredientsNotes(""); setContainsUnknownSauce(false); setDescriptionComplete(false);
+      setMealSize("");
+      setPortionMultiplier("");
+      setSourceType("");
+      setAlcoholServings("");
+      setCaffeineAmount("");
+      setUncertainIngredientsNotes("");
+      setContainsUnknownSauce(false);
+      setDescriptionComplete(false);
       setMediaBase64("");
       setMimeType("");
       setEatenAt(toDatetimeLocalValue(new Date()));
@@ -284,16 +293,95 @@ export function MealComposer(props: { readOnly?: boolean }) {
         </div>
 
         <details class="rounded-lg border border-border p-3">
-          <summary class="cursor-pointer text-sm font-semibold text-muted-strong">Optional meal details</summary>
+          <summary class="cursor-pointer text-sm font-semibold text-muted-strong">
+            Optional meal details
+          </summary>
           <div class="mt-3 grid gap-3 sm:grid-cols-3">
-            <label class="grid gap-1 text-sm">Meal size<select class="h-11 rounded-lg border border-border-strong bg-surface px-3" value={mealSize()} onInput={(e) => setMealSize(e.currentTarget.value)}><option value="">Not set</option><option value="snack">Snack</option><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option><option value="very_large">Very large</option></select></label>
-            <label class="grid gap-1 text-sm">Portion multiplier<input class="h-11 rounded-lg border border-border-strong px-3" type="number" min="0.1" max="20" step="0.1" value={portionMultiplier()} onInput={(e) => setPortionMultiplier(e.currentTarget.value)} /></label>
-            <label class="grid gap-1 text-sm">Source<select class="h-11 rounded-lg border border-border-strong bg-surface px-3" value={sourceType()} onInput={(e) => setSourceType(e.currentTarget.value)}><option value="">Not set</option><option value="homemade">Homemade</option><option value="restaurant">Restaurant</option><option value="packaged">Packaged</option></select></label>
-            <label class="grid gap-1 text-sm">Alcohol servings<input class="h-11 rounded-lg border border-border-strong px-3" type="number" min="0" step="0.5" value={alcoholServings()} onInput={(e) => setAlcoholServings(e.currentTarget.value)} /></label>
-            <label class="grid gap-1 text-sm">Caffeine (mg)<input class="h-11 rounded-lg border border-border-strong px-3" type="number" min="0" value={caffeineAmount()} onInput={(e) => setCaffeineAmount(e.currentTarget.value)} /></label>
-            <label class="grid gap-1 text-sm sm:col-span-3">Uncertain ingredients<textarea class="min-h-20 rounded-lg border border-border-strong p-3" value={uncertainIngredientsNotes()} onInput={(e) => setUncertainIngredientsNotes(e.currentTarget.value)} /></label>
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" checked={containsUnknownSauce()} onChange={(e) => setContainsUnknownSauce(e.currentTarget.checked)} /> Contains unknown sauce/seasoning</label>
-            <label class="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={descriptionComplete()} onChange={(e) => setDescriptionComplete(e.currentTarget.checked)} /> I’m confident this meal description is complete</label>
+            <label class="grid gap-1 text-sm">
+              Meal size
+              <select
+                class="h-11 rounded-lg border border-border-strong bg-surface px-3"
+                value={mealSize()}
+                onInput={(e) => setMealSize(e.currentTarget.value)}
+              >
+                <option value="">Not set</option>
+                <option value="snack">Snack</option>
+                <option value="small">Small</option>
+                <option value="medium">Medium</option>
+                <option value="large">Large</option>
+                <option value="very_large">Very large</option>
+              </select>
+            </label>
+            <label class="grid gap-1 text-sm">
+              Portion multiplier
+              <input
+                class="h-11 rounded-lg border border-border-strong px-3"
+                type="number"
+                min="0.1"
+                max="20"
+                step="0.1"
+                value={portionMultiplier()}
+                onInput={(e) => setPortionMultiplier(e.currentTarget.value)}
+              />
+            </label>
+            <label class="grid gap-1 text-sm">
+              Source
+              <select
+                class="h-11 rounded-lg border border-border-strong bg-surface px-3"
+                value={sourceType()}
+                onInput={(e) => setSourceType(e.currentTarget.value)}
+              >
+                <option value="">Not set</option>
+                <option value="homemade">Homemade</option>
+                <option value="restaurant">Restaurant</option>
+                <option value="packaged">Packaged</option>
+              </select>
+            </label>
+            <label class="grid gap-1 text-sm">
+              Alcohol servings
+              <input
+                class="h-11 rounded-lg border border-border-strong px-3"
+                type="number"
+                min="0"
+                step="0.5"
+                value={alcoholServings()}
+                onInput={(e) => setAlcoholServings(e.currentTarget.value)}
+              />
+            </label>
+            <label class="grid gap-1 text-sm">
+              Caffeine (mg)
+              <input
+                class="h-11 rounded-lg border border-border-strong px-3"
+                type="number"
+                min="0"
+                value={caffeineAmount()}
+                onInput={(e) => setCaffeineAmount(e.currentTarget.value)}
+              />
+            </label>
+            <label class="grid gap-1 text-sm sm:col-span-3">
+              Uncertain ingredients
+              <textarea
+                class="min-h-20 rounded-lg border border-border-strong p-3"
+                value={uncertainIngredientsNotes()}
+                onInput={(e) => setUncertainIngredientsNotes(e.currentTarget.value)}
+              />
+            </label>
+            <label class="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={containsUnknownSauce()}
+                onChange={(e) => setContainsUnknownSauce(e.currentTarget.checked)}
+              />{" "}
+              Contains unknown sauce/seasoning
+            </label>
+            <label class="flex items-center gap-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={descriptionComplete()}
+                onChange={(e) => setDescriptionComplete(e.currentTarget.checked)}
+              />{" "}
+              I’m confident this meal description is complete
+            </label>
           </div>
         </details>
 
