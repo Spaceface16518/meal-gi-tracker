@@ -39,7 +39,6 @@ struct GIEventDraft {
 }
 
 struct GIEventEntryView: View {
-    @Environment(Haptics.self) private var haptics
     @Environment(\.firebaseService) private var service
     @Environment(\.dismiss) private var dismiss
 
@@ -72,6 +71,7 @@ struct GIEventEntryView: View {
                 }
         }
         .presentationDetents([.medium, .large])
+        .sensoryFeedback(.impact, trigger: isSaving) { old, new in !old && new }
     }
 
     private func cancel() {
@@ -82,7 +82,6 @@ struct GIEventEntryView: View {
         Task {
             guard !draft.symptoms.isEmpty || draft.stoolType != nil else {
                 message = .error("Choose a symptom or stool type.")
-                haptics.warning()
                 return
             }
 
@@ -98,11 +97,9 @@ struct GIEventEntryView: View {
                     stoolType: draft.stoolType,
                     durationMinutes: draft.durationMinutes
                 )
-                haptics.success()
                 dismiss()
             } catch {
                 message = .error("Event could not be saved.")
-                haptics.error()
             }
         }
     }

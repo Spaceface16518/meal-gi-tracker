@@ -2,7 +2,6 @@ import SwiftUI
 
 struct RootView: View {
     @State private var viewModel = AppModel()
-    @State private var haptics = Haptics()
 
     var body: some View {
         Group {
@@ -18,10 +17,6 @@ struct RootView: View {
         }
         .tint(MealSignalDesign.brand)
         .environment(\.firebaseService, viewModel.service)
-        .environment(haptics)
-        .sensoryFeedback(trigger: haptics.event) { _, event in
-            event.kind?.feedback
-        }
     }
 }
 
@@ -62,10 +57,12 @@ private struct AuthView: View {
                         LoadingLabel(title: submitTitle, isLoading: busy)
                     }
                         .disabled(email.isEmpty || password.count < 6 || busy)
+                        .sensoryFeedback(.impact, trigger: busy) { old, new in !old && new }
                     Button(isSignUp ? "Use existing account" : "Create an account") {
                         isSignUp.toggle()
                     }
                     .disabled(busy)
+                    .sensoryFeedback(.selection, trigger: isSignUp)
                 }
 
                 if let message = message ?? session.message {
@@ -114,7 +111,6 @@ private enum AppTab: String, CaseIterable, Identifiable {
 }
 
 private struct AppTabs: View {
-    @Environment(Haptics.self) private var haptics
     @State private var viewModel: TabsModel
     @State private var selectedTab = AppTab.history
 
@@ -135,7 +131,7 @@ private struct AppTabs: View {
                 .tabItem { Label(AppTab.analysis.rawValue, systemImage: AppTab.analysis.icon) }
                 .tag(AppTab.analysis)
         }
-        .onChange(of: selectedTab) { _, _ in haptics.selection() }
+        .sensoryFeedback(.selection, trigger: selectedTab)
     }
 }
 

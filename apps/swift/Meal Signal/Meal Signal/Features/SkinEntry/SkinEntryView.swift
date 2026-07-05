@@ -43,7 +43,6 @@ private struct SkinEntryDraft {
 }
 
 struct SkinEntryView: View {
-    @Environment(Haptics.self) private var haptics
     @Environment(\.firebaseService) private var service
     @Environment(\.dismiss) private var dismiss
 
@@ -66,7 +65,7 @@ struct SkinEntryView: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    .onChange(of: draft.mode) { _, _ in haptics.selection() }
+                    .sensoryFeedback(.selection, trigger: draft.mode)
                 } footer: {
                     Text(draft.mode == .daily
                         ? "Record skin quality for a calendar day. Saving the same day updates it."
@@ -105,6 +104,7 @@ struct SkinEntryView: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .sensoryFeedback(.impact, trigger: isSaving) { old, new in !old && new }
     }
 
     private var canSave: Bool {
@@ -168,17 +168,14 @@ struct SkinEntryView: View {
     private func save() {
         if readOnly {
             message = .error(demoReadOnlyMessage)
-            haptics.warning()
             return
         }
         if draft.mode == .timed, draft.symptoms.isEmpty {
             message = .error("Choose at least one skin symptom.")
-            haptics.warning()
             return
         }
         if let duration = draft.durationMinutes, !(1...1440).contains(duration) {
             message = .error("Use a duration from 1 to 1440 minutes.")
-            haptics.warning()
             return
         }
 
@@ -203,18 +200,15 @@ struct SkinEntryView: View {
                         durationMinutes: draft.durationMinutes
                     )
                 }
-                haptics.success()
                 dismiss()
             } catch {
                 message = .error("Skin entry could not be saved.")
-                haptics.error()
             }
         }
     }
 }
 
 private struct SkinTagPicker: View {
-    @Environment(Haptics.self) private var haptics
     let title: String
     let options: [String]
     @Binding var selection: [String]
@@ -234,6 +228,7 @@ private struct SkinTagPicker: View {
             }
         }
         .padding(.vertical, 4)
+        .sensoryFeedback(.selection, trigger: selection)
     }
 
     private func toggle(_ option: String) {
@@ -242,11 +237,9 @@ private struct SkinTagPicker: View {
         } else {
             selection.append(option)
         }
-        haptics.selection()
     }
 }
 
 #Preview("Daily skin") {
     SkinEntryView(readOnly: false)
-        .environment(Haptics())
 }

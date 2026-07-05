@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct HomeView: View {
-    @Environment(Haptics.self) private var haptics
     @Environment(\.firebaseService) private var service
 
     let history: HomeModel
@@ -45,7 +44,6 @@ struct HomeView: View {
         }
         .alert("Delete this entry?", isPresented: deleteAlertBinding) {
             Button("Cancel", role: .cancel) {
-                haptics.impact()
                 deleteConfirmation = nil
             }
             Button(deletingEntryID == nil ? "Delete" : "Deleting", role: .destructive, action: confirmDeletion)
@@ -53,6 +51,7 @@ struct HomeView: View {
         } message: {
             Text("This cannot be undone.")
         }
+        .sensoryFeedback(.warning, trigger: deleteConfirmation?.id) { old, new in old == nil && new != nil }
     }
 
     private var deleteAlertBinding: Binding<Bool> {
@@ -86,16 +85,13 @@ struct HomeView: View {
                     try await service.deleteSkinEntry(uid: entry.uid, id: entry.id)
                     actionMessage = .success("Skin entry deleted.")
                 }
-                haptics.success()
             } catch {
                 actionMessage = .error("The entry could not be deleted.")
-                haptics.error()
             }
         }
     }
 
     private func confirmDeletion() {
-        haptics.impact(.medium)
         deleteEntry()
     }
 }

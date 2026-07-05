@@ -9,7 +9,6 @@ enum AddSheet: String, Identifiable {
 }
 
 struct AddShortcuts: View {
-    @Environment(Haptics.self) private var haptics
     let mealCount: Int
     let eventCount: Int
     let skinCount: Int
@@ -25,6 +24,7 @@ struct AddShortcuts: View {
                 buttons
             }
         }
+        .sensoryFeedback(.impact, trigger: addSheet) { old, new in old == nil && new != nil }
     }
 
     @ViewBuilder
@@ -59,17 +59,14 @@ struct AddShortcuts: View {
     }
 
     private func addMeal() {
-        haptics.impact()
         addSheet = .meal
     }
 
     private func addEvent() {
-        haptics.impact()
         addSheet = .event
     }
 
     private func addSkin() {
-        haptics.impact()
         addSheet = .skin
     }
 }
@@ -127,5 +124,4 @@ private struct AddShortcutButton: View {
     }
     .padding()
     .background(MealSignalDesign.background)
-    .environment(Haptics())
 }

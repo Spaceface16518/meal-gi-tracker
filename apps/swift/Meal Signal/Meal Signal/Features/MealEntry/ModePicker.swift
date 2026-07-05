@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct ModePicker: View {
-    @Environment(Haptics.self) private var haptics
     @Binding var mode: InputMode
 
     var body: some View {
@@ -11,7 +10,7 @@ struct ModePicker: View {
             Label("Image", systemImage: "camera").tag(InputMode.image)
         }
         .pickerStyle(.segmented)
-        .onChange(of: mode) { _, _ in haptics.selection() }
+        .sensoryFeedback(.selection, trigger: mode)
     }
 }
 
@@ -20,5 +19,4 @@ struct ModePicker: View {
 
     ModePicker(mode: $mode)
         .padding()
-        .environment(Haptics())
 }

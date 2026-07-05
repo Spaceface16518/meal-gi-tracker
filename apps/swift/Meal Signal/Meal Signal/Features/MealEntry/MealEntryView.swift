@@ -70,7 +70,6 @@ enum MealProcessingSource: String {
 }
 
 struct MealEntryView: View {
-    @Environment(Haptics.self) private var haptics
     @Environment(\.firebaseService) private var service
     @Environment(\.dismiss) private var dismiss
 
@@ -103,6 +102,7 @@ struct MealEntryView: View {
                 }
         }
         .presentationDetents([.medium, .large])
+        .sensoryFeedback(.impact, trigger: isSaving) { old, new in !old && new }
     }
 
     private func cancel() {
@@ -125,11 +125,9 @@ struct MealEntryView: View {
                     processingSource: draft.processingSourcePayload,
                     localProcessingWarning: draft.localProcessingWarningPayload
                 )
-                haptics.success()
                 dismiss()
             } catch {
                 message = .error("Meal could not be saved.")
-                haptics.error()
             }
         }
     }

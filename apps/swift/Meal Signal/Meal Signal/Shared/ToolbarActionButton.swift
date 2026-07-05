@@ -1,14 +1,13 @@
 import SwiftUI
 
 struct ToolbarActionButton: View {
-    @Environment(Haptics.self) private var haptics
     let title: String
     let systemImage: String
     var isLoading = false
     let action: () -> Void
 
     var body: some View {
-        Button(action: performAction) {
+        Button(action: action) {
             if isLoading {
                 ProgressView()
                     .controlSize(.small)
@@ -17,10 +16,5 @@ struct ToolbarActionButton: View {
             }
         }
         .accessibilityLabel(title)
-    }
-
-    private func performAction() {
-        haptics.impact()
-        action()
     }
 }
