@@ -88,8 +88,8 @@ struct EntryDetailSheet: View {
             }
         }
         .sensoryFeedback(.impact, trigger: isEditing)
-        .sensoryFeedback(.impact, trigger: isSaving) { old, new in !old && new }
-        .sensoryFeedback(.impact, trigger: isReanalyzing) { old, new in !old && new }
+        .sensoryFeedback(.impact, trigger: isSaving)
+        .sensoryFeedback(.impact, trigger: isReanalyzing)
     }
 
     private var navigationTitle: String {

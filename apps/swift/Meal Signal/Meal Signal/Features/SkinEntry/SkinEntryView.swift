@@ -104,7 +104,7 @@ struct SkinEntryView: View {
             }
         }
         .presentationDetents([.medium, .large])
-        .sensoryFeedback(.impact, trigger: isSaving) { old, new in !old && new }
+        .sensoryFeedback(.impact, trigger: isSaving)
     }
 
     private var canSave: Bool {
@@ -200,6 +200,7 @@ struct SkinEntryView: View {
                         durationMinutes: draft.durationMinutes
                     )
                 }
+                isSaving = false
                 dismiss()
             } catch {
                 message = .error("Skin entry could not be saved.")

@@ -57,7 +57,7 @@ private struct AuthView: View {
                         LoadingLabel(title: submitTitle, isLoading: busy)
                     }
                         .disabled(email.isEmpty || password.count < 6 || busy)
-                        .sensoryFeedback(.impact, trigger: busy) { old, new in !old && new }
+                        .sensoryFeedback(.impact, trigger: busy)
                     Button(isSignUp ? "Use existing account" : "Create an account") {
                         isSignUp.toggle()
                     }

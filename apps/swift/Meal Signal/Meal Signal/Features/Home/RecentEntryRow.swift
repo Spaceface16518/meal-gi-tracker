@@ -40,7 +40,7 @@ struct RecentEntryRow: View {
             }
         }
         .padding(.vertical, 10)
-        .sensoryFeedback(.impact, trigger: isReanalyzing) { old, new in !old && new }
+        .sensoryFeedback(.impact, trigger: isReanalyzing)
     }
 
     private func confirmDelete() {
