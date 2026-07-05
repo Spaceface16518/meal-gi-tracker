@@ -222,10 +222,7 @@ type SensitivityContext = {
   explanation: string;
   categoryNormalization: CategoryNormalizationMap;
   overall: SensitivityScore[];
-  bySymptom: Array<{
-    symptom: string;
-    scores: SensitivityScore[];
-  }>;
+  bySymptom: Array<{ symptom: string; scores: SensitivityScore[] }>;
 };
 
 type CategoryNormalizationMap = Record<string, string[]>;
@@ -644,12 +641,6 @@ async function runCorrelationForUser(uid: string) {
   // Catalog aliases are the source of truth. Gemini no longer controls statistical categories.
   const categoryNormalization = heuristicCategoryNormalizationMap(meals);
   const normalizedMeals = normalizeMealsForSensitivity(meals, categoryNormalization);
-  const sensitivityContext = buildSensitivityContext(
-    normalizedMeals,
-    events,
-    categoryNormalization,
-  );
-
   const deterministic = deterministicCorrelationAnalysis(uid, normalizedMeals, events);
   const analysis = ai
     ? await addGeminiExplanations(deterministic, ai, promptConfig)
@@ -722,6 +713,8 @@ async function addGeminiExplanations(analysis: CorrelationAnalysis, ai: GoogleGe
 
 function percent(value: number) { return `${Math.round(value * 100)}%`; }
 
+// Kept temporarily for compatibility with older stored prompt templates.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function analyzeCorrelationsWithGemini(
   uid: string,
   meals: FirebaseFirestore.DocumentData[],
@@ -782,6 +775,8 @@ async function saveAnalysis(uid: string, analysis: CorrelationAnalysis) {
   await Promise.all([currentRef.set(analysis), runRef.set(analysis)]);
 }
 
+// Kept as a fallback migration helper; deterministic catalog aliases are primary.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function buildCategoryNormalizationMap(
   meals: FirebaseFirestore.DocumentData[],
   ai: GoogleGenAI,
@@ -1449,6 +1444,8 @@ function normalizeCorrelationAnalysis(
   };
 }
 
+// Supports the legacy correlation fallback above.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function buildSensitivityContext(
   meals: FirebaseFirestore.DocumentData[],
   events: FirebaseFirestore.DocumentData[],
