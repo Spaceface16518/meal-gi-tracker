@@ -15,13 +15,8 @@ struct AddShortcuts: View {
     @Binding var addSheet: AddSheet?
 
     var body: some View {
-        ViewThatFits {
-            HStack(spacing: 12) {
-                buttons
-            }
-            VStack(spacing: 12) {
-                buttons
-            }
+        HStack(spacing: 8) {
+            buttons
         }
     }
 
@@ -29,26 +24,26 @@ struct AddShortcuts: View {
     private var buttons: some View {
         AddShortcutButton(
             title: "Log meal",
-            subtitle: "Food, notes, voice, or photo",
             value: "\(mealCount)",
             caption: "meals",
             systemImage: "fork.knife",
+            accessibilityHint: "Opens the meal logging form",
             action: addMeal
         )
         AddShortcutButton(
             title: "Log GI event",
-            subtitle: "Symptoms, severity, stool type",
             value: "\(eventCount)",
             caption: "events",
             systemImage: "waveform.path.ecg",
+            accessibilityHint: "Opens the GI event logging form",
             action: addEvent
         )
         AddShortcutButton(
             title: "Track skin",
-            subtitle: "Daily state or timed observation",
             value: "\(skinCount)",
             caption: "skin",
             systemImage: "sparkles",
+            accessibilityHint: "Opens the skin tracking form",
             action: addSkin
         )
     }
@@ -68,39 +63,28 @@ struct AddShortcuts: View {
 
 private struct AddShortcutButton: View {
     let title: String
-    let subtitle: String
     let value: String
     let caption: String
     let systemImage: String
+    let accessibilityHint: String
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .center, spacing: 14) {
+            HStack(spacing: 7) {
                 Image(systemName: systemImage)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(MealSignalDesign.brand, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(MealSignalDesign.brand)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 8)
-
-                CountBadge(value: value, caption: caption)
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
-            .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
-            .padding(14)
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .padding(.horizontal, 8)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .background {
@@ -113,27 +97,9 @@ private struct AddShortcutButton: View {
                 .shadow(color: .black.opacity(0.06), radius: 12, y: 4)
         }
         .glassSurface(interactive: true)
-    }
-}
-
-private struct CountBadge: View {
-    let value: String
-    let caption: String
-
-    var body: some View {
-        VStack(spacing: 1) {
-            Text(value)
-                .font(.headline.weight(.bold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-            Text(caption)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
-        }
-        .frame(minWidth: 46)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 7)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .accessibilityLabel(title)
+        .accessibilityValue("\(value) \(caption)")
+        .accessibilityHint(accessibilityHint)
     }
 }
 
