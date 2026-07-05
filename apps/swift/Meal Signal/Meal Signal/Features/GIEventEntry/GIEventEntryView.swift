@@ -81,6 +81,7 @@ struct GIEventEntryView: View {
         Task {
             guard !draft.symptoms.isEmpty || draft.stoolType != nil else {
                 message = .error("Choose a symptom or stool type.")
+                Haptics.warning()
                 return
             }
 
@@ -96,9 +97,11 @@ struct GIEventEntryView: View {
                     stoolType: draft.stoolType,
                     durationMinutes: draft.durationMinutes
                 )
+                Haptics.success()
                 dismiss()
             } catch {
                 message = .error("Event could not be saved.")
+                Haptics.error()
             }
         }
     }

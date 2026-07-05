@@ -42,12 +42,18 @@ struct StoolTypeSlider: View {
     private var sliderValue: Binding<Double> {
         Binding(
             get: { Double(stoolType ?? 4) },
-            set: { stoolType = Int($0.rounded()) }
+            set: {
+                let newValue = Int($0.rounded())
+                guard newValue != stoolType else { return }
+                stoolType = newValue
+                Haptics.selection()
+            }
         )
     }
 
     private func clear() {
         stoolType = nil
+        Haptics.impact()
     }
 }
 

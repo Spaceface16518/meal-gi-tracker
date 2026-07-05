@@ -84,8 +84,10 @@ struct HomeView: View {
                     try await service.deleteSkinEntry(uid: entry.uid, id: entry.id)
                     actionMessage = .success("Skin entry deleted.")
                 }
+                Haptics.success()
             } catch {
                 actionMessage = .error("The entry could not be deleted.")
+                Haptics.error()
             }
         }
     }

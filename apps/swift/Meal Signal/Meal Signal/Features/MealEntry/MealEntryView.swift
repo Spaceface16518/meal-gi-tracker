@@ -124,9 +124,11 @@ struct MealEntryView: View {
                     processingSource: draft.processingSourcePayload,
                     localProcessingWarning: draft.localProcessingWarningPayload
                 )
+                Haptics.success()
                 dismiss()
             } catch {
                 message = .error("Meal could not be saved.")
+                Haptics.error()
             }
         }
     }

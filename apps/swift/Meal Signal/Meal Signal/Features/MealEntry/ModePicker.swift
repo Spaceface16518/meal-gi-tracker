@@ -10,6 +10,7 @@ struct ModePicker: View {
             Label("Image", systemImage: "camera").tag(InputMode.image)
         }
         .pickerStyle(.segmented)
+        .onChange(of: mode) { _, _ in Haptics.selection() }
     }
 }
 

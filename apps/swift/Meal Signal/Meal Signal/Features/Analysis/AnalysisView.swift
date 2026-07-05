@@ -33,8 +33,10 @@ struct AnalysisView: View {
             do {
                 try await service.analyzeCorrelations()
                 actionMessage = .info("Analysis queued.")
+                Haptics.success()
             } catch {
                 actionMessage = .error("Analysis could not be started.")
+                Haptics.error()
             }
         }
     }

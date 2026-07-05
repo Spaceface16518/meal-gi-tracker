@@ -65,6 +65,7 @@ struct SkinEntryView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .onChange(of: draft.mode) { _, _ in Haptics.selection() }
                 } footer: {
                     Text(draft.mode == .daily
                         ? "Record skin quality for a calendar day. Saving the same day updates it."
@@ -166,14 +167,17 @@ struct SkinEntryView: View {
     private func save() {
         if readOnly {
             message = .error(demoReadOnlyMessage)
+            Haptics.warning()
             return
         }
         if draft.mode == .timed, draft.symptoms.isEmpty {
             message = .error("Choose at least one skin symptom.")
+            Haptics.warning()
             return
         }
         if let duration = draft.durationMinutes, !(1...1440).contains(duration) {
             message = .error("Use a duration from 1 to 1440 minutes.")
+            Haptics.warning()
             return
         }
 
@@ -198,9 +202,11 @@ struct SkinEntryView: View {
                         durationMinutes: draft.durationMinutes
                     )
                 }
+                Haptics.success()
                 dismiss()
             } catch {
                 message = .error("Skin entry could not be saved.")
+                Haptics.error()
             }
         }
     }
@@ -234,6 +240,7 @@ private struct SkinTagPicker: View {
         } else {
             selection.append(option)
         }
+        Haptics.selection()
     }
 }
 

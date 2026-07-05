@@ -43,6 +43,7 @@ struct RecentEntryRow: View {
     }
 
     private func confirmDelete() {
+        Haptics.warning()
         deleteConfirmation = entry
     }
 
@@ -53,8 +54,10 @@ struct RecentEntryRow: View {
             do {
                 try await service.reanalyzeMeal(id: entry.id)
                 message = .success("Meal analysis refreshed.")
+                Haptics.success()
             } catch {
                 message = .error("Meal analysis could not be refreshed.")
+                Haptics.error()
             }
         }
     }

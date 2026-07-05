@@ -58,14 +58,17 @@ struct AddShortcuts: View {
     }
 
     private func addMeal() {
+        Haptics.impact()
         addSheet = .meal
     }
 
     private func addEvent() {
+        Haptics.impact()
         addSheet = .event
     }
 
     private func addSkin() {
+        Haptics.impact()
         addSheet = .skin
     }
 }

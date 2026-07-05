@@ -131,6 +131,7 @@ struct EntryDetailSheet: View {
         guard let event = entry.event else { return }
         guard !eventDraft.symptoms.isEmpty || eventDraft.stoolType != nil else {
             message = .error("Choose a symptom or stool type.")
+            Haptics.warning()
             return
         }
 
@@ -164,8 +165,10 @@ struct EntryDetailSheet: View {
                 eventDraft = GIEventDraft(event: updatedEvent)
                 message = .success("Event saved.")
                 isEditing = false
+                Haptics.success()
             } catch {
                 message = .error("Event could not be saved.")
+                Haptics.error()
             }
         }
     }
@@ -174,10 +177,12 @@ struct EntryDetailSheet: View {
         guard let meal = entry.meal else { return }
         guard !mealDraft.trimmedName.isEmpty else {
             message = .error("Enter a meal name.")
+            Haptics.warning()
             return
         }
         guard mealDraft.trimmedDescription.count > 2 else {
             message = .error("Enter a meal description.")
+            Haptics.warning()
             return
         }
 
@@ -222,8 +227,10 @@ struct EntryDetailSheet: View {
                 mealDraft = MealEditDraft(meal: updatedMeal)
                 message = .success("Meal saved.")
                 isEditing = false
+                Haptics.success()
             } catch {
                 message = .error("Meal could not be saved.")
+                Haptics.error()
             }
         }
     }
@@ -236,8 +243,10 @@ struct EntryDetailSheet: View {
             do {
                 try await service.reanalyzeMeal(id: meal.id)
                 message = .success("Meal analysis refreshed.")
+                Haptics.success()
             } catch {
                 message = .error("Meal analysis could not be refreshed.")
+                Haptics.error()
             }
         }
     }

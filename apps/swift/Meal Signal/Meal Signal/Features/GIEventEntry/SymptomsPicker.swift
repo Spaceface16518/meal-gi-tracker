@@ -23,6 +23,7 @@ struct SymptomsPicker: View {
         } else {
             symptoms.append(symptom)
         }
+        Haptics.selection()
     }
 }
 
