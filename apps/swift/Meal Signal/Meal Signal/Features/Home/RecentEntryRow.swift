@@ -127,6 +127,13 @@ private struct RowActions: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            Button(action: delete) {
+                LoadingIcon(systemImage: "trash", isLoading: isDeleting)
+            }
+            .accessibilityLabel(isDeleting ? "Deleting entry" : "Delete entry")
+            .disabled(isDeleting)
+            .buttonStyle(.borderless)
+
             if kind == .meal {
                 Button(action: reanalyze) {
                     LoadingIcon(systemImage: "arrow.clockwise", isLoading: isReanalyzing)
@@ -135,13 +142,6 @@ private struct RowActions: View {
                 .disabled(isReanalyzing)
                 .buttonStyle(.borderless)
             }
-
-            Button(action: delete) {
-                LoadingIcon(systemImage: "trash", isLoading: isDeleting)
-            }
-            .accessibilityLabel(isDeleting ? "Deleting entry" : "Delete entry")
-            .disabled(isDeleting)
-            .buttonStyle(.borderless)
         }
         .foregroundStyle(.secondary)
     }

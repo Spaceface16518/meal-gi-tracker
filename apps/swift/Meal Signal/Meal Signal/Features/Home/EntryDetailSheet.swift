@@ -52,15 +52,13 @@ struct EntryDetailSheet: View {
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if entry.skin == nil {
-                    ToolbarItem(placement: isEditing ? .cancellationAction : .topBarLeading) {
-                        ToolbarActionButton(
-                            title: isEditing ? "Cancel editing" : "Edit",
-                            systemImage: isEditing ? "xmark" : "pencil",
-                            action: toggleEditing
-                        )
-                            .disabled(isSaving)
-                    }
+                ToolbarItem(placement: .cancellationAction) {
+                    ToolbarActionButton(
+                        title: isEditing ? "Cancel editing" : "Close",
+                        systemImage: "xmark",
+                        action: closeOrCancel
+                    )
+                    .disabled(isSaving || isReanalyzing)
                 }
                 if isEditing {
                     ToolbarItem(placement: .confirmationAction) {
@@ -81,8 +79,10 @@ struct EntryDetailSheet: View {
                             .accessibilityLabel(isReanalyzing ? "Reanalyzing meal" : "Reanalyze meal")
                             .disabled(isReanalyzing)
                         }
-                        ToolbarActionButton(title: "Close", systemImage: "xmark") { dismiss() }
-                            .disabled(isSaving || isReanalyzing)
+                        if entry.skin == nil {
+                            ToolbarActionButton(title: "Edit", systemImage: "pencil", action: toggleEditing)
+                                .disabled(isReanalyzing)
+                        }
                     }
                 }
             }
@@ -120,6 +120,14 @@ struct EntryDetailSheet: View {
             mealDraft = MealEditDraft(meal: meal)
         }
         isEditing.toggle()
+    }
+
+    private func closeOrCancel() {
+        if isEditing {
+            toggleEditing()
+        } else {
+            dismiss()
+        }
     }
 
     private func saveEntry() {

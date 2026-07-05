@@ -11,6 +11,13 @@ struct ImageInput: View {
     var body: some View {
         VStack(spacing: 12) {
             HStack(spacing: 10) {
+                PhotosPicker(selection: $selectedImage, matching: .images) {
+                    Label(hasImage ? "Replace" : "Choose", systemImage: "photo")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .foregroundStyle(MealSignalDesign.brand)
+                }
+                .buttonStyle(.bordered)
+
                 Button(action: takePhoto) {
                     Label("Take Photo", systemImage: "camera")
                         .frame(maxWidth: .infinity, minHeight: 44)
@@ -19,13 +26,6 @@ struct ImageInput: View {
                 .buttonStyle(.borderedProminent)
                 .tint(MealSignalDesign.brand)
                 .disabled(!UIImagePickerController.isSourceTypeAvailable(.camera))
-
-                PhotosPicker(selection: $selectedImage, matching: .images) {
-                    Label(hasImage ? "Replace" : "Choose", systemImage: "photo")
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .foregroundStyle(MealSignalDesign.brand)
-                }
-                .buttonStyle(.bordered)
             }
 
             MediaReadyRow(isReady: hasImage || hasDescription, label: hasDescription ? "Description ready" : "Image ready")
