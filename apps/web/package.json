@@ -29,7 +29,7 @@
     "@ocular-d/typos-bin": "^1.47.2",
     "@tailwindcss/vite": "^4.0.0",
     "@vitest/coverage-v8": "^4.1.9",
-    "eslint": "^9",
+    "eslint": "^10",
     "knip": "^6.20.0",
     "prettier": "^3.8.4",
     "tailwindcss": "^4",
