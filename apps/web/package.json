@@ -28,7 +28,7 @@
     "@eslint/js": "^9.39.2",
     "@ocular-d/typos-bin": "^1.47.2",
     "@tailwindcss/vite": "^4.0.0",
-    "@vitest/coverage-v8": "^4.1.9",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9",
     "knip": "^6.20.0",
     "prettier": "^3.8.4",
@@ -37,6 +37,11 @@
     "typescript-eslint": "^8.62.0",
     "vite": "^6.0.0",
     "vite-plugin-solid": "^2.11.0",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "~1.13.6"
+    }
   }
 }
