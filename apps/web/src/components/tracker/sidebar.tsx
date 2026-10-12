@@ -18,6 +18,7 @@ import { deleteGiEvent, deleteMeal, deleteSkinEntry } from "@/lib/firestore";
 import { demoReadOnlyMessage } from "@/lib/demo";
 import type { CorrelationAnalysis, GiEvent, Meal, SkinEntry } from "@/lib/types";
 import type { RecentEntry } from "@/components/tracker/entry-detail-page";
+import { NutritionSummary } from "@/components/tracker/nutrition-panel";
 import { EmptyState, Stat, StatusMessage } from "@/components/tracker/ui";
 
 function describeEvent(event: GiEvent) {
@@ -257,6 +258,7 @@ export function RecentEntries(props: {
                     <p class="mt-1 line-clamp-2 text-sm text-muted-strong">
                       {item.meal.interpretedText}
                     </p>
+                    <NutritionSummary nutrition={item.meal.analysis.nutrition} />
                     <div class="mt-2 flex flex-wrap gap-1">
                       {item.meal.analysis.irritants.slice(0, 3).map((irritant) => (
                         <span class="rounded bg-surface px-2 py-1 text-xs font-medium text-muted-strong">

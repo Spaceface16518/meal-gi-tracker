@@ -59,3 +59,12 @@ docker run --rm \
   -w /app/apps/web \
   node:22-bookworm npm run build
 ```
+
+## Dependency Security
+
+The web package scopes an npm override to Firestore's `@grpc/grpc-js` dependency
+using the patched 1.13 maintenance line. Firestore's upstream `~1.9.0` constraint
+otherwise retains an affected release. Keep the override until the SDK accepts
+a patched gRPC version, and validate SDK reads and writes when changing it.
+See the [gRPC security advisory](https://github.com/advisories/GHSA-m9gg-hp2v-232j)
+and [error-disclosure advisory](https://github.com/advisories/GHSA-f596-whhp-79r4).

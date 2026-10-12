@@ -1,3 +1,4 @@
+import { formatNutrient } from "./nutrition";
 import type { CorrelationAnalysis, GiEvent, Meal, SkinEntry } from "@/lib/types";
 
 type AnalysisExportInput = {
@@ -227,7 +228,7 @@ export function exportAnalysisHtml({
 
     <h2>Recent Meals</h2>
     <table>
-      <thead><tr><th>When</th><th>Meal</th><th>Foods</th><th>Irritants</th></tr></thead>
+      <thead><tr><th>When</th><th>Meal</th><th>Foods</th><th>Estimated nutrition</th><th>Irritants</th></tr></thead>
       <tbody>
         ${topMeals
           .map(
@@ -235,6 +236,7 @@ export function exportAnalysisHtml({
           <td>${escapeHtml(meal.eatenAt.toLocaleString())}</td>
           <td><strong>${escapeHtml(meal.analysis.mealName)}</strong><br><span class="muted">${escapeHtml(meal.interpretedText)}</span></td>
           <td>${escapeHtml(meal.analysis.foods.join(", ") || "None")}</td>
+          <td>Protein: ${escapeHtml(formatNutrient(meal.analysis.nutrition?.proteinGrams))}<br>Fiber: ${escapeHtml(formatNutrient(meal.analysis.nutrition?.fiberGrams))}<br>Calories: ${escapeHtml(formatNutrient(meal.analysis.nutrition?.caloriesKcal, "kcal"))}<br>Carbs: ${escapeHtml(formatNutrient(meal.analysis.nutrition?.carbsGrams))}<br>Fat: ${escapeHtml(formatNutrient(meal.analysis.nutrition?.fatGrams))}</td>
           <td>${meal.analysis.irritants.map((irritant) => `<span class="pill">${escapeHtml(irritant.name)}</span>`).join("") || "None"}</td>
         </tr>`,
           )

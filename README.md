@@ -11,6 +11,29 @@ meal irritants, and longer-term correlation signals.
 - Firebase Functions for meal ingestion, GI event creation, AI analysis, and weekly scheduled correlation sweeps
 - Vercel for the web app
 
+## Nutrition Estimates
+
+New meals estimate protein, fiber, calories, carbohydrate, and fat through the
+existing Gemini analysis for text, voice, and photos. The web app highlights protein
+and fiber in recent meals and shows all five values, confidence, and portion
+assumptions in meal details. These are approximate totals for the consumed meal;
+include quantities or label details for better estimates.
+
+Older meals can use **Reanalyze** to add estimates. Unknown quantities and AI
+failures appear as unavailable, rather than zero. Editing the meal description or
+foods or portion notes clears stale nutrition; reanalyze to refresh it. Other metadata edits preserve it.
+JSON and HTML exports include nutrition. The iOS interface is unchanged.
+
+`scripts/test-nutrition-rules.mjs` verifies legacy edits, nutrition validation,
+and account isolation against a Firestore emulator using
+`@firebase/rules-unit-testing` and `firebase`. Run it in an isolated environment
+with `firebase emulators:exec --only firestore --project demo-meal-nutrition
+"node scripts/test-nutrition-rules.mjs"`.
+
+Release the Firebase Functions and Firestore rules together before releasing the
+web app. The backend appends the nutrition contract to existing Remote Config
+meal prompts, so an older remote template cannot suppress the new output fields.
+
 ## Local Development
 
 Use Docker or OrbStack for development commands.
