@@ -16,6 +16,14 @@ import {
   type WindowedAssociationFinding,
 } from "./windowed-association.js";
 
+import {
+  normalizeNutrition,
+  nutritionPrompt,
+  unavailableNutrition,
+  type NutritionContext,
+  type NutritionEstimate,
+} from "./nutrition.js";
+
 initializeApp();
 setGlobalOptions({ region: "us-central1", maxInstances: 10 });
 
@@ -49,6 +57,7 @@ type MealAnalysis = {
   foods: string[];
   irritants: IrritantSignal[];
   summary: string;
+  nutrition: NutritionEstimate;
 };
 
 type CorrelationFinding = {
@@ -272,6 +281,14 @@ export const createMeal = onCall(
     const caffeineAmount = optionalNumber(data.caffeineAmount, "caffeineAmount", 0, 3000);
     const uncertainIngredientsNotes = optionalString(data.uncertainIngredientsNotes, 1000);
 
+    const nutritionContext: NutritionContext = {
+      ...(mealSize ? { mealSize } : {}),
+      ...(portionMultiplier != null ? { portionMultiplier } : {}),
+      ...(sourceType ? { sourceType } : {}),
+      ...(notes ? { notes } : {}),
+      ...(uncertainIngredientsNotes ? { uncertainIngredientsNotes } : {}),
+    };
+
     let rawInput = "";
     let interpretedText = "";
     let analysis: MealAnalysis;
@@ -280,12 +297,12 @@ export const createMeal = onCall(
     if (mode === "text") {
       rawInput = requiredString(data.text, "text", 8000);
       interpretedText = rawInput;
-      analysis = await analyzeMealText(uid, rawInput);
+      analysis = await analyzeMealText(uid, rawInput, { nutritionContext });
       processingSource = requestedProcessingSource;
     } else if (localText) {
       rawInput = `[${mode}:local-text]`;
       interpretedText = localText;
-      analysis = await analyzeMealText(uid, localText);
+      analysis = await analyzeMealText(uid, localText, { nutritionContext });
       processingSource = "local";
     } else {
       const mediaBase64 = requiredString(data.mediaBase64, "mediaBase64", 8_000_000);
@@ -298,7 +315,13 @@ export const createMeal = onCall(
         mimeType,
         approxBytes: approximateBase64Bytes(mediaBase64),
       });
-      const interpreted = await interpretMediaMeal(uid, mode, mediaBase64, mimeType);
+      const interpreted = await interpretMediaMeal(
+        uid,
+        mode,
+        mediaBase64,
+        mimeType,
+        nutritionContext,
+      );
       interpretedText = interpreted.interpretedText;
       analysis = interpreted.analysis;
       processingSource = "cloud";
@@ -490,7 +513,16 @@ export const reanalyzeMeal = onCall(
       meal.inputMode === "text"
         ? meal.rawInput || meal.interpretedText
         : meal.interpretedText || meal.rawInput;
-    const analysis = await analyzeMealText(uid, sourceText, { excludeMealId: mealId });
+    const analysis = await analyzeMealText(uid, sourceText, {
+      excludeMealId: mealId,
+      nutritionContext: {
+        mealSize: meal.mealSize,
+        portionMultiplier: meal.portionMultiplier,
+        sourceType: meal.sourceType,
+        notes: meal.notes,
+        uncertainIngredientsNotes: meal.uncertainIngredientsNotes,
+      },
+    });
     const now = Timestamp.now();
     const update = {
       analysis,
@@ -549,6 +581,7 @@ async function interpretMediaMeal(
   mode: InputMode,
   mediaBase64: string,
   mimeType: string,
+  nutritionContext: NutritionContext,
 ) {
   const ai = getGeminiClient();
   if (!ai) {
@@ -569,6 +602,7 @@ async function interpretMediaMeal(
   const prompt = renderMealAnalysisPrompt(promptConfig.mealAnalysisPromptTemplate, {
     input: instruction,
     analysisContext,
+    nutritionContext,
   });
 
   try {
@@ -608,7 +642,7 @@ async function interpretMediaMeal(
 async function analyzeMealText(
   uid: string,
   text: string,
-  options: { excludeMealId?: string } = {},
+  options: { excludeMealId?: string; nutritionContext?: NutritionContext } = {},
 ) {
   const ai = getGeminiClient();
   if (!ai) return heuristicMealAnalysis(text);
@@ -619,6 +653,7 @@ async function analyzeMealText(
     const prompt = renderMealAnalysisPrompt(promptConfig.mealAnalysisPromptTemplate, {
       input: text,
       analysisContext,
+      nutritionContext: options.nutritionContext,
     });
     const json = await generateJson(ai, [{ text: prompt }], promptConfig.mealModelName);
     return parseMealAnalysis(json, analysisContext);
@@ -1374,7 +1409,11 @@ async function buildMealAnalysisContext(
 
 function renderMealAnalysisPrompt(
   template: string,
-  values: { input: string; analysisContext: MealAnalysisContext },
+  values: {
+    input: string;
+    analysisContext: MealAnalysisContext;
+    nutritionContext?: NutritionContext;
+  },
 ) {
   const base = renderTemplate(template, {
     input: values.input,
@@ -1384,13 +1423,16 @@ function renderMealAnalysisPrompt(
 
   const needsKnownBlock = !template.includes("{{knownIrritants}}");
   const needsAvailableBlock = !template.includes("{{availableIrritants}}");
-  if (!needsKnownBlock && !needsAvailableBlock) return base;
+  const nutrition = nutritionPrompt(values.nutritionContext);
+  if (!needsKnownBlock && !needsAvailableBlock) return `${base}\n\n${nutrition}`;
 
   return `${base}
 
 ${needsAvailableBlock ? renderAvailableIrritants(values.analysisContext) : ""}
 
-${needsKnownBlock ? renderKnownIrritantCatalog() : ""}`;
+${needsKnownBlock ? renderKnownIrritantCatalog() : ""}
+
+${nutrition}`;
 }
 
 function renderAvailableIrritants(context: MealAnalysisContext) {
@@ -1459,6 +1501,7 @@ function parseMealAnalysis(text: string, context?: MealAnalysisContext): MealAna
     foods,
     irritants,
     summary: cleanGeneratedString(parsed.summary, foods.join(", ") || "Meal", 500),
+    nutrition: normalizeNutrition(parsed.nutrition),
   };
 }
 
@@ -1683,6 +1726,9 @@ function heuristicMealAnalysis(text: string): MealAnalysis {
     foods: foods.length ? foods : [text.slice(0, 80)],
     irritants: uniqueIrritants,
     summary: text.slice(0, 500),
+    nutrition: unavailableNutrition(
+      "Nutrition estimates require AI meal analysis. Try reanalyzing this meal.",
+    ),
   };
 }
 

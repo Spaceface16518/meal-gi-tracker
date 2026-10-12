@@ -205,7 +205,9 @@ export function MealComposer(props: { readOnly?: boolean }) {
       <div class="mb-4 flex items-start justify-between gap-4">
         <div>
           <h2 class="text-lg font-semibold">Meal</h2>
-          <p class="text-sm text-muted">Capture what you ate and when.</p>
+          <p class="text-sm text-muted">
+            Capture your meal for protein, fiber, and macro estimates.
+          </p>
         </div>
         <Utensils class="mt-1 text-brand" size={20} aria-hidden />
       </div>
@@ -242,7 +244,7 @@ export function MealComposer(props: { readOnly?: boolean }) {
               class="min-h-28 rounded-lg border border-border-strong bg-surface px-3 py-2 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
               value={text()}
               onInput={(event) => setText((event.target as HTMLTextAreaElement).value)}
-              placeholder="Turkey sandwich, chips, iced coffee"
+              placeholder="Turkey sandwich on 2 slices of whole-wheat bread, 1 apple"
             />
           </label>
         ) : mode() === "voice" ? (
@@ -277,6 +279,10 @@ export function MealComposer(props: { readOnly?: boolean }) {
             <MediaReady ready={Boolean(mediaBase64())} label="Image ready" />
           </label>
         )}
+
+        <p class="text-xs text-muted">
+          Include portions or label details for better nutrition estimates.
+        </p>
 
         <div class="grid gap-4 sm:grid-cols-2">
           <label class="grid gap-1 text-sm font-medium text-muted-strong">

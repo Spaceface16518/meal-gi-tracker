@@ -19,11 +19,22 @@ export type IrritantSignal = {
   evidence: string;
 };
 
+export type NutritionEstimate = {
+  caloriesKcal: number | null;
+  proteinGrams: number | null;
+  fiberGrams: number | null;
+  carbsGrams: number | null;
+  fatGrams: number | null;
+  confidence: "low" | "medium" | "high";
+  assumptions: string;
+};
+
 export type MealAnalysis = {
   mealName: string;
   foods: string[];
   irritants: IrritantSignal[];
   summary: string;
+  nutrition?: NutritionEstimate;
 };
 
 export type Meal = {

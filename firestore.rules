@@ -136,9 +136,28 @@ service cloud.firestore {
         isValidTimestamp('updatedAt');
     }
 
+    function isValidNutritionAmount(nutrition, field, maxValue) {
+      return nutrition[field] == null ||
+        (nutrition[field] is number && nutrition[field] >= 0 && nutrition[field] <= maxValue);
+    }
+
+    function isValidNutrition() {
+      let nutrition = request.resource.data.analysis.nutrition;
+      return nutrition is map &&
+        nutrition.keys().hasOnly(['caloriesKcal', 'proteinGrams', 'fiberGrams', 'carbsGrams', 'fatGrams', 'confidence', 'assumptions']) &&
+        nutrition.keys().hasAll(['caloriesKcal', 'proteinGrams', 'fiberGrams', 'carbsGrams', 'fatGrams', 'confidence', 'assumptions']) &&
+        isValidNutritionAmount(nutrition, 'caloriesKcal', 100000) &&
+        isValidNutritionAmount(nutrition, 'proteinGrams', 10000) &&
+        isValidNutritionAmount(nutrition, 'fiberGrams', 10000) &&
+        isValidNutritionAmount(nutrition, 'carbsGrams', 10000) &&
+        isValidNutritionAmount(nutrition, 'fatGrams', 10000) &&
+        nutrition.confidence in ['low', 'medium', 'high'] &&
+        nutrition.assumptions is string && nutrition.assumptions.size() <= 1000;
+    }
+
     function isValidMealAnalysis() {
       return request.resource.data.analysis is map &&
-        request.resource.data.analysis.keys().hasOnly(['mealName', 'foods', 'irritants', 'summary']) &&
+        request.resource.data.analysis.keys().hasOnly(['mealName', 'foods', 'irritants', 'summary', 'nutrition']) &&
         request.resource.data.analysis.keys().hasAll(['mealName', 'foods', 'irritants', 'summary']) &&
         request.resource.data.analysis.mealName is string &&
         request.resource.data.analysis.mealName.size() > 0 &&
@@ -148,7 +167,8 @@ service cloud.firestore {
         request.resource.data.analysis.irritants is list &&
         request.resource.data.analysis.irritants.size() <= 30 &&
         request.resource.data.analysis.summary is string &&
-        request.resource.data.analysis.summary.size() <= 4000;
+        request.resource.data.analysis.summary.size() <= 4000 &&
+        (!('nutrition' in request.resource.data.analysis) || isValidNutrition());
     }
 
     function isValidMeal(userId) {

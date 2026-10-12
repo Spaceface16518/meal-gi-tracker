@@ -25,6 +25,8 @@ import {
   skinSymptomOptions,
   symptomOptions,
 } from "@/components/tracker/constants";
+import { NutritionPanel } from "@/components/tracker/nutrition-panel";
+import { nutritionForEditedMeal } from "@/lib/nutrition";
 import { StatusMessage } from "@/components/tracker/ui";
 import type {
   GiEvent,
@@ -122,6 +124,8 @@ function MealDetailView(props: { meal: Meal }) {
       <DetailSection title="Description" icon="meal">
         <p class="whitespace-pre-wrap text-sm leading-6 text-muted-strong">{description()}</p>
       </DetailSection>
+
+      <NutritionPanel nutrition={props.meal.analysis.nutrition} />
 
       <DetailSection title="Detected foods" icon="meal">
         <PillList values={props.meal.analysis.foods} empty="No foods identified" />
@@ -397,6 +401,7 @@ function MealEditForm(props: {
       return null;
     }
 
+    const nutrition = nutritionForEditedMeal(props.meal, description(), foods(), notes());
     return {
       rawInput: description().trim(),
       interpretedText: description().trim(),
@@ -414,6 +419,7 @@ function MealEditForm(props: {
           confidence: Math.min(1, Math.max(0, Number(irritant.confidence) || 0)),
         })),
         summary: summary().trim(),
+        ...(nutrition ? { nutrition } : {}),
       },
     };
   }
@@ -435,11 +441,16 @@ function MealEditForm(props: {
       return;
     }
 
+    const clearedNutrition =
+      Boolean(props.meal.analysis.nutrition) &&
+      !nutritionForEditedMeal(props.meal, description(), foods(), notes());
     setSaving(true);
     try {
       const saved = await saveDraft();
       if (!saved) return;
-      props.onSaved("Meal saved.");
+      props.onSaved(
+        clearedNutrition ? "Meal saved. Reanalyze to refresh nutrition estimates." : "Meal saved.",
+      );
     } catch (err) {
       props.onError(getErrorMessage(err, "Meal could not be saved."));
     } finally {
